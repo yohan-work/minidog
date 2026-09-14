@@ -132,6 +132,9 @@ export function MonitorDetailView({ id }: { id: string }) {
             </>
           ) : (
             <>
+              <ButtonLink size="sm" href={withRange(`/monitors/new?type=synthetic_check&target=${encodeURIComponent(id)}`, range)}>
+                Create alert
+              </ButtonLink>
               {runButton}
               <Button
                 size="sm"

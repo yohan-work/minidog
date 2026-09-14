@@ -1,7 +1,12 @@
 import {
-  ALERT_MONITOR_DEFAULTS,
+  alertDefaults,
+  alertDirection,
+  isHostResourceMetric,
+  isSyntheticAlertMetric,
+  type AlertMetric,
   type AlertMonitorListResponse,
   type AlertMonitorResponse,
+  type AlertMonitorType,
   type AlertSummaryResponse,
   type CreateAlertMonitorInput,
   type UpdateAlertMonitorInput,
@@ -13,21 +18,32 @@ import {
   type AlertMonitorRepository,
   type ScopedAlertMonitor,
 } from '../repositories/alert-monitor-repository';
+import type { MonitorRepository } from '../repositories/monitor-repository';
 import type { Scope } from '../repositories/project-repository';
 import type { AlertEvaluator } from '../worker/alert-evaluator';
-import { DIRECTIONS, signalLabel, thresholdsInOrder } from './alert-state';
+import { signalLabel, thresholdsInOrder } from './alert-state';
 
 const SEVERITY = { critical: 0, warning: 1 } as const;
 
-function orderIssue(path: string): z.ZodError {
-  return new z.ZodError([
-    {
-      code: 'custom',
-      input: undefined,
-      path: [path],
-      message: 'The warning threshold must trip before the critical threshold.',
-    },
-  ]);
+function issue(path: string, message: string): z.ZodError {
+  return new z.ZodError([{ code: 'custom', input: undefined, path: [path], message }]);
+}
+
+const orderIssue = () => issue('warningThreshold', 'The warning threshold must trip before the critical threshold.');
+
+/** The metric a type measures; host_resource and synthetic_check choose one, other types have none. */
+function resolveMetric(type: AlertMonitorType, metric: AlertMetric | undefined): AlertMetric | null {
+  if (type === 'host_resource') {
+    const resolved = metric ?? 'cpu';
+    if (!isHostResourceMetric(resolved)) throw issue('metric', 'Choose CPU, memory or disk.');
+    return resolved;
+  }
+  if (type === 'synthetic_check') {
+    const resolved = metric ?? 'failure_rate';
+    if (!isSyntheticAlertMetric(resolved)) throw issue('metric', 'Choose failed checks, response time or SSL expiry.');
+    return resolved;
+  }
+  return null;
 }
 
 export class AlertingService {
@@ -37,6 +53,8 @@ export class AlertingService {
     private readonly scope: Scope,
     /** ALERTS_ENABLED: evaluate monitors right after they are saved. */
     private readonly automaticEvaluation: boolean,
+    /** Targets of synthetic_check monitors. */
+    private readonly syntheticMonitors: MonitorRepository,
   ) {}
 
   list(): AlertMonitorListResponse {
@@ -50,16 +68,24 @@ export class AlertingService {
 
   /** Creates the monitor and evaluates it right away, so it never waits an interval for a state. */
   async create(input: CreateAlertMonitorInput): Promise<ScopedAlertMonitor> {
-    const defaults = ALERT_MONITOR_DEFAULTS[input.type];
-    const metric = input.type === 'host_resource' ? (input.metric ?? 'cpu') : null;
+    const metric = resolveMetric(input.type, input.metric);
+    const defaults = alertDefaults(input.type, metric);
+
+    let targetLabel = input.target;
+    if (input.type === 'synthetic_check') {
+      const check = this.syntheticMonitors.getInScope(this.scope, input.target);
+      if (!check) throw issue('target', 'Choose a synthetic monitor in this environment.');
+      targetLabel = check.name;
+    }
+
     const thresholds = {
       warning: input.warningThreshold === undefined ? defaults.warning : input.warningThreshold,
       critical: input.criticalThreshold ?? defaults.critical,
     };
-    if (!thresholdsInOrder(thresholds, DIRECTIONS[input.type])) throw orderIssue('warningThreshold');
+    if (!thresholdsInOrder(thresholds, alertDirection(input.type, metric))) throw orderIssue();
 
     const monitor = this.monitors.create(this.scope, {
-      name: input.name || `${signalLabel(input.type, metric)} · ${input.target}`,
+      name: input.name || `${signalLabel({ type: input.type, metric })} · ${targetLabel}`,
       type: input.type,
       target: input.target,
       metric,
@@ -67,6 +93,8 @@ export class AlertingService {
       criticalThreshold: thresholds.critical,
       windowMinutes: input.windowMinutes ?? defaults.windowMinutes,
       webhookUrl: input.webhookUrl ?? '',
+      alertAfterMinutes: input.alertAfterMinutes ?? 0,
+      recoverAfterMinutes: input.recoverAfterMinutes ?? 0,
     });
     return this.evaluateNow(monitor);
   }
@@ -78,8 +106,21 @@ export class AlertingService {
       warning: patch.warningThreshold === undefined ? current.warningThreshold : patch.warningThreshold,
       critical: patch.criticalThreshold ?? current.criticalThreshold,
     };
-    if (!thresholdsInOrder(thresholds, DIRECTIONS[current.type])) throw orderIssue('warningThreshold');
+    if (!thresholdsInOrder(thresholds, alertDirection(current.type, current.metric))) throw orderIssue();
     const monitor = this.monitors.update(id, patch)!;
+    return monitor.enabled ? this.evaluateNow(monitor) : monitor;
+  }
+
+  /** Holds webhooks for `minutes`; states keep being evaluated and recorded. */
+  mute(id: string, minutes: number): ScopedAlertMonitor {
+    this.get(id);
+    return this.monitors.update(id, { mutedUntil: new Date(Date.now() + minutes * 60_000).toISOString() })!;
+  }
+
+  /** Ends a mute early; a notification held during it is sent if its state is still current. */
+  async unmute(id: string): Promise<ScopedAlertMonitor> {
+    this.get(id);
+    const monitor = this.monitors.update(id, { mutedUntil: null })!;
     return monitor.enabled ? this.evaluateNow(monitor) : monitor;
   }
 

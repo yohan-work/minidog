@@ -1,7 +1,7 @@
-import type { AlertEvent, AlertMonitorType, TimeRange } from '@minidog/types';
+import type { AlertEvent, TimeRange } from '@minidog/types';
 import { RowLink, Table, TableHead, Td, Tr, type ColumnSpec } from '@/components/ui/Table';
 import { EMPTY, formatDateTime } from '@/lib/format';
-import { AlertStateIndicator, formatAlertValue, monitorHref } from './alerting';
+import { AlertStateIndicator, formatAlertValue, monitorHref, type AlertSignal } from './alerting';
 import styles from './Monitors.module.scss';
 
 const COLUMNS = [
@@ -18,8 +18,8 @@ const COLUMNS_FOR_MONITOR = COLUMNS.filter((column) => column.label !== 'Monitor
 interface AlertEventTableProps {
   events: readonly AlertEvent[];
   range: TimeRange;
-  /** Monitor types by id, to format values; omit the monitor column on a monitor page. */
-  types: ReadonlyMap<string, AlertMonitorType>;
+  /** Monitor signals by id, to format values; omit the monitor column on a monitor page. */
+  types: ReadonlyMap<string, AlertSignal>;
   showMonitor?: boolean;
 }
 
@@ -30,7 +30,7 @@ export function AlertEventTable({ events, range, types, showMonitor = true }: Al
       <TableHead columns={showMonitor ? COLUMNS : COLUMNS_FOR_MONITOR} />
       <tbody>
         {events.map((event) => {
-          const type = types.get(event.monitorId);
+          const signal = types.get(event.monitorId);
           return (
             <Tr key={event.id} interactive={showMonitor}>
               <Td mono muted>
@@ -54,7 +54,7 @@ export function AlertEventTable({ events, range, types, showMonitor = true }: Al
                 </span>
               </Td>
               <Td align="end" mono hideBelow="tablet">
-                {type ? formatAlertValue(type, event.value) : EMPTY}
+                {signal ? formatAlertValue(signal, event.value) : EMPTY}
               </Td>
               <Td hideBelow="desktop">
                 <span className={styles.message} title={event.message}>

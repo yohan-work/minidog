@@ -84,6 +84,8 @@ export async function buildApp(config: Config, options: BuildAppOptions = {}): P
     monitors: alertMonitors,
     spans,
     metrics,
+    syntheticMonitors: monitors,
+    syntheticResults: results,
     log: app.log,
     intervalMs: config.ALERT_INTERVAL_SECONDS * 1000,
   });
@@ -111,7 +113,7 @@ export async function buildApp(config: Config, options: BuildAppOptions = {}): P
     apm: new ApmService(spans, logs, scope),
     logSearch: new LogService(logs, scope),
     metricsExplorer: new MetricsExplorerService(metrics, scope),
-    alerting: new AlertingService(alertMonitors, evaluator, scope, config.ALERTS_ENABLED),
+    alerting: new AlertingService(alertMonitors, evaluator, scope, config.ALERTS_ENABLED, monitors),
     scheduler,
   };
 

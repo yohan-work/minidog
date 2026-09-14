@@ -100,6 +100,13 @@ const MIGRATIONS: readonly string[] = [
     value  TEXT NOT NULL
   );
   `,
+  /* 4 — alert noise control: transition delays, mute, pending state */ `
+  ALTER TABLE alert_monitors ADD COLUMN alert_after_minutes INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE alert_monitors ADD COLUMN recover_after_minutes INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE alert_monitors ADD COLUMN muted_until TEXT;
+  ALTER TABLE alert_monitors ADD COLUMN pending_state TEXT;
+  ALTER TABLE alert_monitors ADD COLUMN pending_since TEXT;
+  `,
 ];
 
 export function openDatabase(path: string): DatabaseSync {

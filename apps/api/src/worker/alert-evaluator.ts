@@ -1,16 +1,24 @@
 import type { FastifyBaseLogger } from 'fastify';
+import { alertDirection, isSyntheticAlertMetric, type AlertEvent } from '@minidog/types';
 import { ClickHouseUnavailableError } from '../lib/errors';
 import type { AlertMonitorRepository, ScopedAlertMonitor } from '../repositories/alert-monitor-repository';
-import { publicMonitor } from '../repositories/alert-monitor-repository';
+import { MUTED_WEBHOOK_STATUS, publicMonitor } from '../repositories/alert-monitor-repository';
 import type { MetricRepository } from '../repositories/metric-repository';
+import type { MonitorRepository } from '../repositories/monitor-repository';
 import type { SpanRepository } from '../repositories/span-repository';
-import { alertMessage, deriveAlertState, DIRECTIONS, isAlerting } from '../services/alert-state';
+import type { SyntheticResultRepository } from '../repositories/synthetic-result-repository';
+import { alertMessage, deriveAlertState, isAlerting, isMuted } from '../services/alert-state';
 import { sendWebhook, webhookPayload } from '../services/webhook';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 export interface AlertEvaluatorDeps {
   monitors: AlertMonitorRepository;
   spans: SpanRepository;
   metrics: MetricRepository;
+  /** Synthetic checks and their results, measured by synthetic_check monitors. */
+  syntheticMonitors: MonitorRepository;
+  syntheticResults: SyntheticResultRepository;
   log: FastifyBaseLogger;
   intervalMs: number;
 }
@@ -24,6 +32,7 @@ export class AlertEvaluator {
   private timer: NodeJS.Timeout | undefined;
   private running: Promise<void> | null = null;
   private unavailable = false;
+  private readonly deliveries = new Set<Promise<void>>();
 
   constructor(private readonly deps: AlertEvaluatorDeps) {}
 
@@ -39,6 +48,12 @@ export class AlertEvaluator {
     clearInterval(this.timer);
     this.timer = undefined;
     await this.running;
+    await this.settled();
+  }
+
+  /** Resolves once webhooks already started have been delivered (or failed). */
+  async settled(): Promise<void> {
+    await Promise.all(this.deliveries);
   }
 
   /** One pass at a time; a call during a pass joins it. */
@@ -84,18 +99,12 @@ export class AlertEvaluator {
     if (!current?.enabled) return current ?? measured;
 
     const thresholds = { warning: current.warningThreshold, critical: current.criticalThreshold };
-    const state = deriveAlertState(value, thresholds, DIRECTIONS[current.type]);
+    const state = deriveAlertState(value, thresholds, alertDirection(current.type, current.metric));
     // The value covers the window it was measured over.
     const message = alertMessage({ ...current, windowMinutes: measured.windowMinutes, thresholds }, state, value);
-    const event = this.deps.monitors.recordEvaluation(current, { state, value, message }, new Date());
-
-    if (event && current.webhookUrl && (isAlerting(event.fromState) || isAlerting(event.toState))) {
-      const payload = webhookPayload(publicMonitor(current), event);
-      void sendWebhook(current.webhookUrl, payload).then((status) => {
-        this.deps.monitors.setWebhookStatus(event.id, status);
-        if (status.startsWith('failed')) this.deps.log.warn({ monitorId: current.id, status }, 'Alert webhook failed');
-      });
-    }
+    const now = new Date();
+    const event = this.deps.monitors.recordEvaluation(current, { state, value, message }, now);
+    this.notify(current, event, now.getTime());
     return this.deps.monitors.get(monitor.id) ?? current;
   }
 
@@ -115,14 +124,57 @@ export class AlertEvaluator {
     }
   }
 
+  /**
+   * Sends changes into or out of Warning/Critical. While muted they are
+   * recorded as held; once the mute is over, a held notification whose state
+   * is still current is sent once.
+   */
+  private notify(monitor: ScopedAlertMonitor, event: AlertEvent | null, now: number): void {
+    if (!monitor.webhookUrl) return;
+    const muted = isMuted(monitor.mutedUntil, now);
+
+    if (event) {
+      if (!isAlerting(event.fromState) && !isAlerting(event.toState)) return;
+      if (muted) this.deps.monitors.setWebhookStatus(event.id, MUTED_WEBHOOK_STATUS);
+      else this.deliver(monitor, event);
+      return;
+    }
+    if (muted) return;
+
+    const stored = this.deps.monitors.get(monitor.id);
+    const last = this.deps.monitors.lastEvent(monitor.id);
+    if (
+      stored &&
+      last &&
+      last.webhookStatus === MUTED_WEBHOOK_STATUS &&
+      last.toState === stored.state &&
+      isAlerting(stored.state) &&
+      this.deps.monitors.claimMutedEvent(last.id)
+    ) {
+      this.deliver(stored, last, `still ${stored.state} after the mute ended`);
+    }
+  }
+
+  private deliver(monitor: ScopedAlertMonitor, event: AlertEvent, note?: string): void {
+    const delivery = sendWebhook(monitor.webhookUrl, webhookPayload(publicMonitor(monitor), event, note)).then((status) => {
+      this.deps.monitors.setWebhookStatus(event.id, status);
+      if (status.startsWith('failed')) this.deps.log.warn({ monitorId: monitor.id, status }, 'Alert webhook failed');
+    });
+    this.deliveries.add(delivery);
+    void delivery.finally(() => this.deliveries.delete(delivery));
+  }
+
   /** Value in the unit of the monitor type; null when there is nothing to measure. */
   private async measure(monitor: ScopedAlertMonitor): Promise<number | null> {
+    if (monitor.type === 'synthetic_check') return this.measureSynthetic(monitor);
+
     const scope = { projectId: monitor.projectId, environment: monitor.environment };
     const fromMs = Date.now() - monitor.windowMinutes * 60_000;
 
     if (monitor.type === 'host_resource') {
+      const metric = monitor.metric === 'memory' || monitor.metric === 'disk' ? monitor.metric : 'cpu';
       const [host] = await this.deps.metrics.hosts(scope, fromMs, fromMs, monitor.target);
-      const ratio = host?.[monitor.metric ?? 'cpu'] ?? null;
+      const ratio = host?.[metric] ?? null;
       return ratio === null ? null : Math.round(ratio * 1000) / 10;
     }
 
@@ -134,6 +186,30 @@ export class AlertEvaluator {
         return stats.requests > 0 ? Math.round((stats.errors / stats.requests) * 1000) / 10 : null;
       case 'latency':
         return stats.requests > 0 ? stats.p95Ms : null;
+    }
+  }
+
+  /** Failed checks (%), P95 of passing checks (ms) or days until the certificate expires. */
+  private async measureSynthetic(monitor: ScopedAlertMonitor): Promise<number | null> {
+    const check = this.deps.syntheticMonitors.get(monitor.target);
+    if (!check || check.projectId !== monitor.projectId) return null;
+
+    const metric = isSyntheticAlertMetric(monitor.metric) ? monitor.metric : 'failure_rate';
+    const now = Date.now();
+    // Certificates rarely change: the latest one seen in the last day decides.
+    const fromMs = now - (metric === 'ssl_days' ? DAY_MS : monitor.windowMinutes * 60_000);
+    const scope = { projectId: check.projectId, environment: check.environment };
+    const summary = (await this.deps.syntheticResults.summaries(scope, [check.id], fromMs)).get(check.id);
+    if (!summary) return null;
+
+    switch (metric) {
+      case 'failure_rate':
+        return summary.checks > 0 ? Math.round((summary.failures / summary.checks) * 1000) / 10 : null;
+      case 'response_time':
+        return summary.p95LatencyMs;
+      case 'ssl_days':
+        if (summary.sslExpiresAt === null || summary.lastCheckedAt < fromMs) return null;
+        return Math.round(((summary.sslExpiresAt - now) / DAY_MS) * 10) / 10;
     }
   }
 }

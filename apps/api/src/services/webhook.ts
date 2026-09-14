@@ -5,23 +5,27 @@ const TIMEOUT_MS = 5_000;
 export interface WebhookPayload {
   /** Plain summary; Slack-compatible incoming webhooks display it. */
   text: string;
-  monitor: Pick<AlertMonitor, 'id' | 'name' | 'type' | 'target'>;
+  monitor: Pick<AlertMonitor, 'id' | 'name' | 'type' | 'target' | 'targetLabel'>;
   state: AlertEvent['toState'];
   previousState: AlertEvent['fromState'];
   value: number | null;
   message: string;
   timestamp: string;
+  /** Set when a notification held during a mute is delivered afterwards. */
+  note?: string;
 }
 
-export function webhookPayload(monitor: AlertMonitor, event: AlertEvent): WebhookPayload {
+export function webhookPayload(monitor: AlertMonitor, event: AlertEvent, note?: string): WebhookPayload {
+  const suffix = note ? ` (${note})` : '';
   return {
-    text: `[${event.toState.toUpperCase()}] ${monitor.name}: ${event.message}`,
-    monitor: { id: monitor.id, name: monitor.name, type: monitor.type, target: monitor.target },
+    text: `[${event.toState.toUpperCase()}] ${monitor.name}: ${event.message}${suffix}`,
+    monitor: { id: monitor.id, name: monitor.name, type: monitor.type, target: monitor.target, targetLabel: monitor.targetLabel },
     state: event.toState,
     previousState: event.fromState,
     value: event.value,
     message: event.message,
     timestamp: event.createdAt,
+    ...(note ? { note } : {}),
   };
 }
 
