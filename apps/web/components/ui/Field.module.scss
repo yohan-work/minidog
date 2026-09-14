@@ -1,0 +1,25 @@
+.field {
+  display: grid;
+  gap: var(--space-2);
+  align-content: start;
+}
+
+.label {
+  font-size: var(--text-secondary);
+  font-weight: var(--weight-medium);
+  color: var(--foreground-primary);
+}
+
+.hint,
+.error {
+  font-size: var(--text-meta);
+  line-height: var(--leading-tight);
+}
+
+.hint {
+  color: var(--foreground-muted);
+}
+
+.error {
+  color: var(--status-error);
+}

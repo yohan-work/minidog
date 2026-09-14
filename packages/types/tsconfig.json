@@ -1,0 +1,4 @@
+{
+  "extends": "@minidog/config/tsconfig.base.json",
+  "include": ["src"]
+}

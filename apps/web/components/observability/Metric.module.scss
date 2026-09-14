@@ -1,0 +1,52 @@
+@use '../../styles/mixins' as *;
+
+// 1px gaps over a border-colored background draw dividers that survive wrapping.
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(calc(var(--space-16) * 2.5), 1fr));
+  gap: 1px;
+  background: var(--border-default);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.metric {
+  display: grid;
+  gap: var(--space-1);
+  align-content: start;
+  min-width: 0;
+  padding: var(--space-4) var(--content-padding);
+  background: var(--background-primary);
+}
+
+.label {
+  font-size: var(--text-meta);
+  font-weight: var(--weight-medium);
+  color: var(--foreground-muted);
+}
+
+.value {
+  display: flex;
+  align-items: center;
+  min-height: calc(var(--text-metric) * var(--leading-tight));
+  @include mono-numeric;
+  font-size: var(--text-metric);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-page);
+  color: var(--foreground-primary);
+
+  &[data-tone='warning'] {
+    color: var(--status-warning);
+  }
+
+  &[data-tone='error'] {
+    color: var(--status-error);
+  }
+}
+
+.meta {
+  min-height: calc(var(--text-meta) * var(--leading-normal));
+  font-size: var(--text-meta);
+  color: var(--foreground-secondary);
+  @include truncate;
+}

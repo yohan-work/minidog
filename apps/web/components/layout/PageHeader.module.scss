@@ -1,0 +1,62 @@
+@use '../../styles/mixins' as *;
+
+.header {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-6) var(--content-padding) var(--space-4);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  justify-self: start;
+  font-size: var(--text-secondary);
+  color: var(--foreground-secondary);
+  @include transition(color);
+
+  &:hover {
+    color: var(--foreground-primary);
+  }
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-4);
+  min-height: var(--control-height-md);
+}
+
+.heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.title {
+  font-size: var(--text-page);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-page);
+  @include truncate;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-secondary);
+  color: var(--foreground-secondary);
+}

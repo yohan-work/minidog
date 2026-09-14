@@ -1,0 +1,90 @@
+// Semantic color tokens. Names describe the role, never the value.
+// Dark is the primary theme; light is defined with the same token set.
+
+:root,
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --background-primary: #0a0a0a;
+  --background-secondary: #111111;
+  --background-tertiary: #171717;
+  --background-hover: #1c1c1c;
+  --background-active: #242424;
+  --background-inverse: #ededed;
+  --background-inverse-hover: #cccccc;
+
+  --foreground-primary: #ededed;
+  --foreground-secondary: #a1a1a1;
+  --foreground-muted: #8a8a8a;
+  --foreground-disabled: #5c5c5c;
+  --foreground-inverse: #0a0a0a;
+
+  --border-default: #242424;
+  --border-hover: #333333;
+  --border-active: #454545;
+  --border-strong: #5c5c5c;
+
+  --focus-ring: #52a8ff;
+  --selection: rgba(82, 168, 255, 0.3);
+
+  --status-success: #45c46e;
+  --status-warning: #f2a93b;
+  --status-error: #f45b56;
+  --status-info: #52a8ff;
+  --status-neutral: #8a8a8a;
+
+  --status-success-subtle: rgba(69, 196, 110, 0.12);
+  --status-warning-subtle: rgba(242, 169, 59, 0.12);
+  --status-error-subtle: rgba(244, 91, 86, 0.12);
+  --status-info-subtle: rgba(82, 168, 255, 0.12);
+
+  // Charts: one hue per meaning. Blue/grey is safe for common color-vision deficiencies.
+  --chart-primary: #52a8ff;
+  --chart-secondary: #8a8a8a;
+  --chart-grid: #1c1c1c;
+  --chart-axis: #8a8a8a;
+  --chart-empty: #1c1c1c;
+}
+
+[data-theme='light'] {
+  color-scheme: light;
+
+  --background-primary: #ffffff;
+  --background-secondary: #fafafa;
+  --background-tertiary: #f2f2f2;
+  --background-hover: #ededed;
+  --background-active: #e5e5e5;
+  --background-inverse: #171717;
+  --background-inverse-hover: #383838;
+
+  --foreground-primary: #171717;
+  --foreground-secondary: #4d4d4d;
+  --foreground-muted: #666666;
+  --foreground-disabled: #a8a8a8;
+  --foreground-inverse: #ffffff;
+
+  --border-default: #ebebeb;
+  --border-hover: #d4d4d4;
+  --border-active: #bdbdbd;
+  --border-strong: #8f8f8f;
+
+  --focus-ring: #0068d6;
+  --selection: rgba(0, 104, 214, 0.2);
+
+  --status-success: #1a7f37;
+  --status-warning: #9a6700;
+  --status-error: #cf222e;
+  --status-info: #0068d6;
+  --status-neutral: #666666;
+
+  --status-success-subtle: rgba(26, 127, 55, 0.1);
+  --status-warning-subtle: rgba(154, 103, 0, 0.1);
+  --status-error-subtle: rgba(207, 34, 46, 0.1);
+  --status-info-subtle: rgba(0, 104, 214, 0.1);
+
+  --chart-primary: #0068d6;
+  --chart-secondary: #8f8f8f;
+  --chart-grid: #f2f2f2;
+  --chart-axis: #666666;
+  --chart-empty: #ededed;
+}

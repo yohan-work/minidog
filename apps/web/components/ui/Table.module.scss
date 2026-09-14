@@ -1,0 +1,104 @@
+@use '../../styles/mixins' as *;
+
+.scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  font-size: var(--text-secondary);
+}
+
+.th,
+.td {
+  height: var(--row-height);
+  padding-inline: var(--space-3);
+  text-align: left;
+  vertical-align: middle;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border-default);
+
+  // First and last columns align with section headers.
+  &:first-child {
+    padding-left: var(--content-padding);
+  }
+
+  &:last-child {
+    padding-right: var(--content-padding);
+  }
+}
+
+.th {
+  height: var(--control-height-md);
+  font-size: var(--text-meta);
+  font-weight: var(--weight-medium);
+  color: var(--foreground-muted);
+}
+
+.td {
+  color: var(--foreground-primary);
+}
+
+.end {
+  text-align: right;
+}
+
+.mono {
+  @include mono-numeric;
+  font-size: var(--text-meta);
+}
+
+.muted {
+  color: var(--foreground-secondary);
+}
+
+.tr:last-child .td {
+  border-bottom: 0;
+}
+
+.interactive {
+  position: relative;
+  @include transition(background-color);
+
+  &:hover,
+  &:focus-within {
+    background: var(--background-hover);
+  }
+}
+
+.rowLink {
+  font-weight: var(--weight-medium);
+  color: var(--foreground-primary);
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+
+  &:focus-visible {
+    outline: none;
+
+    &::after {
+      @include focus-ring;
+      outline-offset: -2px;
+    }
+  }
+}
+
+.skeletonEnd {
+  margin-left: auto;
+}
+
+.hideBelowDesktop {
+  @include tablet-down {
+    display: none;
+  }
+}
+
+.hideBelowTablet {
+  @include mobile {
+    display: none;
+  }
+}

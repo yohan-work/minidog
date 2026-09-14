@@ -1,0 +1,21 @@
+:root {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  --text-page: 20px;
+  --text-metric: 24px;
+  --text-section: 14px;
+  --text-ui: 14px;
+  --text-secondary: 13px;
+  --text-meta: 12px;
+
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+
+  --tracking-tight: -0.01em;
+  --tracking-page: -0.02em;
+}

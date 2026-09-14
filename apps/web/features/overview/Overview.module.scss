@@ -1,0 +1,53 @@
+@use '../../styles/mixins' as *;
+
+.attention {
+  display: grid;
+}
+
+.attentionItem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+  padding-block: var(--space-2);
+  border-top: 1px solid var(--border-default);
+  font-size: var(--text-secondary);
+
+  &:first-child {
+    border-top: 0;
+  }
+}
+
+.attentionName {
+  font-weight: var(--weight-medium);
+
+  &:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
+
+.attentionReason {
+  color: var(--foreground-secondary);
+}
+
+.attentionError {
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+  color: var(--foreground-muted);
+  @include truncate;
+  max-width: calc(var(--space-16) * 6);
+}
+
+.attentionLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: auto;
+  color: var(--foreground-secondary);
+  @include transition(color);
+
+  &:hover {
+    color: var(--foreground-primary);
+  }
+}

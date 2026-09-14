@@ -1,0 +1,9 @@
+// Shadow is a last resort — only for floating layers (tooltip, popover).
+:root,
+[data-theme='dark'] {
+  --shadow-popover: 0 0 0 1px var(--border-hover), 0 8px 16px rgba(0, 0, 0, 0.48);
+}
+
+[data-theme='light'] {
+  --shadow-popover: 0 0 0 1px var(--border-default), 0 8px 16px rgba(0, 0, 0, 0.08);
+}

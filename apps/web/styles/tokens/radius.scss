@@ -1,0 +1,9 @@
+// Restrained radius. Large values are never a dashboard panel default.
+:root {
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 16px;
+  --radius-2xl: 24px;
+  --radius-full: 9999px;
+}

@@ -1,0 +1,46 @@
+@use '../../styles/mixins' as *;
+
+// Shared by Input and Select.
+%control {
+  width: 100%;
+  height: var(--control-height-md);
+  padding-inline: var(--space-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--background-secondary);
+  color: var(--foreground-primary);
+  font-size: var(--text-ui);
+  @include transition(border-color, background-color);
+
+  &::placeholder {
+    color: var(--foreground-muted);
+  }
+
+  &:hover:not(:disabled) {
+    border-color: var(--border-hover);
+  }
+
+  &:focus-visible {
+    @include focus-ring;
+    outline-offset: 0;
+    border-color: var(--border-active);
+  }
+
+  &[aria-invalid='true'] {
+    border-color: var(--status-error);
+  }
+
+  &:disabled {
+    color: var(--foreground-disabled);
+    cursor: not-allowed;
+  }
+}
+
+.input {
+  @extend %control;
+}
+
+.mono {
+  @include mono-numeric;
+  font-size: var(--text-secondary);
+}

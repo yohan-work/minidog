@@ -1,0 +1,11 @@
+.body {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: start;
+  padding: var(--space-6) var(--content-padding);
+}
+
+.description {
+  font-size: var(--text-secondary);
+  color: var(--foreground-secondary);
+}

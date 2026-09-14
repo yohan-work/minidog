@@ -1,0 +1,125 @@
+@use '../../styles/mixins' as *;
+
+.sidebar {
+  grid-area: sidebar;
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow-y: auto;
+  border-right: 1px solid var(--border-default);
+  background: var(--background-primary);
+
+  @include mobile {
+    position: static;
+    height: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--border-default);
+  }
+}
+
+// Same height as the top bar so both bottom borders line up.
+.brand {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: var(--topbar-height);
+  padding-inline: var(--space-4);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.wordmark {
+  font-family: var(--font-mono);
+  font-size: var(--text-ui);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+}
+
+.nav {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-2);
+
+  @include mobile {
+    display: flex;
+    gap: var(--space-1);
+    overflow-x: auto;
+    padding-block: var(--space-2);
+  }
+}
+
+.group {
+  display: grid;
+  gap: var(--space-1);
+
+  @include mobile {
+    display: contents;
+  }
+}
+
+.groupLabel {
+  padding-inline: var(--space-2);
+  font-size: var(--text-meta);
+  font-weight: var(--weight-medium);
+  color: var(--foreground-muted);
+
+  @include mobile {
+    display: none;
+  }
+}
+
+.list {
+  display: grid;
+  gap: 1px;
+
+  @include mobile {
+    display: contents;
+  }
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  height: var(--control-height-md);
+  padding-inline: var(--space-2);
+  border-radius: var(--radius-md);
+  font-size: var(--text-ui);
+  color: var(--foreground-secondary);
+  white-space: nowrap;
+  @include transition(background-color, color);
+
+  &:is(a):hover {
+    background: var(--background-hover);
+    color: var(--foreground-primary);
+  }
+
+  &[aria-current='page'] {
+    background: var(--background-active);
+    color: var(--foreground-primary);
+    font-weight: var(--weight-medium);
+  }
+}
+
+.unavailable {
+  color: var(--foreground-disabled);
+  cursor: default;
+}
+
+.unavailableItem {
+  @include mobile {
+    display: none;
+  }
+}
+
+.soon {
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+  color: var(--foreground-disabled);
+}
+
+.visuallyHidden {
+  @include visually-hidden;
+}

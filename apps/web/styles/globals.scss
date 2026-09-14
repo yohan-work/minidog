@@ -1,0 +1,42 @@
+@use 'tokens/color';
+@use 'tokens/typography';
+@use 'tokens/spacing';
+@use 'tokens/radius';
+@use 'tokens/shadow';
+@use 'tokens/motion';
+@use 'reset';
+
+html {
+  background: var(--background-primary);
+  color: var(--foreground-primary);
+  font-family: var(--font-sans);
+  font-size: var(--text-ui);
+  line-height: var(--leading-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background: var(--background-primary);
+}
+
+::selection {
+  background: var(--selection);
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+code,
+kbd,
+samp,
+pre {
+  font-family: var(--font-mono);
+}

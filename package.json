@@ -1,0 +1,17 @@
+{
+  "name": "minidog",
+  "private": true,
+  "packageManager": "pnpm@10.30.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @minidog/api --filter @minidog/web dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "infra:up": "docker compose -f infra/docker/compose.yaml up -d --wait",
+    "infra:down": "docker compose -f infra/docker/compose.yaml down",
+    "infra:logs": "docker compose -f infra/docker/compose.yaml logs -f"
+  }
+}

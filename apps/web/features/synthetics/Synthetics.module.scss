@@ -1,0 +1,75 @@
+@use '../../styles/mixins' as *;
+
+.count {
+  @include mono-numeric;
+  font-size: var(--text-meta);
+  font-weight: var(--weight-regular);
+  color: var(--foreground-muted);
+}
+
+// Detail header
+.metaUrl {
+  font-family: var(--font-mono);
+  color: var(--foreground-primary);
+  @include truncate;
+  max-width: 100%;
+  text-decoration: underline;
+  text-decoration-color: var(--border-strong);
+  text-underline-offset: 3px;
+  @include transition(text-decoration-color);
+
+  &:hover {
+    text-decoration-color: var(--foreground-primary);
+  }
+}
+
+.metaSeparator {
+  color: var(--border-strong);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+}
+
+.reason {
+  font-size: var(--text-secondary);
+  color: var(--foreground-secondary);
+}
+
+.confirm {
+  font-size: var(--text-secondary);
+  color: var(--foreground-secondary);
+}
+
+// Recent checks
+.errorText {
+  display: block;
+  max-width: calc(var(--space-16) * 6);
+  color: var(--foreground-secondary);
+  @include truncate;
+}
+
+// New monitor form
+.form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4) var(--space-6);
+  max-width: calc(var(--space-16) * 10);
+  padding-block: var(--space-2);
+
+  @include mobile {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.full {
+  grid-column: 1 / -1;
+}
+
+.formActions {
+  display: flex;
+  gap: var(--space-2);
+  grid-column: 1 / -1;
+  padding-top: var(--space-2);
+}

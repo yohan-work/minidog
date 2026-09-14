@@ -1,0 +1,24 @@
+{
+  "name": "@minidog/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --disable-warning=ExperimentalWarning src/index.ts",
+    "start": "tsx --disable-warning=ExperimentalWarning src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --disable-warning=ExperimentalWarning --test \"src/**/*.test.ts\""
+  },
+  "dependencies": {
+    "@clickhouse/client": "^1.23.1",
+    "@minidog/types": "workspace:*",
+    "fastify": "^5.12.4",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@minidog/config": "workspace:*",
+    "@types/node": "^24.0.0",
+    "tsx": "^4.23.13",
+    "typescript": "~5.9.3"
+  }
+}

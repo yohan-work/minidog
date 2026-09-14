@@ -1,0 +1,90 @@
+@use '../../styles/mixins' as *;
+
+.chart {
+  position: relative;
+  width: 100%;
+}
+
+.plot {
+  width: 100%;
+
+  :global(.uplot) {
+    width: 100%;
+    font-family: var(--font-mono);
+  }
+
+  :global(.u-cursor-x) {
+    border-right: 1px solid var(--border-strong);
+  }
+
+  :global(.u-over) {
+    cursor: crosshair;
+  }
+}
+
+.tooltip {
+  position: absolute;
+  top: 0;
+  z-index: 10;
+  display: grid;
+  gap: var(--space-1);
+  min-width: calc(var(--space-16) * 2.5);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--background-tertiary);
+  box-shadow: var(--shadow-popover);
+  font-size: var(--text-meta);
+  pointer-events: none;
+  transform: translateX(var(--space-3));
+
+  &[data-flip] {
+    transform: translateX(calc(-100% - var(--space-3)));
+  }
+}
+
+.tooltipTime {
+  @include mono-numeric;
+  color: var(--foreground-secondary);
+}
+
+.tooltipRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.tooltipLabel {
+  flex: 1;
+  color: var(--foreground-secondary);
+}
+
+.tooltipValue {
+  @include mono-numeric;
+  color: var(--foreground-primary);
+}
+
+.swatch {
+  flex-shrink: 0;
+  width: var(--space-3);
+  height: 2px;
+  border-radius: var(--radius-full);
+
+  &[data-dashed] {
+    mask-image: linear-gradient(90deg, #000 50%, transparent 50%);
+    mask-size: var(--space-1) 100%;
+  }
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  font-size: var(--text-meta);
+  color: var(--foreground-secondary);
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}

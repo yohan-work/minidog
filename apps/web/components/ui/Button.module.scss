@@ -1,0 +1,125 @@
+@use '../../styles/mixins' as *;
+
+.button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--background-secondary);
+  color: var(--foreground-primary);
+  font-weight: var(--weight-medium);
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  @include transition(background-color, border-color, color);
+
+  &:hover:not(:disabled) {
+    background: var(--background-hover);
+    border-color: var(--border-hover);
+  }
+
+  &:active:not(:disabled) {
+    background: var(--background-active);
+    border-color: var(--border-active);
+  }
+
+  &:focus-visible {
+    @include focus-ring;
+  }
+
+  &:disabled {
+    color: var(--foreground-disabled);
+    border-color: var(--border-default);
+    background: var(--background-secondary);
+    cursor: not-allowed;
+  }
+}
+
+.label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.md {
+  height: var(--control-height-md);
+  padding-inline: var(--space-3);
+  font-size: var(--text-ui);
+}
+
+.sm {
+  height: var(--control-height-sm);
+  padding-inline: var(--space-2);
+  font-size: var(--text-secondary);
+}
+
+.primary {
+  background: var(--background-inverse);
+  border-color: var(--background-inverse);
+  color: var(--foreground-inverse);
+
+  &:hover:not(:disabled),
+  &:active:not(:disabled) {
+    background: var(--background-inverse-hover);
+    border-color: var(--background-inverse-hover);
+  }
+}
+
+.ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--foreground-secondary);
+
+  &:hover:not(:disabled) {
+    background: var(--background-hover);
+    border-color: transparent;
+    color: var(--foreground-primary);
+  }
+
+  &:disabled {
+    background: transparent;
+    border-color: transparent;
+  }
+}
+
+.danger {
+  color: var(--status-error);
+
+  &:hover:not(:disabled) {
+    border-color: var(--status-error);
+    background: var(--status-error-subtle);
+  }
+}
+
+// Loading keeps the label in the layout (invisible) so the width never changes.
+[data-loading] > .label {
+  visibility: hidden;
+}
+
+.spinner {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: var(--space-3);
+  height: var(--space-3);
+  border: 1.5px solid currentColor;
+  border-right-color: transparent;
+  border-radius: var(--radius-full);
+  animation: spin 700ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 2s;
+  }
+}

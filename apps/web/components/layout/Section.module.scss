@@ -1,0 +1,36 @@
+.section {
+  border-bottom: 1px solid var(--border-default);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  min-height: var(--control-height-md);
+  padding: var(--space-3) var(--content-padding);
+}
+
+.title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-section);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.body {
+  padding: 0 var(--content-padding) var(--space-4);
+}
+
+.flush {
+  padding: 0;
+  border-top: 1px solid var(--border-default);
+}

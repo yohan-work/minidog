@@ -1,0 +1,47 @@
+@use '../../styles/mixins' as *;
+
+.shell {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  grid-template-rows: var(--topbar-height) minmax(0, 1fr);
+  grid-template-areas:
+    'sidebar topbar'
+    'sidebar main';
+  min-height: 100dvh;
+
+  @include mobile {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto var(--topbar-height) minmax(0, 1fr);
+    grid-template-areas:
+      'sidebar'
+      'topbar'
+      'main';
+  }
+}
+
+.main {
+  grid-area: main;
+  min-width: 0;
+  padding-bottom: var(--space-12);
+
+  &:focus {
+    outline: none;
+  }
+}
+
+.skipLink {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  z-index: 100;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--background-inverse);
+  color: var(--foreground-inverse);
+  font-size: var(--text-secondary);
+  transform: translateY(calc(-100% - var(--space-4)));
+
+  &:focus {
+    transform: none;
+  }
+}
