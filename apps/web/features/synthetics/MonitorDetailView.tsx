@@ -163,7 +163,7 @@ export function MonitorDetailView({ id }: { id: string }) {
         <ErrorState title="Unable to load monitor." description={monitorQuery.error.message} onRetry={refreshAll} />
       ) : (
         <>
-          <SummaryMetrics monitor={monitor} />
+          <SummaryMetrics monitor={monitor} resultsUnavailable={Boolean(monitorQuery.data?.resultsError)} />
 
           <Section title="Response time" actions={<LatencyLegend />}>
             {seriesQuery.data ? (
@@ -233,12 +233,20 @@ function MonitorMeta({ monitor }: { monitor: MonitorWithSummary }) {
   );
 }
 
-function SummaryMetrics({ monitor }: { monitor: MonitorWithSummary | undefined }) {
+function SummaryMetrics({
+  monitor,
+  resultsUnavailable,
+}: {
+  monitor: MonitorWithSummary | undefined;
+  /** Check results could not be queried; empty values are unknown, not "not yet". */
+  resultsUnavailable: boolean;
+}) {
   const loading = !monitor;
   const summary = monitor?.summary;
   const now = Date.now();
   const isHttps = monitor?.url.startsWith('https://') ?? false;
   const sslDays = summary?.sslExpiresAt != null ? daysUntil(summary.sslExpiresAt, now) : null;
+  const unavailable = resultsUnavailable ? 'Results unavailable' : undefined;
 
   return (
     <MetricGrid label="Monitor summary">
@@ -247,13 +255,13 @@ function SummaryMetrics({ monitor }: { monitor: MonitorWithSummary | undefined }
         loading={loading}
         value={formatPercent(summary?.availability)}
         tone={summary?.availability != null && summary.availability < 1 ? 'warning' : undefined}
-        meta={summary && `${formatCount(summary.checks)} checks · ${formatCount(summary.failures)} failed`}
+        meta={unavailable ?? (summary && `${formatCount(summary.checks)} checks · ${formatCount(summary.failures)} failed`)}
       />
       <Metric
         label="P95 latency"
         loading={loading}
         value={formatLatency(summary?.p95LatencyMs)}
-        meta={summary && `avg ${formatLatency(summary.avgLatencyMs)}`}
+        meta={unavailable ?? (summary && `avg ${formatLatency(summary.avgLatencyMs)}`)}
       />
       <Metric
         label="Last response"
@@ -263,7 +271,7 @@ function SummaryMetrics({ monitor }: { monitor: MonitorWithSummary | undefined }
         meta={
           summary?.lastCheckedAt != null
             ? `${summary.lastStatusCode ? `HTTP ${summary.lastStatusCode}` : 'No response'} · ${formatRelative(summary.lastCheckedAt, now)}`
-            : 'Waiting for first check'
+            : (unavailable ?? 'Waiting for first check')
         }
       />
       <Metric
@@ -271,7 +279,13 @@ function SummaryMetrics({ monitor }: { monitor: MonitorWithSummary | undefined }
         loading={loading}
         value={formatDaysUntil(summary?.sslExpiresAt, now)}
         tone={sslDays !== null && sslDays <= SSL_WARNING_DAYS ? 'warning' : undefined}
-        meta={!isHttps ? 'Not an HTTPS URL' : summary?.sslExpiresAt != null ? formatDate(summary.sslExpiresAt) : 'Not checked yet'}
+        meta={
+          !isHttps
+            ? 'Not an HTTPS URL'
+            : summary?.sslExpiresAt != null
+              ? formatDate(summary.sslExpiresAt)
+              : (unavailable ?? 'Not checked yet')
+        }
       />
     </MetricGrid>
   );

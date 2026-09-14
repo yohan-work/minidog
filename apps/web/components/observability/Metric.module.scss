@@ -1,11 +1,11 @@
 @use '../../styles/mixins' as *;
 
-// 1px gaps over a border-colored background draw dividers that survive wrapping.
+// Each cell draws its right and bottom divider; the grid clips the ones on the
+// outer edge. Dividers survive wrapping and unfilled cells stay background.
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(calc(var(--space-16) * 2.5), 1fr));
-  gap: 1px;
-  background: var(--border-default);
+  overflow: hidden;
   border-bottom: 1px solid var(--border-default);
 }
 
@@ -15,7 +15,9 @@
   align-content: start;
   min-width: 0;
   padding: var(--space-4) var(--content-padding);
-  background: var(--background-primary);
+  box-shadow:
+    1px 0 0 var(--border-default),
+    0 1px 0 var(--border-default);
 }
 
 .label {

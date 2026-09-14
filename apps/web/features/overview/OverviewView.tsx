@@ -45,14 +45,25 @@ export function OverviewView() {
           }
         />
       ) : (
-        <OverviewContent data={data} range={range} />
+        <OverviewContent data={data} range={range} onRetry={refetch} />
       )}
     </>
   );
 }
 
-function OverviewContent({ data, range }: { data: OverviewResponse | undefined; range: TimeRange }) {
+function OverviewContent({
+  data,
+  range,
+  onRetry,
+}: {
+  data: OverviewResponse | undefined;
+  range: TimeRange;
+  onRetry: () => void;
+}) {
   const loading = !data;
+  // Without check results every monitor is Unknown; zeros would read as "all passing".
+  const resultsError = data?.resultsError ?? null;
+  const unavailable = resultsError ? 'results unavailable' : undefined;
   const attention = (data?.monitors ?? [])
     .filter((monitor) => monitor.enabled && monitor.summary.health in SEVERITY)
     .sort((a, b) => SEVERITY[a.summary.health]! - SEVERITY[b.summary.health]!);
@@ -68,38 +79,46 @@ function OverviewContent({ data, range }: { data: OverviewResponse | undefined; 
           loading={loading}
           value={formatPercent(data?.availability)}
           tone={data?.availability != null && data.availability < 1 ? 'warning' : undefined}
-          meta={data && `${formatCount(data.checks)} checks, ${rangeLabel}`}
+          meta={unavailable ?? (data && `${formatCount(data.checks)} checks, ${rangeLabel}`)}
         />
         <Metric
           label="Failed checks"
           loading={loading}
-          value={formatCount(data?.failures)}
-          tone={data && data.failures > 0 ? 'error' : undefined}
-          meta={rangeLabel}
+          value={formatCount(resultsError ? undefined : data?.failures)}
+          tone={data && !resultsError && data.failures > 0 ? 'error' : undefined}
+          meta={unavailable ?? rangeLabel}
         />
         <Metric
           label="P95 latency"
           loading={loading}
           value={formatLatency(data?.p95LatencyMs)}
-          meta={data && `avg ${formatLatency(data.avgLatencyMs)}`}
+          meta={unavailable ?? (data && `avg ${formatLatency(data.avgLatencyMs)}`)}
         />
         <Metric
           label="Needs attention"
           loading={loading}
-          value={attention.length}
+          value={resultsError ? formatCount(undefined) : attention.length}
           tone={hasCritical ? 'error' : attention.length > 0 ? 'warning' : undefined}
-          meta={attention.length > 0 ? 'critical or degraded' : 'all monitors passing'}
+          meta={unavailable ?? (attention.length > 0 ? 'critical or degraded' : 'all monitors passing')}
         />
       </MetricGrid>
 
       {attention.length > 0 && <AttentionSection monitors={attention} range={range} />}
 
       <Section title="Availability">
-        {data ? <AvailabilityBar points={data.series.points} /> : <Skeleton height="var(--bar-height)" />}
+        {!data ? (
+          <Skeleton height="var(--bar-height)" />
+        ) : resultsError ? (
+          <p className={styles.unavailable}>Availability timeline unavailable.</p>
+        ) : (
+          <AvailabilityBar points={data.series.points} />
+        )}
       </Section>
 
       <Section title="Response time" actions={<LatencyLegend />}>
-        {data ? (
+        {data && resultsError ? (
+          <ErrorState fill="chart" title="Unable to query response time." description={resultsError.message} onRetry={onRetry} />
+        ) : data ? (
           <LatencyChart
             series={data.series}
             subject="all monitors"

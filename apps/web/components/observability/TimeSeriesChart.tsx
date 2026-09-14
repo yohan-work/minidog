@@ -29,7 +29,7 @@ interface TimeSeriesChartProps {
 
 const DEFAULT_HEIGHT = 200;
 const Y_AXIS_SIZE = 64;
-const X_AXIS_SIZE = 24;
+const X_AXIS_SIZE = 28;
 const TWO_DAYS = 2 * 24 * 60 * 60;
 
 const tickTime = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -94,7 +94,8 @@ export function TimeSeriesChart({
           stroke: axisColor,
           font,
           size: X_AXIS_SIZE,
-          gap: 4,
+          // Clears the y-axis "0" label, which is centered on the plot's bottom edge.
+          gap: 8,
           space: 96,
           ticks: { show: false },
           grid: { show: false },

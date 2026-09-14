@@ -39,6 +39,11 @@
   max-width: calc(var(--space-16) * 6);
 }
 
+.unavailable {
+  font-size: var(--text-secondary);
+  color: var(--foreground-secondary);
+}
+
 .attentionLink {
   display: inline-flex;
   align-items: center;
