@@ -202,3 +202,55 @@ export interface HealthResponse {
   sqlite: 'ok';
   clickhouse: 'ok' | 'unavailable';
 }
+
+// ---------------------------------------------------------------------------
+// Infrastructure
+// ---------------------------------------------------------------------------
+
+/** Current host values are averaged over this trailing window. */
+export const HOST_CURRENT_WINDOW_SECONDS = 5 * 60;
+
+/** Utilization (0..1) at which a host is degraded or critical. */
+export const HOST_THRESHOLDS = { degraded: 0.85, critical: 0.95 } as const;
+
+export interface HostSummary {
+  /** `host.name` resource attribute. */
+  host: string;
+  /** `os.type` resource attribute, e.g. `linux`. */
+  os: string | null;
+  health: HealthStatus;
+  /** Short cause of the current health, e.g. `Disk 96% on /`. */
+  healthReason: string | null;
+  /** Epoch milliseconds of the newest data point. */
+  lastSeenAt: number;
+  /** Utilization 0..1 over the current window. */
+  cpu: number | null;
+  memory: number | null;
+  /** Utilization of the fullest filesystem, 0..1. */
+  disk: number | null;
+  diskMountpoint: string | null;
+  /** Bytes per second over the current window. */
+  networkRxBps: number | null;
+  networkTxBps: number | null;
+}
+
+export interface HostListResponse {
+  range: TimeRange;
+  hosts: HostSummary[];
+}
+
+export interface HostSeriesPoint {
+  /** Bucket start, epoch seconds. */
+  t: number;
+  cpu: number | null;
+  memory: number | null;
+  disk: number | null;
+  networkRxBps: number | null;
+  networkTxBps: number | null;
+}
+
+export interface HostResponse {
+  range: TimeRange;
+  host: HostSummary;
+  series: { range: TimeRange; stepSeconds: number; points: HostSeriesPoint[] };
+}

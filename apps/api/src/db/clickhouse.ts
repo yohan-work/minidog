@@ -27,6 +27,29 @@ const MIGRATIONS: readonly string[] = [
   ORDER BY (project_id, monitor_id, timestamp)
   TTL toDateTime(timestamp) + INTERVAL 90 DAY
   `,
+  // OTLP gauge and sum data points, one row per point.
+  `
+  CREATE TABLE IF NOT EXISTS metrics
+  (
+    timestamp            DateTime64(3, 'UTC'),
+    project_id           LowCardinality(String),
+    environment          LowCardinality(String),
+    service              LowCardinality(String),
+    host                 LowCardinality(String),
+    metric_name          LowCardinality(String),
+    metric_type          LowCardinality(String),
+    temporality          LowCardinality(String),
+    unit                 LowCardinality(String),
+    value                Float64,
+    attributes           Map(LowCardinality(String), String),
+    resource_attributes  Map(LowCardinality(String), String)
+  )
+  ENGINE = MergeTree
+  PARTITION BY toDate(timestamp)
+  ORDER BY (project_id, environment, host, metric_name, timestamp)
+  TTL toDateTime(timestamp) + INTERVAL 30 DAY
+  SETTINGS ttl_only_drop_parts = 1
+  `,
 ];
 
 export function createClickHouse(config: Config): ClickHouseClient {

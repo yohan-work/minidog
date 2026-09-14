@@ -28,6 +28,13 @@ services:
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.160.0
     command: ["--config=/etc/otelcol/config.yaml"]
+    # Reported as host.name for the host metrics this collector scrapes.
+    hostname: ${MINIDOG_HOST_NAME:-docker-host}
+    environment:
+      # The API runs on the host (pnpm dev), outside this compose project.
+      MINIDOG_INGEST_ENDPOINT: ${MINIDOG_INGEST_ENDPOINT:-http://host.docker.internal:4000}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ../otel/collector.yaml:/etc/otelcol/config.yaml:ro
     ports:

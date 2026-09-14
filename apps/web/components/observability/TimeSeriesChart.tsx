@@ -25,6 +25,8 @@ interface TimeSeriesChartProps {
   /** Text alternative describing what the chart shows. */
   ariaLabel: string;
   height?: number;
+  /** Fixed upper bound of the y axis, e.g. 1 for utilization. Defaults to the data maximum. */
+  yMax?: number;
 }
 
 const DEFAULT_HEIGHT = 200;
@@ -52,6 +54,7 @@ export function TimeSeriesChart({
   formatAxis = formatValue,
   ariaLabel,
   height = DEFAULT_HEIGHT,
+  yMax,
 }: TimeSeriesChartProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const plotHostRef = useRef<HTMLDivElement>(null);
@@ -87,7 +90,7 @@ export function TimeSeriesChart({
       },
       scales: {
         x: { time: true },
-        y: { range: (_plot, _min, max) => [0, max > 0 ? max * 1.15 : 1] },
+        y: { range: (_plot, _min, max) => [0, yMax ?? (max > 0 ? max * 1.15 : 1)] },
       },
       axes: [
         {
@@ -157,7 +160,7 @@ export function TimeSeriesChart({
     };
     // formatAxis is documented as stable; configKey captures series identity.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [configKey, height]);
+  }, [configKey, height, yMax]);
 
   useEffect(() => {
     dataRef.current = data;

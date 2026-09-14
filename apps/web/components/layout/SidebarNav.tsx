@@ -20,7 +20,13 @@ const NAV: NavGroup[] = [
   { items: [{ label: 'Overview', href: '/' }] },
   {
     label: 'Observe',
-    items: [{ label: 'Services' }, { label: 'Infrastructure' }, { label: 'Metrics' }, { label: 'Traces' }, { label: 'Logs' }],
+    items: [
+      { label: 'Services' },
+      { label: 'Infrastructure', href: '/infrastructure' },
+      { label: 'Metrics' },
+      { label: 'Traces' },
+      { label: 'Logs' },
+    ],
   },
   { label: 'Monitor', items: [{ label: 'Synthetics', href: '/synthetics' }, { label: 'Monitors' }] },
   { items: [{ label: 'Settings' }] },

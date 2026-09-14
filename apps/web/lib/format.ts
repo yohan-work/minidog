@@ -89,6 +89,37 @@ export function daysUntil(ms: number, now: number = Date.now()): number {
   return Math.floor((ms - now) / 86_400_000);
 }
 
+/** Utilization 0..1 as `42.3%`. */
+export function formatUtilization(ratio: number | null | undefined): string {
+  if (!isNumber(ratio)) return EMPTY;
+  return `${(Math.min(Math.max(ratio, 0), 1) * 100).toFixed(1)}%`;
+}
+
+/** Axis labels: `0%`, `50%`, `100%` */
+export function formatUtilizationAxis(ratio: number): string {
+  return `${Math.round(ratio * 100)}%`;
+}
+
+const BYTE_UNITS = ['B', 'KB', 'MB', 'GB', 'TB'] as const;
+
+/** `812 B/s`, `4.2 KB/s`, `18 MB/s` (1 KB = 1024 B) */
+export function formatBytesRate(bytesPerSecond: number | null | undefined): string {
+  if (!isNumber(bytesPerSecond)) return EMPTY;
+  let value = Math.max(bytesPerSecond, 0);
+  let unit = 0;
+  while (value >= 1024 && unit < BYTE_UNITS.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+  const digits = unit === 0 || value >= 10 ? 0 : 1;
+  return `${value.toFixed(digits)} ${BYTE_UNITS[unit]}/s`;
+}
+
+/** Axis labels: `0`, `512 B/s`, `1.5 MB/s` */
+export function formatBytesRateAxis(bytesPerSecond: number): string {
+  return bytesPerSecond === 0 ? '0' : formatBytesRate(bytesPerSecond);
+}
+
 /** `30s`, `1m`, `5m`, `1h` */
 export function formatInterval(seconds: number): string {
   if (seconds < 60) return `${seconds}s`;
