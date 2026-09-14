@@ -6,7 +6,8 @@
     "dev": "next dev --port 3000",
     "build": "next build",
     "start": "next start --port 3000",
-    "typecheck": "next typegen && tsc --noEmit"
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "tsx --test \"lib/**/*.test.ts\""
   },
   "dependencies": {
     "@minidog/types": "workspace:*",
@@ -23,6 +24,7 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "sass": "^1.104.1",
+    "tsx": "^4.23.13",
     "typescript": "~5.9.3"
   }
 }

@@ -7,7 +7,7 @@ import {
   type UpdateAlertMonitorInput,
 } from '@minidog/types';
 import { z } from 'zod';
-import { NotFoundError } from '../lib/errors';
+import { ClickHouseUnavailableError, NotFoundError } from '../lib/errors';
 import {
   publicMonitor,
   type AlertMonitorRepository,
@@ -46,7 +46,8 @@ export class AlertingService {
     return { monitor: publicMonitor(monitor), events: this.monitors.eventsForMonitor(id, 100) };
   }
 
-  create(input: CreateAlertMonitorInput): ScopedAlertMonitor {
+  /** Creates the monitor and evaluates it right away, so it never waits an interval for a state. */
+  async create(input: CreateAlertMonitorInput): Promise<ScopedAlertMonitor> {
     const defaults = ALERT_MONITOR_DEFAULTS[input.type];
     const metric = input.type === 'host_resource' ? (input.metric ?? 'cpu') : null;
     const thresholds = {
@@ -55,7 +56,7 @@ export class AlertingService {
     };
     if (!thresholdsInOrder(thresholds, DIRECTIONS[input.type])) throw orderIssue('warningThreshold');
 
-    return this.monitors.create(this.scope, {
+    const monitor = this.monitors.create(this.scope, {
       name: input.name || `${signalLabel(input.type, metric)} · ${input.target}`,
       type: input.type,
       target: input.target,
@@ -65,16 +66,29 @@ export class AlertingService {
       windowMinutes: input.windowMinutes ?? defaults.windowMinutes,
       webhookUrl: input.webhookUrl ?? '',
     });
+    return this.evaluateNow(monitor);
   }
 
-  update(id: string, patch: UpdateAlertMonitorInput): ScopedAlertMonitor {
+  /** New thresholds or a resume take effect immediately rather than at the next interval. */
+  async update(id: string, patch: UpdateAlertMonitorInput): Promise<ScopedAlertMonitor> {
     const current = this.get(id);
     const thresholds = {
       warning: patch.warningThreshold === undefined ? current.warningThreshold : patch.warningThreshold,
       critical: patch.criticalThreshold ?? current.criticalThreshold,
     };
     if (!thresholdsInOrder(thresholds, DIRECTIONS[current.type])) throw orderIssue('warningThreshold');
-    return this.monitors.update(id, patch)!;
+    const monitor = this.monitors.update(id, patch)!;
+    return monitor.enabled ? this.evaluateNow(monitor) : monitor;
+  }
+
+  /** While ClickHouse is unreachable the monitor keeps its state until the next interval. */
+  private async evaluateNow(monitor: ScopedAlertMonitor): Promise<ScopedAlertMonitor> {
+    try {
+      return await this.evaluator.evaluate(monitor);
+    } catch (error) {
+      if (error instanceof ClickHouseUnavailableError) return monitor;
+      throw error;
+    }
   }
 
   delete(id: string): void {

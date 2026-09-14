@@ -194,34 +194,46 @@ export class AlertMonitorRepository {
     return Number(this.db.prepare('DELETE FROM alert_monitors WHERE id = ?').run(id).changes) > 0;
   }
 
-  /** Stores an evaluation; a state change also records an event. Returns the event, if any. */
+  /**
+   * Stores an evaluation; a state change also records an event. Returns the event, if any.
+   *
+   * The previous state is read inside the transaction rather than taken from
+   * `monitor`: two evaluations started from the same snapshot (the interval and
+   * "Evaluate now") must not record — and notify — the same transition twice.
+   */
   recordEvaluation(
     monitor: ScopedAlertMonitor,
     result: { state: AlertState; value: number | null; message: string },
     at: Date,
   ): AlertEvent | null {
     const now = at.toISOString();
-    const changed = result.state !== monitor.state;
+    let eventId: string | null = null;
     this.db.exec('BEGIN');
     try {
-      this.db
-        .prepare(
-          `UPDATE alert_monitors
-              SET state = ?, state_value = ?, state_message = ?, last_evaluated_at = ?,
-                  state_changed_at = CASE WHEN ? THEN ? ELSE state_changed_at END
-            WHERE id = ?`,
-        )
-        .run(result.state, result.value, result.message, now, changed ? 1 : 0, now, monitor.id);
-
-      let eventId: string | null = null;
-      if (changed) {
-        eventId = createId('ale');
+      const stored = this.db.prepare('SELECT state FROM alert_monitors WHERE id = ?').get(monitor.id) as
+        | { state: AlertState }
+        | undefined;
+      // A monitor deleted while it was being measured has nothing to record.
+      if (stored) {
+        const changed = result.state !== stored.state;
         this.db
           .prepare(
-            `INSERT INTO alert_events (id, monitor_id, project_id, environment, from_state, to_state, value, message, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            `UPDATE alert_monitors
+                SET state = ?, state_value = ?, state_message = ?, last_evaluated_at = ?,
+                    state_changed_at = CASE WHEN ? THEN ? ELSE state_changed_at END
+              WHERE id = ?`,
           )
-          .run(eventId, monitor.id, monitor.projectId, monitor.environment, monitor.state, result.state, result.value, result.message, now);
+          .run(result.state, result.value, result.message, now, changed ? 1 : 0, now, monitor.id);
+
+        if (changed) {
+          eventId = createId('ale');
+          this.db
+            .prepare(
+              `INSERT INTO alert_events (id, monitor_id, project_id, environment, from_state, to_state, value, message, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            )
+            .run(eventId, monitor.id, monitor.projectId, monitor.environment, stored.state, result.state, result.value, result.message, now);
+        }
       }
       this.db.exec('COMMIT');
       return eventId ? this.event(eventId) : null;

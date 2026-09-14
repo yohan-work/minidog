@@ -27,7 +27,7 @@ export function latencyTone(ms: number | null | undefined): 'warning' | 'error' 
   return ms >= SERVICE_THRESHOLDS.p95Ms.degraded ? 'warning' : undefined;
 }
 
-const toneClass = (tone: 'warning' | 'error' | undefined) => (tone ? styles[tone] : undefined);
+export const toneClass = (tone: 'warning' | 'error' | undefined) => (tone ? styles[tone] : undefined);
 
 export function ServiceTable({ services, range }: { services: readonly ServiceSummary[]; range: TimeRange }) {
   return (
@@ -67,5 +67,3 @@ export function ServiceTable({ services, range }: { services: readonly ServiceSu
 export function ServiceTableSkeleton() {
   return <TableSkeleton columns={COLUMNS} label="Loading services" />;
 }
-
-export { toneClass };

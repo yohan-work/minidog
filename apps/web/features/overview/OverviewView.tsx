@@ -27,7 +27,7 @@ import { useApi } from '@/lib/use-api';
 import { LatencyTrendChart, LatencyTrendLegend, RequestsChart, RequestsLegend } from '../apm/RequestCharts';
 import { errorRateTone, latencyTone, ServiceTable, ServiceTableSkeleton } from '../apm/ServiceTable';
 import { TelemetrySetup } from '../apm/TelemetrySetup';
-import { HostTable } from '../infrastructure/host-table-export';
+import { HostTable } from '../infrastructure/HostTable';
 import { hostHref } from '../infrastructure/host';
 import { AlertStateIndicator, monitorHref } from '../monitors/alerting';
 import { MonitorTable } from '../synthetics/MonitorTable';
