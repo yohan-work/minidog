@@ -1,6 +1,5 @@
-import { ClickHouseError, type ClickHouseClient } from '@clickhouse/client';
 import type { CheckResult, CheckStatus, SeriesPoint } from '@minidog/types';
-import { ClickHouseUnavailableError } from '../lib/errors';
+import { ClickHouseRepository } from '../db/clickhouse-repository';
 import type { Scope } from './project-repository';
 
 /** Row shape of `synthetic_results` as written with JSONEachRow. */
@@ -66,12 +65,9 @@ const SCOPE_FILTER = `
   AND environment = {environment:String}
   AND monitor_id IN {monitorIds:Array(String)}`;
 
-export class SyntheticResultRepository {
-  constructor(private readonly client: ClickHouseClient) {}
-
+export class SyntheticResultRepository extends ClickHouseRepository {
   async insert(rows: readonly SyntheticResultRow[]): Promise<void> {
-    if (rows.length === 0) return;
-    await this.run(() => this.client.insert({ table: 'synthetic_results', values: rows, format: 'JSONEachRow' }));
+    await this.insertRows('synthetic_results', rows);
   }
 
   async ping(): Promise<boolean> {
@@ -236,22 +232,5 @@ export class SyntheticResultRepository {
       sslExpiresAt: row.ssl_expiry_ts === null ? null : toNumber(row.ssl_expiry_ts) * 1000,
       error: row.error,
     }));
-  }
-
-  private async query<T>(query: string, params: Record<string, unknown>): Promise<T[]> {
-    return this.run(async () => {
-      const result = await this.client.query({ query, query_params: params, format: 'JSONEachRow' });
-      return result.json<T>();
-    });
-  }
-
-  /** Server-side query errors are bugs (500); anything else means ClickHouse is unreachable (503). */
-  private async run<T>(operation: () => Promise<T>): Promise<T> {
-    try {
-      return await operation();
-    } catch (error) {
-      if (error instanceof ClickHouseError) throw error;
-      throw new ClickHouseUnavailableError(error);
-    }
   }
 }

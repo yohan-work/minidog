@@ -56,7 +56,7 @@ export function registerAlertingRoutes(app: FastifyInstance, ctx: AppContext): v
   app.get('/api/alerting/monitors', async () => alerting.list());
 
   app.post('/api/alerting/monitors', async (request, reply) => {
-    const monitor = alerting.create(createSchema.parse(request.body ?? {}));
+    const monitor = await alerting.create(createSchema.parse(request.body ?? {}));
     return reply.status(201).send({ monitor: publicMonitor(monitor) });
   });
 
@@ -67,7 +67,7 @@ export function registerAlertingRoutes(app: FastifyInstance, ctx: AppContext): v
 
   app.patch('/api/alerting/monitors/:id', async (request) => {
     const { id } = idParamsSchema.parse(request.params);
-    return { monitor: publicMonitor(alerting.update(id, updateSchema.parse(request.body ?? {}))) };
+    return { monitor: publicMonitor(await alerting.update(id, updateSchema.parse(request.body ?? {}))) };
   });
 
   app.delete('/api/alerting/monitors/:id', async (request, reply) => {

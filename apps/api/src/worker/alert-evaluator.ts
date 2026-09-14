@@ -54,22 +54,22 @@ export class AlertEvaluator {
   }
 
   private async evaluateEnabled(): Promise<void> {
-    for (const monitor of this.deps.monitors.listEnabled()) {
-      try {
-        await this.evaluate(monitor);
-      } catch (error) {
-        if (!(error instanceof ClickHouseUnavailableError)) {
-          this.deps.log.error({ err: error, monitorId: monitor.id }, 'Monitor evaluation failed');
-        }
-      }
-    }
+    for (const monitor of this.deps.monitors.listEnabled()) await this.evaluateQuietly(monitor);
   }
 
-  /** Measures one monitor now. Throws ClickHouseUnavailableError when telemetry cannot be queried. */
+  /**
+   * Measures one monitor now. The stored monitor is read again before and after
+   * measuring: a pass works from a list loaded seconds earlier, and thresholds,
+   * pausing or the webhook may have changed since. Throws
+   * ClickHouseUnavailableError when telemetry cannot be queried.
+   */
   async evaluate(monitor: ScopedAlertMonitor): Promise<ScopedAlertMonitor> {
+    const measured = this.deps.monitors.get(monitor.id);
+    if (!measured?.enabled) return measured ?? monitor;
+
     let value: number | null;
     try {
-      value = await this.measure(monitor);
+      value = await this.measure(measured);
       if (this.unavailable) this.deps.log.info('Alert evaluation resumed');
       this.unavailable = false;
     } catch (error) {
@@ -80,19 +80,39 @@ export class AlertEvaluator {
       throw error;
     }
 
-    const thresholds = { warning: monitor.warningThreshold, critical: monitor.criticalThreshold };
-    const state = deriveAlertState(value, thresholds, DIRECTIONS[monitor.type]);
-    const message = alertMessage({ ...monitor, thresholds }, state, value);
-    const event = this.deps.monitors.recordEvaluation(monitor, { state, value, message }, new Date());
+    const current = this.deps.monitors.get(monitor.id);
+    if (!current?.enabled) return current ?? measured;
 
-    if (event && monitor.webhookUrl && (isAlerting(event.fromState) || isAlerting(event.toState))) {
-      const payload = webhookPayload(publicMonitor(monitor), event);
-      void sendWebhook(monitor.webhookUrl, payload).then((status) => {
+    const thresholds = { warning: current.warningThreshold, critical: current.criticalThreshold };
+    const state = deriveAlertState(value, thresholds, DIRECTIONS[current.type]);
+    // The value covers the window it was measured over.
+    const message = alertMessage({ ...current, windowMinutes: measured.windowMinutes, thresholds }, state, value);
+    const event = this.deps.monitors.recordEvaluation(current, { state, value, message }, new Date());
+
+    if (event && current.webhookUrl && (isAlerting(event.fromState) || isAlerting(event.toState))) {
+      const payload = webhookPayload(publicMonitor(current), event);
+      void sendWebhook(current.webhookUrl, payload).then((status) => {
         this.deps.monitors.setWebhookStatus(event.id, status);
-        if (status.startsWith('failed')) this.deps.log.warn({ monitorId: monitor.id, status }, 'Alert webhook failed');
+        if (status.startsWith('failed')) this.deps.log.warn({ monitorId: current.id, status }, 'Alert webhook failed');
       });
     }
-    return this.deps.monitors.get(monitor.id) ?? monitor;
+    return this.deps.monitors.get(monitor.id) ?? current;
+  }
+
+  /**
+   * Evaluates without failing the caller — the interval, or a request that
+   * already saved its change. Errors are logged and the stored monitor is
+   * returned; ClickHouse outages are reported once by `evaluate`.
+   */
+  async evaluateQuietly(monitor: ScopedAlertMonitor): Promise<ScopedAlertMonitor> {
+    try {
+      return await this.evaluate(monitor);
+    } catch (error) {
+      if (!(error instanceof ClickHouseUnavailableError)) {
+        this.deps.log.error({ err: error, monitorId: monitor.id }, 'Monitor evaluation failed');
+      }
+      return this.deps.monitors.get(monitor.id) ?? monitor;
+    }
   }
 
   /** Value in the unit of the monitor type; null when there is nothing to measure. */
