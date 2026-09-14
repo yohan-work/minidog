@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { HostDetailView } from '@/features/infrastructure/HostDetailView';
+import { safeDecode } from '@/lib/safe-decode';
 
 export const metadata: Metadata = { title: 'Host' };
 
@@ -12,12 +13,4 @@ export default async function HostPage({ params }: { params: Promise<{ host: str
       <HostDetailView key={host} host={host} />
     </Suspense>
   );
-}
-
-function safeDecode(value: string): string {
-  try {
-    return decodeURIComponent(value);
-  } catch {
-    return value;
-  }
 }

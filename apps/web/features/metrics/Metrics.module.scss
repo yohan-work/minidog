@@ -1,0 +1,22 @@
+@use '../../styles/mixins' as *;
+
+.unit {
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+  color: var(--foreground-muted);
+}
+
+.series {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+}
+
+.swatch {
+  flex-shrink: 0;
+  width: var(--space-3);
+  height: 2px;
+  border-radius: var(--radius-full);
+}

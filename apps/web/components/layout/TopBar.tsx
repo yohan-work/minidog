@@ -3,11 +3,12 @@
 import { DEFAULT_TIME_RANGE, TIME_RANGE_KEYS, TIME_RANGES, type ContextResponse, type TimeRange } from '@minidog/types';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { ChangeEvent, ReactNode } from 'react';
-import { Badge } from '@/components/ui/Badge';
 import { Select } from '@/components/ui/Select';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useApi } from '@/lib/use-api';
 import { useTimeRange } from '@/lib/time-range';
+import { AlertsIndicator } from './AlertsIndicator';
+import { ProjectSwitcher } from './ProjectSwitcher';
 import styles from './TopBar.module.scss';
 
 export function TopBarFrame({ context, controls }: { context: ReactNode; controls?: ReactNode }) {
@@ -44,18 +45,14 @@ export function TopBar() {
     <TopBarFrame
       context={
         data ? (
-          <>
-            <span className={styles.project}>{data.project.name}</span>
-            <span className={styles.separator} aria-hidden>
-              /
-            </span>
-            <Badge mono>{data.environment}</Badge>
-          </>
+          <ProjectSwitcher context={data} />
         ) : (
           <Skeleton width="calc(var(--space-16) * 2)" height="var(--text-ui)" />
         )
       }
       controls={
+        <>
+        <AlertsIndicator />
         <label className={styles.range}>
           <span className={styles.visuallyHidden}>Time range</span>
           <Select controlSize="sm" value={range} onChange={onRangeChange}>
@@ -66,6 +63,7 @@ export function TopBar() {
             ))}
           </Select>
         </label>
+        </>
       }
     />
   );

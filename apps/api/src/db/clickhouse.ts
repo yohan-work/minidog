@@ -50,6 +50,66 @@ const MIGRATIONS: readonly string[] = [
   TTL toDateTime(timestamp) + INTERVAL 30 DAY
   SETTINGS ttl_only_drop_parts = 1
   `,
+  // OTLP spans. Entry spans (server, consumer, root) are the requests of a service.
+  `
+  CREATE TABLE IF NOT EXISTS spans
+  (
+    timestamp            DateTime64(6, 'UTC'),
+    project_id           LowCardinality(String),
+    environment          LowCardinality(String),
+    service              LowCardinality(String),
+    host                 LowCardinality(String),
+    trace_id             String,
+    span_id              String,
+    parent_span_id       String,
+    name                 LowCardinality(String),
+    kind                 LowCardinality(String),
+    duration_ms          Float64,
+    status_code          LowCardinality(String),
+    status_message       String,
+    http_method          LowCardinality(String),
+    http_route           LowCardinality(String),
+    http_status          UInt16,
+    db_system            LowCardinality(String),
+    endpoint             LowCardinality(String),
+    is_entry             UInt8,
+    is_error             UInt8,
+    attributes           Map(LowCardinality(String), String),
+    resource_attributes  Map(LowCardinality(String), String),
+    events               String,
+    INDEX trace_id_idx trace_id TYPE bloom_filter(0.001) GRANULARITY 1
+  )
+  ENGINE = MergeTree
+  PARTITION BY toDate(timestamp)
+  ORDER BY (project_id, environment, service, timestamp)
+  TTL toDateTime(timestamp) + INTERVAL 14 DAY
+  SETTINGS ttl_only_drop_parts = 1
+  `,
+  // OTLP log records.
+  `
+  CREATE TABLE IF NOT EXISTS logs
+  (
+    timestamp            DateTime64(6, 'UTC'),
+    project_id           LowCardinality(String),
+    environment          LowCardinality(String),
+    service              LowCardinality(String),
+    host                 LowCardinality(String),
+    level                LowCardinality(String),
+    severity_text        LowCardinality(String),
+    severity_number      UInt8,
+    body                 String,
+    trace_id             String,
+    span_id              String,
+    attributes           Map(LowCardinality(String), String),
+    resource_attributes  Map(LowCardinality(String), String),
+    INDEX trace_id_idx trace_id TYPE bloom_filter(0.001) GRANULARITY 1
+  )
+  ENGINE = MergeTree
+  PARTITION BY toDate(timestamp)
+  ORDER BY (project_id, environment, service, timestamp)
+  TTL toDateTime(timestamp) + INTERVAL 14 DAY
+  SETTINGS ttl_only_drop_parts = 1
+  `,
 ];
 
 export function createClickHouse(config: Config): ClickHouseClient {

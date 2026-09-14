@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@minidog/types": "workspace:*",
+    "@xyflow/react": "^12.11.6",
     "geist": "^1.7.2",
     "next": "16.3.5",
     "react": "^19.3.0",

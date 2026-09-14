@@ -1,0 +1,137 @@
+@use '../../styles/mixins' as *;
+
+.count {
+  @include mono-numeric;
+  font-size: var(--text-meta);
+  font-weight: var(--weight-regular);
+  color: var(--foreground-muted);
+}
+
+.note {
+  font-size: var(--text-meta);
+  color: var(--foreground-muted);
+}
+
+.reason {
+  font-size: var(--text-secondary);
+  color: var(--foreground-secondary);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+}
+
+.metaSeparator {
+  color: var(--border-strong);
+}
+
+.metaLink {
+  text-decoration: underline;
+  text-decoration-color: var(--border-strong);
+  text-underline-offset: 3px;
+
+  &:hover {
+    color: var(--foreground-primary);
+  }
+}
+
+.monitor {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.name {
+  flex-shrink: 0;
+}
+
+.target {
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+  color: var(--foreground-muted);
+  @include truncate;
+
+  @include mobile {
+    display: none;
+  }
+}
+
+.transition {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  white-space: nowrap;
+}
+
+.arrow {
+  color: var(--foreground-muted);
+}
+
+.message {
+  display: block;
+  max-width: calc(var(--space-16) * 7);
+  color: var(--foreground-secondary);
+  @include truncate;
+}
+
+.unread {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-meta);
+  font-weight: var(--weight-medium);
+  color: var(--status-info);
+
+  &::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: var(--radius-full);
+    background: currentColor;
+  }
+}
+
+.warning {
+  color: var(--status-warning);
+}
+
+.error {
+  color: var(--status-error);
+}
+
+.confirm {
+  font-size: var(--text-secondary);
+  color: var(--foreground-secondary);
+}
+
+// Forms
+.form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4) var(--space-6);
+  max-width: calc(var(--space-16) * 10);
+  padding-block: var(--space-2);
+
+  @include mobile {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.full {
+  grid-column: 1 / -1;
+}
+
+.formActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  grid-column: 1 / -1;
+  padding-top: var(--space-2);
+}
+
+.saved {
+  font-size: var(--text-secondary);
+  color: var(--foreground-secondary);
+}

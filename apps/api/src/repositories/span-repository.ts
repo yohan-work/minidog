@@ -1,0 +1,424 @@
+import type { SpanEvent, SpanKind, SpanStatus } from '@minidog/types';
+import { ClickHouseRepository } from '../db/clickhouse-repository';
+import type { SpanRow } from '../ingest/otlp-traces';
+import type { Scope } from './project-repository';
+
+// ClickHouse serialises 64-bit integers as strings and empty quantiles as NaN.
+type Num = number | string;
+type NullableNum = Num | null;
+
+const toMs = (value: NullableNum): number | null => {
+  if (value === null) return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.round(number * 100) / 100 : null;
+};
+
+const SCOPE_FILTER = `project_id = {projectId:String} AND environment = {environment:String}`;
+const since = (param: string) => `timestamp >= fromUnixTimestamp64Milli({${param}:Int64})`;
+const optional = <T>(value: T | undefined, clause: string) => (value === undefined ? '' : `AND ${clause}`);
+
+export interface LatencyRow {
+  p50Ms: number | null;
+  p95Ms: number | null;
+  p99Ms: number | null;
+}
+
+export interface RawServiceStats extends LatencyRow {
+  service: string;
+  requests: number;
+  errors: number;
+  previousP95Ms: number | null;
+  currentRequests: number;
+  currentErrors: number;
+  currentP95Ms: number | null;
+  lastSeenAt: number;
+  hosts: string[];
+}
+
+export interface ServiceStatsWindow {
+  /** Start of the selected range. */
+  fromMs: number;
+  /** Start of the previous period of the same length. */
+  previousFromMs: number;
+  /** Start of the window that health is judged on. */
+  currentFromMs: number;
+  /** Services seen since this time are returned even without requests in range. */
+  lookbackFromMs: number;
+}
+
+export interface RawRequestPoint extends LatencyRow {
+  t: number;
+  requests: number;
+  errors: number;
+}
+
+export interface RawEndpoint extends LatencyRow {
+  service: string;
+  endpoint: string;
+  requests: number;
+  errors: number;
+}
+
+export interface RawEdge {
+  source: string;
+  target: string;
+  calls: number;
+  errors: number;
+  p95Ms: number | null;
+}
+
+export interface TraceFilters {
+  fromMs: number;
+  service?: string;
+  endpoint?: string;
+  status?: 'error' | 'ok';
+  minDurationMs?: number;
+  /** Trace id, or text matched against the endpoint and span name. */
+  query?: string;
+  limit: number;
+}
+
+export interface RawTraceRow {
+  traceId: string;
+  spanId: string;
+  timestamp: number;
+  service: string;
+  name: string;
+  durationMs: number;
+  error: boolean;
+  httpStatus: number | null;
+  statusMessage: string;
+}
+
+export interface RawSpan {
+  spanId: string;
+  parentSpanId: string;
+  service: string;
+  host: string;
+  name: string;
+  kind: SpanKind;
+  startMs: number;
+  durationMs: number;
+  status: SpanStatus;
+  statusMessage: string;
+  httpMethod: string;
+  httpRoute: string;
+  httpStatus: number | null;
+  dbSystem: string;
+  attributes: Record<string, string>;
+  resourceAttributes: Record<string, string>;
+  events: SpanEvent[];
+}
+
+const LATENCY = (condition = '1') => `
+  quantileIf(0.5)(duration_ms, ${condition}) AS p50,
+  quantileIf(0.95)(duration_ms, ${condition}) AS p95,
+  quantileIf(0.99)(duration_ms, ${condition}) AS p99`;
+
+const latency = (row: { p50: NullableNum; p95: NullableNum; p99: NullableNum }): LatencyRow => ({
+  p50Ms: toMs(row.p50),
+  p95Ms: toMs(row.p95),
+  p99Ms: toMs(row.p99),
+});
+
+export class SpanRepository extends ClickHouseRepository {
+  async insert(rows: readonly SpanRow[]): Promise<void> {
+    await this.insertRows('spans', rows);
+  }
+
+  /** Request statistics per service from entry spans. */
+  async serviceStats(scope: Scope, window: ServiceStatsWindow, service?: string): Promise<RawServiceStats[]> {
+    const inRange = since('fromMs');
+    const inPrevious = `${since('previousFromMs')} AND timestamp < fromUnixTimestamp64Milli({fromMs:Int64})`;
+    const inCurrent = since('currentFromMs');
+    const lowerMs = Math.min(window.previousFromMs, window.currentFromMs, window.lookbackFromMs);
+
+    const rows = await this.query<{
+      service: string;
+      requests: Num;
+      errors: Num;
+      p50: NullableNum;
+      p95: NullableNum;
+      p99: NullableNum;
+      previous_p95: NullableNum;
+      current_requests: Num;
+      current_errors: Num;
+      current_p95: NullableNum;
+      last_ts: Num;
+      hosts: string[];
+    }>(
+      `SELECT
+         service,
+         countIf(${inRange}) AS requests,
+         countIf(${inRange} AND is_error = 1) AS errors,
+         ${LATENCY(inRange)},
+         quantileIf(0.95)(duration_ms, ${inPrevious}) AS previous_p95,
+         countIf(${inCurrent}) AS current_requests,
+         countIf(${inCurrent} AND is_error = 1) AS current_errors,
+         quantileIf(0.95)(duration_ms, ${inCurrent}) AS current_p95,
+         toUnixTimestamp64Milli(max(timestamp)) AS last_ts,
+         groupUniqArrayIf(10)(host, host != '') AS hosts
+       FROM spans
+       WHERE ${SCOPE_FILTER}
+         AND is_entry = 1
+         AND service != ''
+         ${optional(service, 'service = {service:String}')}
+         AND ${since('lowerMs')}
+       GROUP BY service
+       ORDER BY service`,
+      { ...scope, ...window, lowerMs, service },
+    );
+
+    return rows.map((row) => ({
+      service: row.service,
+      requests: Number(row.requests),
+      errors: Number(row.errors),
+      ...latency(row),
+      previousP95Ms: toMs(row.previous_p95),
+      currentRequests: Number(row.current_requests),
+      currentErrors: Number(row.current_errors),
+      currentP95Ms: toMs(row.current_p95),
+      lastSeenAt: Number(row.last_ts),
+      hosts: [...row.hosts].sort(),
+    }));
+  }
+
+  /** Requests, errors and latency per bucket, for one service or all. */
+  async requestSeries(scope: Scope, fromMs: number, stepSeconds: number, service?: string): Promise<RawRequestPoint[]> {
+    const rows = await this.query<{ t: Num; requests: Num; errors: Num; p50: NullableNum; p95: NullableNum; p99: NullableNum }>(
+      `SELECT
+         intDiv(toUnixTimestamp(timestamp), {step:UInt32}) * {step:UInt32} AS t,
+         count() AS requests,
+         sum(is_error) AS errors,
+         ${LATENCY()}
+       FROM spans
+       WHERE ${SCOPE_FILTER}
+         AND is_entry = 1
+         ${optional(service, 'service = {service:String}')}
+         AND ${since('fromMs')}
+       GROUP BY t
+       ORDER BY t`,
+      { ...scope, fromMs, step: stepSeconds, service },
+    );
+    return rows.map((row) => ({ t: Number(row.t), requests: Number(row.requests), errors: Number(row.errors), ...latency(row) }));
+  }
+
+  async totals(scope: Scope, fromMs: number): Promise<{ requests: number; errors: number } & LatencyRow> {
+    const [row] = await this.query<{ requests: Num; errors: Num; p50: NullableNum; p95: NullableNum; p99: NullableNum }>(
+      `SELECT count() AS requests, sum(is_error) AS errors, ${LATENCY()}
+       FROM spans
+       WHERE ${SCOPE_FILTER} AND is_entry = 1 AND ${since('fromMs')}`,
+      { ...scope, fromMs },
+    );
+    return row
+      ? { requests: Number(row.requests), errors: Number(row.errors), ...latency(row) }
+      : { requests: 0, errors: 0, p50Ms: null, p95Ms: null, p99Ms: null };
+  }
+
+  /** Requests, errors and P95 of one service since `fromMs` — used by monitors. */
+  async windowStats(scope: Scope, service: string, fromMs: number): Promise<{ requests: number; errors: number; p95Ms: number | null }> {
+    const [row] = await this.query<{ requests: Num; errors: Num; p95: NullableNum }>(
+      `SELECT count() AS requests, sum(is_error) AS errors, quantile(0.95)(duration_ms) AS p95
+       FROM spans
+       WHERE ${SCOPE_FILTER} AND is_entry = 1 AND service = {service:String} AND ${since('fromMs')}`,
+      { ...scope, service, fromMs },
+    );
+    return {
+      requests: Number(row?.requests ?? 0),
+      errors: Number(row?.errors ?? 0),
+      p95Ms: row ? toMs(row.p95) : null,
+    };
+  }
+
+  /**
+   * Calls between services: an entry span whose parent span belongs to another
+   * service. Parents may start slightly before the window.
+   */
+  async serviceEdges(scope: Scope, fromMs: number): Promise<RawEdge[]> {
+    const rows = await this.query<{ source: string; target: string; calls: Num; errors: Num; p95: NullableNum }>(
+      `SELECT p.service AS source, c.service AS target, count() AS calls, sum(c.is_error) AS errors,
+              quantile(0.95)(c.duration_ms) AS p95
+       FROM (
+         SELECT trace_id, parent_span_id, service, is_error, duration_ms
+         FROM spans
+         WHERE ${SCOPE_FILTER} AND is_entry = 1 AND parent_span_id != '' AND ${since('fromMs')}
+       ) AS c
+       INNER JOIN (
+         SELECT trace_id, span_id, service
+         FROM spans
+         WHERE ${SCOPE_FILTER} AND ${since('parentFromMs')}
+       ) AS p
+       ON c.trace_id = p.trace_id AND c.parent_span_id = p.span_id
+       WHERE p.service != c.service AND p.service != '' AND c.service != ''
+       GROUP BY source, target`,
+      { ...scope, fromMs, parentFromMs: fromMs - 60_000 },
+    );
+    return rows.map((row) => ({
+      source: row.source,
+      target: row.target,
+      calls: Number(row.calls),
+      errors: Number(row.errors),
+      p95Ms: toMs(row.p95),
+    }));
+  }
+
+  /** Calls from services to databases, from client spans carrying `db.system`. */
+  async databaseEdges(scope: Scope, fromMs: number): Promise<RawEdge[]> {
+    const rows = await this.query<{ source: string; target: string; calls: Num; errors: Num; p95: NullableNum }>(
+      `SELECT service AS source, db_system AS target, count() AS calls, sum(is_error) AS errors,
+              quantile(0.95)(duration_ms) AS p95
+       FROM spans
+       WHERE ${SCOPE_FILTER} AND db_system != '' AND service != '' AND ${since('fromMs')}
+       GROUP BY source, target`,
+      { ...scope, fromMs },
+    );
+    return rows.map((row) => ({
+      source: row.source,
+      target: row.target,
+      calls: Number(row.calls),
+      errors: Number(row.errors),
+      p95Ms: toMs(row.p95),
+    }));
+  }
+
+  /** Endpoint statistics, slowest first. */
+  async endpoints(scope: Scope, fromMs: number, service?: string): Promise<RawEndpoint[]> {
+    const rows = await this.query<{
+      service: string;
+      endpoint: string;
+      requests: Num;
+      errors: Num;
+      p50: NullableNum;
+      p95: NullableNum;
+      p99: NullableNum;
+    }>(
+      `SELECT service, endpoint, count() AS requests, sum(is_error) AS errors, ${LATENCY()}
+       FROM spans
+       WHERE ${SCOPE_FILTER}
+         AND is_entry = 1
+         AND endpoint != ''
+         ${optional(service, 'service = {service:String}')}
+         AND ${since('fromMs')}
+       GROUP BY service, endpoint
+       ORDER BY p95 DESC
+       LIMIT 200`,
+      { ...scope, fromMs, service },
+    );
+    return rows.map((row) => ({
+      service: row.service,
+      endpoint: row.endpoint,
+      requests: Number(row.requests),
+      errors: Number(row.errors),
+      ...latency(row),
+    }));
+  }
+
+  /**
+   * Entry spans matching the filters, newest first. Without a service filter
+   * only root spans are listed, so each trace appears once.
+   */
+  async traces(scope: Scope, filters: TraceFilters): Promise<RawTraceRow[]> {
+    const rows = await this.query<{
+      trace_id: string;
+      span_id: string;
+      ts_us: Num;
+      service: string;
+      endpoint: string;
+      name: string;
+      duration_ms: number;
+      is_error: number;
+      http_status: number;
+      status_message: string;
+    }>(
+      `SELECT trace_id, span_id, toUnixTimestamp64Micro(timestamp) AS ts_us, service, endpoint, name,
+              duration_ms, is_error, http_status, status_message
+       FROM spans
+       WHERE ${SCOPE_FILTER}
+         AND is_entry = 1
+         AND ${filters.service === undefined ? `parent_span_id = ''` : 'service = {service:String}'}
+         ${optional(filters.endpoint, 'endpoint = {endpoint:String}')}
+         ${optional(filters.status, filters.status === 'error' ? 'is_error = 1' : 'is_error = 0')}
+         ${optional(filters.minDurationMs, 'duration_ms >= {minDurationMs:Float64}')}
+         ${optional(
+           filters.query,
+           `(trace_id = lower({query:String})
+             OR positionCaseInsensitive(endpoint, {query:String}) > 0
+             OR positionCaseInsensitive(name, {query:String}) > 0)`,
+         )}
+         AND ${since('fromMs')}
+       ORDER BY timestamp DESC
+       LIMIT {limit:UInt32}`,
+      { ...scope, ...filters },
+    );
+    return rows.map((row) => ({
+      traceId: row.trace_id,
+      spanId: row.span_id,
+      timestamp: Number(row.ts_us) / 1000,
+      service: row.service,
+      name: row.endpoint || row.name,
+      durationMs: toMs(row.duration_ms) ?? 0,
+      error: row.is_error === 1,
+      httpStatus: row.http_status || null,
+      statusMessage: row.status_message,
+    }));
+  }
+
+  async trace(scope: Scope, traceId: string): Promise<RawSpan[]> {
+    const rows = await this.query<{
+      span_id: string;
+      parent_span_id: string;
+      service: string;
+      host: string;
+      name: string;
+      kind: SpanKind;
+      ts_us: Num;
+      duration_ms: number;
+      status_code: SpanStatus;
+      status_message: string;
+      http_method: string;
+      http_route: string;
+      http_status: number;
+      db_system: string;
+      attributes: Record<string, string>;
+      resource_attributes: Record<string, string>;
+      events: string;
+    }>(
+      `SELECT span_id, parent_span_id, service, host, name, kind, toUnixTimestamp64Micro(timestamp) AS ts_us,
+              duration_ms, status_code, status_message, http_method, http_route, http_status, db_system,
+              attributes, resource_attributes, events
+       FROM spans
+       WHERE ${SCOPE_FILTER} AND trace_id = {traceId:String}
+       ORDER BY timestamp
+       LIMIT 5000`,
+      { ...scope, traceId },
+    );
+    return rows.map((row) => ({
+      spanId: row.span_id,
+      parentSpanId: row.parent_span_id,
+      service: row.service,
+      host: row.host,
+      name: row.name,
+      kind: row.kind,
+      startMs: Number(row.ts_us) / 1000,
+      durationMs: toMs(row.duration_ms) ?? 0,
+      status: row.status_code,
+      statusMessage: row.status_message,
+      httpMethod: row.http_method,
+      httpRoute: row.http_route,
+      httpStatus: row.http_status || null,
+      dbSystem: row.db_system,
+      attributes: row.attributes,
+      resourceAttributes: row.resource_attributes,
+      events: parseEvents(row.events),
+    }));
+  }
+}
+
+function parseEvents(json: string): SpanEvent[] {
+  try {
+    const events = JSON.parse(json) as unknown;
+    return Array.isArray(events) ? (events as SpanEvent[]) : [];
+  } catch {
+    return [];
+  }
+}

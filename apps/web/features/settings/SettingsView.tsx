@@ -1,0 +1,410 @@
+'use client';
+
+import {
+  API_KEY_HEADER,
+  type ApiKeyListResponse,
+  type ContextResponse,
+  type CreateApiKeyResponse,
+  type ProjectInfo,
+  type ProjectListResponse,
+} from '@minidog/types';
+import { useState, type FormEvent } from 'react';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { Section } from '@/components/layout/Section';
+import { EmptyState, ErrorState } from '@/components/observability/States';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
+import { Field } from '@/components/ui/Field';
+import { Input } from '@/components/ui/Input';
+import { Notice } from '@/components/ui/Notice';
+import { Select } from '@/components/ui/Select';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { Table, TableHead, Td, Tr, type ColumnSpec } from '@/components/ui/Table';
+import { apiFetch, toApiClientError } from '@/lib/api-client';
+import { formatDate, formatRelative } from '@/lib/format';
+import { useApi } from '@/lib/use-api';
+import styles from './Settings.module.scss';
+
+const PROJECT_COLUMNS = [
+  { label: 'Project' },
+  { label: 'Environments' },
+  { label: 'Created', align: 'end', hideBelow: 'tablet' },
+] as const satisfies readonly ColumnSpec[];
+
+const KEY_COLUMNS = [
+  { label: 'Name' },
+  { label: 'Environment' },
+  { label: 'Key', hideBelow: 'tablet' },
+  { label: 'Last used', align: 'end', hideBelow: 'desktop' },
+  { label: 'Status', align: 'end' },
+] as const satisfies readonly ColumnSpec[];
+
+/** Switching reloads the page so every screen reads the new project and environment. */
+async function switchTo(projectId: string, environment: string) {
+  await apiFetch('/context', { method: 'PUT', body: JSON.stringify({ projectId, environment }) });
+  window.location.reload();
+}
+
+export function SettingsView() {
+  const projects = useApi<ProjectListResponse>('/projects', 60_000);
+  const context = useApi<ContextResponse>('/context', 60_000);
+  const active = projects.data?.active;
+  const project = projects.data?.projects.find((item) => item.id === active?.projectId);
+
+  if (!projects.data && !projects.isLoading) {
+    return (
+      <>
+        <PageHeader title="Settings" />
+        <ErrorState title="Unable to load settings." description={projects.error?.message} onRetry={projects.refetch} />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <PageHeader
+        title="Settings"
+        meta={
+          project && active ? (
+            <span>
+              Showing <strong>{project.name}</strong> / <span className={styles.mono}>{active.environment}</span>
+            </span>
+          ) : undefined
+        }
+      />
+
+      <Section title="Projects" flush>
+        {projects.data ? (
+          <Table aria-label="Projects">
+            <TableHead columns={PROJECT_COLUMNS} />
+            <tbody>
+              {projects.data.projects.map((item) => (
+                <Tr key={item.id}>
+                  <Td>
+                    <span className={styles.projectName}>{item.name}</span>
+                  </Td>
+                  <Td>
+                    <span className={styles.environments}>
+                      {item.environments.map((environment) => {
+                        const current = item.id === active?.projectId && environment.name === active.environment;
+                        return current ? (
+                          <Badge key={environment.name} mono tone="info">
+                            {environment.name} · current
+                          </Badge>
+                        ) : (
+                          <Button key={environment.name} size="sm" variant="ghost" onClick={() => void switchTo(item.id, environment.name)}>
+                            <span className={styles.mono}>{environment.name}</span>
+                          </Button>
+                        );
+                      })}
+                    </span>
+                  </Td>
+                  <Td align="end" mono muted hideBelow="tablet">
+                    {formatDate(Date.parse(item.createdAt))}
+                  </Td>
+                </Tr>
+              ))}
+            </tbody>
+          </Table>
+        ) : (
+          <Skeleton height="calc(var(--row-height) * 2)" />
+        )}
+      </Section>
+
+      <Section title="New project">
+        <NewProjectForm onCreated={projects.refetch} />
+      </Section>
+
+      {project && (
+        <Section title={`Environments of ${project.name}`}>
+          <NewEnvironmentForm project={project} onCreated={projects.refetch} />
+        </Section>
+      )}
+
+      {project && <ApiKeysSection project={project} />}
+
+      <Section title="Connection">
+        {context.data ? <ConnectionInfo context={context.data} /> : <Skeleton height="calc(var(--row-height) * 4)" />}
+      </Section>
+    </>
+  );
+}
+
+function useFormErrors() {
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const capture = (failure: unknown) => {
+    const apiError = toApiClientError(failure);
+    const next: Record<string, string> = {};
+    for (const issue of apiError.validationIssues) next[issue.path] ??= issue.message;
+    setErrors(Object.keys(next).length > 0 ? next : { form: apiError.message });
+  };
+  return { errors, setErrors, capture };
+}
+
+function NewProjectForm({ onCreated }: { onCreated: () => void }) {
+  const [name, setName] = useState('');
+  const [environment, setEnvironment] = useState('production');
+  const [saving, setSaving] = useState(false);
+  const { errors, setErrors, capture } = useFormErrors();
+
+  const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSaving(true);
+    setErrors({});
+    try {
+      await apiFetch('/projects', { method: 'POST', body: JSON.stringify({ name, environment }) });
+      setName('');
+      onCreated();
+    } catch (failure) {
+      capture(failure);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <form className={styles.form} onSubmit={onSubmit} noValidate>
+      <Field id="project-name" label="Name" error={errors.name}>
+        <Input id="project-name" value={name} onChange={(event) => setName(event.target.value)} maxLength={100} invalid={Boolean(errors.name)} />
+      </Field>
+      <Field id="project-environment" label="First environment" error={errors.environment}>
+        <Input id="project-environment" value={environment} onChange={(event) => setEnvironment(event.target.value)} mono invalid={Boolean(errors.environment)} />
+      </Field>
+      <div className={styles.actions}>
+        <Button type="submit" loading={saving}>
+          Create project
+        </Button>
+        {errors.form && <span className={styles.error}>{errors.form}</span>}
+      </div>
+    </form>
+  );
+}
+
+function NewEnvironmentForm({ project, onCreated }: { project: ProjectInfo; onCreated: () => void }) {
+  const [name, setName] = useState('');
+  const [saving, setSaving] = useState(false);
+  const { errors, setErrors, capture } = useFormErrors();
+
+  const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSaving(true);
+    setErrors({});
+    try {
+      await apiFetch(`/projects/${project.id}/environments`, { method: 'POST', body: JSON.stringify({ name }) });
+      setName('');
+      onCreated();
+    } catch (failure) {
+      capture(failure);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <form className={styles.form} onSubmit={onSubmit} noValidate>
+      <p className={`${styles.full} ${styles.note}`}>
+        {project.environments.map((environment) => environment.name).join(', ')}. Telemetry names its environment with the{' '}
+        <code className={styles.mono}>deployment.environment.name</code> resource attribute or through an API key.
+      </p>
+      <Field id="environment-name" label="New environment" error={errors.name}>
+        <Input id="environment-name" value={name} onChange={(event) => setName(event.target.value)} mono placeholder="staging" invalid={Boolean(errors.name)} />
+      </Field>
+      <div className={styles.actions}>
+        <Button type="submit" loading={saving}>
+          Add environment
+        </Button>
+        {errors.form && <span className={styles.error}>{errors.form}</span>}
+      </div>
+    </form>
+  );
+}
+
+function ApiKeysSection({ project }: { project: ProjectInfo }) {
+  const keys = useApi<ApiKeyListResponse>(`/projects/${project.id}/api-keys`, 60_000);
+  const [name, setName] = useState('');
+  const [environment, setEnvironment] = useState(project.environments[0]?.name ?? 'production');
+  const [saving, setSaving] = useState(false);
+  const [created, setCreated] = useState<CreateApiKeyResponse | null>(null);
+  const [revoking, setRevoking] = useState<string | null>(null);
+  const { errors, setErrors, capture } = useFormErrors();
+
+  const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSaving(true);
+    setErrors({});
+    try {
+      setCreated(
+        await apiFetch<CreateApiKeyResponse>(`/projects/${project.id}/api-keys`, {
+          method: 'POST',
+          body: JSON.stringify({ name, environment }),
+        }),
+      );
+      setName('');
+      keys.refetch();
+    } catch (failure) {
+      capture(failure);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const revoke = async (id: string) => {
+    setRevoking(id);
+    try {
+      await apiFetch(`/projects/${project.id}/api-keys/${id}`, { method: 'DELETE' });
+      keys.refetch();
+    } catch (failure) {
+      capture(failure);
+    } finally {
+      setRevoking(null);
+    }
+  };
+
+  return (
+    <Section title="API keys">
+      <p className={styles.note}>
+        A key sends telemetry into one environment of <strong>{project.name}</strong>. Send it in the{' '}
+        <code className={styles.mono}>{API_KEY_HEADER}</code> header.
+      </p>
+
+      {created && (
+        <div className={styles.secret}>
+          <Notice tone="info" title={`Key "${created.apiKey.name}" created.`} action={<CopyButton value={created.secret} />}>
+            Copy it now — it is not stored and cannot be shown again.
+          </Notice>
+          <pre className={styles.snippet}>
+            <code>{created.secret}</code>
+          </pre>
+        </div>
+      )}
+
+      <form className={styles.form} onSubmit={onSubmit} noValidate>
+        <Field id="key-name" label="Name" error={errors.name}>
+          <Input id="key-name" value={name} onChange={(event) => setName(event.target.value)} placeholder="collector on web-1" maxLength={100} invalid={Boolean(errors.name)} />
+        </Field>
+        <Field id="key-environment" label="Environment" error={errors.environment}>
+          <Select id="key-environment" value={environment} onChange={(event) => setEnvironment(event.target.value)}>
+            {project.environments.map((item) => (
+              <option key={item.name} value={item.name}>
+                {item.name}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <div className={styles.actions}>
+          <Button type="submit" variant="primary" loading={saving}>
+            Create API key
+          </Button>
+          {errors.form && <span className={styles.error}>{errors.form}</span>}
+        </div>
+      </form>
+
+      <div className={styles.flushTable}>
+        {keys.data ? (
+          keys.data.apiKeys.length > 0 ? (
+            <Table aria-label="API keys">
+              <TableHead columns={KEY_COLUMNS} />
+              <tbody>
+                {keys.data.apiKeys.map((key) => (
+                  <Tr key={key.id}>
+                    <Td>{key.name}</Td>
+                    <Td mono>{key.environment}</Td>
+                    <Td mono muted hideBelow="tablet">
+                      {key.prefix}…
+                    </Td>
+                    <Td align="end" mono muted hideBelow="desktop">
+                      {key.lastUsedAt ? formatRelative(Date.parse(key.lastUsedAt)) : 'never'}
+                    </Td>
+                    <Td align="end">
+                      {key.revokedAt ? (
+                        <span className={styles.note}>Revoked {formatDate(Date.parse(key.revokedAt))}</span>
+                      ) : (
+                        <Button size="sm" variant="danger" loading={revoking === key.id} onClick={() => void revoke(key.id)}>
+                          Revoke
+                        </Button>
+                      )}
+                    </Td>
+                  </Tr>
+                ))}
+              </tbody>
+            </Table>
+          ) : (
+            <EmptyState
+              title="No API keys yet"
+              description="Without a key, telemetry goes to the default project. Create a key per collector or service."
+              action={null}
+            />
+          )
+        ) : keys.error ? (
+          <ErrorState title="Unable to load API keys." description={keys.error.message} onRetry={keys.refetch} />
+        ) : (
+          <Skeleton height="calc(var(--row-height) * 2)" />
+        )}
+      </div>
+    </Section>
+  );
+}
+
+function ConnectionInfo({ context }: { context: ContextResponse }) {
+  const { apiUrl, collectorUrl, requireApiKey } = context.ingest;
+  const sdk = `OTEL_SERVICE_NAME=checkout
+OTEL_EXPORTER_OTLP_ENDPOINT=${collectorUrl}`;
+  const direct = `OTEL_EXPORTER_OTLP_ENDPOINT=${apiUrl}
+OTEL_EXPORTER_OTLP_PROTOCOL=http/json
+OTEL_EXPORTER_OTLP_HEADERS=${API_KEY_HEADER}=<api key>`;
+  const collector = `exporters:
+  otlp_http/minidog:
+    endpoint: ${apiUrl}
+    encoding: json
+    headers:
+      ${API_KEY_HEADER}: <api key>`;
+
+  return (
+    <div className={styles.connection}>
+      <p className={styles.note}>
+        {requireApiKey
+          ? 'This server requires an API key on every OTLP request.'
+          : 'Requests without an API key are stored in the default project.'}
+      </p>
+      <Snippet title="SDK → bundled collector" code={sdk} />
+      <Snippet title="SDK → Ingestion API directly (OTLP/HTTP JSON)" code={direct} />
+      <Snippet title="Your own collector" code={collector} />
+      <p className={styles.note}>
+        The bundled collector reads the key from <code className={styles.mono}>MINIDOG_API_KEY</code>:{' '}
+        <code className={styles.mono}>MINIDOG_API_KEY=&lt;api key&gt; pnpm infra:up</code>
+      </p>
+    </div>
+  );
+}
+
+function Snippet({ title, code }: { title: string; code: string }) {
+  return (
+    <div className={styles.snippetBlock}>
+      <div className={styles.snippetHead}>
+        <span className={styles.snippetTitle}>{title}</span>
+        <CopyButton value={code} />
+      </div>
+      <pre className={styles.snippet}>
+        <code>{code}</code>
+      </pre>
+    </div>
+  );
+}
+
+function CopyButton({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <Button
+      size="sm"
+      variant="ghost"
+      onClick={() => {
+        void navigator.clipboard.writeText(value).then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1500);
+        });
+      }}
+    >
+      {copied ? 'Copied' : 'Copy'}
+    </Button>
+  );
+}

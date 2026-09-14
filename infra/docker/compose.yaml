@@ -33,6 +33,8 @@ services:
     environment:
       # The API runs on the host (pnpm dev), outside this compose project.
       MINIDOG_INGEST_ENDPOINT: ${MINIDOG_INGEST_ENDPOINT:-http://host.docker.internal:4000}
+      # Optional; without a key data goes to the default project.
+      MINIDOG_API_KEY: ${MINIDOG_API_KEY:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:

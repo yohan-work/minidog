@@ -1,0 +1,11 @@
+.more {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-4) var(--content-padding);
+  border-top: 1px solid var(--border-default);
+}
+
+.empty {
+  font-size: var(--text-secondary);
+  color: var(--foreground-secondary);
+}

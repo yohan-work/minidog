@@ -18,6 +18,16 @@ const configSchema = z.object({
 
   WORKER_ENABLED: booleanString.default(true),
   WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(64).default(8),
+
+  // Evaluates alert monitors in the API process.
+  ALERTS_ENABLED: booleanString.default(true),
+  ALERT_INTERVAL_SECONDS: z.coerce.number().int().min(5).max(3600).default(30),
+
+  // Ingestion. Without a required key, unauthenticated data goes to the default project.
+  INGEST_REQUIRE_API_KEY: booleanString.default(false),
+  /** Shown as connection info in Settings. */
+  PUBLIC_API_URL: z.url().default('http://localhost:4000'),
+  PUBLIC_COLLECTOR_URL: z.url().default('http://localhost:4318'),
 });
 
 export type Config = z.infer<typeof configSchema>;

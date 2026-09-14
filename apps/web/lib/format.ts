@@ -89,6 +89,34 @@ export function daysUntil(ms: number, now: number = Date.now()): number {
   return Math.floor((ms - now) / 86_400_000);
 }
 
+/** `12.4 req/s`, `0.38 req/s` */
+export function formatRate(perSecond: number | null | undefined, unit = 'req/s'): string {
+  if (!isNumber(perSecond)) return EMPTY;
+  const digits = perSecond >= 100 ? 0 : perSecond >= 10 ? 1 : 2;
+  return `${perSecond.toFixed(digits)} ${unit}`;
+}
+
+/** Relative change: `↑ 312%`, `↓ 12%`, `±0%` */
+export function formatChange(ratio: number | null | undefined): string {
+  if (!isNumber(ratio)) return EMPTY;
+  const percent = Math.round(ratio * 100);
+  if (percent === 0) return '±0%';
+  return `${percent > 0 ? '↑' : '↓'} ${Math.abs(percent)}%`;
+}
+
+const timeWithMs = new Intl.DateTimeFormat('en-GB', {
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  fractionalSecondDigits: 3,
+  hour12: false,
+});
+
+/** `14:32:08.124` */
+export function formatTimeMs(ms: number | null | undefined): string {
+  return isNumber(ms) ? timeWithMs.format(ms) : EMPTY;
+}
+
 /** Utilization 0..1 as `42.3%`. */
 export function formatUtilization(ratio: number | null | undefined): string {
   if (!isNumber(ratio)) return EMPTY;
@@ -118,6 +146,26 @@ export function formatBytesRate(bytesPerSecond: number | null | undefined): stri
 /** Axis labels: `0`, `512 B/s`, `1.5 MB/s` */
 export function formatBytesRateAxis(bytesPerSecond: number): string {
   return bytesPerSecond === 0 ? '0' : formatBytesRate(bytesPerSecond);
+}
+
+/**
+ * A metric value in its UCUM unit: bytes (`By`) scale to KB/MB, ratios (`1`)
+ * become percentages, seconds and milliseconds become durations, and
+ * annotations such as `{order}` are shown as words. `perSecond` marks rates.
+ */
+export function formatMetricValue(value: number | null | undefined, unit: string, perSecond = false): string {
+  if (!isNumber(value)) return EMPTY;
+  if (value === 0) return '0';
+  const suffix = perSecond ? '/s' : '';
+  if (unit === 'By') return perSecond ? formatBytesRate(value) : formatBytesRate(value).replace('/s', '');
+  if (unit === '1' && !perSecond) return `${(value * 100).toFixed(1)}%`;
+  if (unit === 's' && !perSecond) return formatLatency(value * 1000);
+  if (unit === 'ms' && !perSecond) return formatLatency(value);
+  const magnitude = Math.abs(value);
+  const digits = magnitude >= 100 ? 0 : magnitude >= 10 ? 1 : magnitude >= 1 ? 2 : 3;
+  const number = magnitude >= 10_000 ? compact.format(value).toLowerCase() : value.toFixed(digits);
+  const label = unit.replace(/^\{(.*)\}$/, '$1');
+  return label && label !== '1' ? `${number} ${label}${suffix}` : `${number}${suffix}`;
 }
 
 /** `30s`, `1m`, `5m`, `1h` */

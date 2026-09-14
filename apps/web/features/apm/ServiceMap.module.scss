@@ -1,0 +1,151 @@
+@use '../../styles/mixins' as *;
+
+.note {
+  font-size: var(--text-meta);
+  color: var(--foreground-muted);
+}
+
+.empty {
+  padding: var(--space-4) var(--content-padding);
+  font-size: var(--text-secondary);
+  color: var(--foreground-secondary);
+}
+
+.canvas {
+  height: calc(var(--chart-height) * 2.5);
+  border-top: 1px solid var(--border-default);
+
+  // React Flow reads its colors from these variables.
+  :global(.react-flow) {
+    --xy-background-color: var(--background-primary);
+    --xy-background-pattern-dots-color-default: var(--border-default);
+    --xy-edge-stroke-default: var(--border-strong);
+    --xy-edge-label-background-color-default: var(--background-secondary);
+    --xy-edge-label-color-default: var(--foreground-secondary);
+    --xy-controls-button-background-color-default: var(--background-secondary);
+    --xy-controls-button-background-color-hover-default: var(--background-hover);
+    --xy-controls-button-color-default: var(--foreground-primary);
+    --xy-controls-button-border-color-default: var(--border-default);
+    --xy-node-boxshadow-selected-default: 0 0 0 1px var(--focus-ring);
+    font-family: var(--font-sans);
+  }
+
+  // The global reset caps svg at max-width: 100%; React Flow's edge layer is a
+  // zero-width container, so its svgs would collapse and not paint.
+  :global(.react-flow) svg {
+    max-width: none;
+  }
+
+  :global(.react-flow__edge-text) {
+    font-family: var(--font-mono);
+    font-size: 11px;
+  }
+
+  :global(.react-flow__controls) {
+    box-shadow: none;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+  }
+
+  :global(.react-flow__node) {
+    cursor: pointer;
+  }
+}
+
+.edge :global(.react-flow__edge-path) {
+  stroke: var(--border-strong);
+  stroke-width: 1.5;
+}
+
+.failingEdge :global(.react-flow__edge-path) {
+  stroke: var(--status-error);
+  stroke-width: 1.5;
+}
+
+.node {
+  display: grid;
+  gap: var(--space-2);
+  width: calc(var(--space-16) * 3);
+  padding: var(--space-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: var(--background-secondary);
+  color: var(--foreground-primary);
+
+  &[data-health='critical'] {
+    border-color: var(--status-error);
+  }
+
+  &[data-health='degraded'] {
+    border-color: var(--status-warning);
+  }
+
+  &[data-kind='database'] {
+    background: var(--background-primary);
+    border-style: dashed;
+  }
+}
+
+.nodeTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  font-size: var(--text-secondary);
+  font-weight: var(--weight-medium);
+}
+
+.nodeName {
+  @include truncate;
+}
+
+.kind {
+  flex-shrink: 0;
+  padding-inline: var(--space-1);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--foreground-secondary);
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+
+  div {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  dt {
+    font-size: 11px;
+    color: var(--foreground-muted);
+  }
+
+  dd {
+    @include mono-numeric;
+    font-size: var(--text-meta);
+    @include truncate;
+  }
+}
+
+.handle {
+  width: 6px;
+  height: 6px;
+  min-width: 0;
+  min-height: 0;
+  border: 0;
+  background: var(--border-strong);
+}
+
+.warning {
+  color: var(--status-warning);
+}
+
+.error {
+  color: var(--status-error);
+}

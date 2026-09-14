@@ -1,6 +1,6 @@
-import { ClickHouseError, type ClickHouseClient } from '@clickhouse/client';
+import type { MetricAggregation, MetricCatalogEntry } from '@minidog/types';
+import { ClickHouseRepository } from '../db/clickhouse-repository';
 import type { MetricRow } from '../ingest/otlp-metrics';
-import { ClickHouseUnavailableError } from '../lib/errors';
 import type { Scope } from './project-repository';
 
 export interface RawHost {
@@ -63,12 +63,9 @@ const NETWORK_DELTAS = `metric_name = 'system.network.io' AND temporality = 'del
  */
 const RATE_FROM_DELTAS = `if(count() > 1, (sum(bytes) - argMin(bytes, ts)) / ((max(ts) - min(ts)) / 1000), NULL)`;
 
-export class MetricRepository {
-  constructor(private readonly client: ClickHouseClient) {}
-
+export class MetricRepository extends ClickHouseRepository {
   async insert(rows: readonly MetricRow[]): Promise<void> {
-    if (rows.length === 0) return;
-    await this.run(() => this.client.insert({ table: 'metrics', values: rows, format: 'JSONEachRow' }));
+    await this.insertRows('metrics', rows);
   }
 
   /** Hosts with any data since `seenFromMs`; utilization is averaged since `currentFromMs`. */
@@ -195,20 +192,101 @@ export class MetricRepository {
     return [...points.values()];
   }
 
-  private async query<T>(query: string, params: Record<string, unknown>): Promise<T[]> {
-    return this.run(async () => {
-      const result = await this.client.query({ query, query_params: params, format: 'JSONEachRow' });
-      return result.json<T>();
-    });
+  /** Metrics with data since `fromMs`, with the dimensions they can be filtered and grouped by. */
+  async catalog(scope: Scope, fromMs: number): Promise<MetricCatalogEntry[]> {
+    const rows = await this.query<{
+      name: string;
+      unit: string;
+      type: 'gauge' | 'sum';
+      temporality: MetricCatalogEntry['temporality'];
+      services: string[];
+      hosts: string[];
+      attribute_keys: string[];
+    }>(
+      `SELECT
+         metric_name AS name,
+         any(unit) AS unit,
+         any(metric_type) AS type,
+         any(temporality) AS temporality,
+         groupUniqArrayIf(50)(service, service != '') AS services,
+         groupUniqArrayIf(50)(host, host != '') AS hosts,
+         groupUniqArrayArray(30)(mapKeys(attributes)) AS attribute_keys
+       FROM metrics
+       WHERE ${SCOPE_FILTER} AND timestamp >= fromUnixTimestamp64Milli({fromMs:Int64})
+       GROUP BY metric_name
+       ORDER BY metric_name
+       LIMIT 500`,
+      { ...scope, fromMs },
+    );
+    return rows.map((row) => ({
+      name: row.name,
+      unit: row.unit,
+      type: row.type,
+      temporality: row.temporality,
+      services: [...row.services].sort(),
+      hosts: [...row.hosts].sort(),
+      attributeKeys: [...row.attribute_keys].sort(),
+    }));
   }
 
-  /** Server-side query errors are bugs (500); anything else means ClickHouse is unreachable (503). */
-  private async run<T>(operation: () => Promise<T>): Promise<T> {
-    try {
-      return await operation();
-    } catch (error) {
-      if (error instanceof ClickHouseError) throw error;
-      throw new ClickHouseUnavailableError(error);
-    }
+  /** One aggregated value per bucket and group. */
+  async aggregate(scope: Scope, query: MetricAggregateQuery): Promise<{ t: number; group: string; value: number | null }[]> {
+    const rows = await this.query<{ t: Num; grp: string; value: NullableNum }>(
+      `SELECT
+         intDiv(toUnixTimestamp(timestamp), {step:UInt32}) * {step:UInt32} AS t,
+         ${GROUP_EXPRESSIONS[groupKind(query.groupBy)]} AS grp,
+         ${AGGREGATIONS[query.aggregation]} AS value
+       FROM metrics
+       WHERE ${SCOPE_FILTER}
+         AND metric_name = {metric:String}
+         ${query.service === undefined ? '' : 'AND service = {service:String}'}
+         ${query.host === undefined ? '' : 'AND host = {host:String}'}
+         AND timestamp >= fromUnixTimestamp64Milli({fromMs:Int64})
+       GROUP BY t, grp
+       ORDER BY t`,
+      {
+        ...scope,
+        ...query,
+        groupKey: query.groupBy?.startsWith('attr:') ? query.groupBy.slice(5) : '',
+        step: query.stepSeconds,
+      },
+    );
+    return rows.map((row) => {
+      const value = row.value === null ? null : Number(row.value);
+      return { t: Number(row.t), group: row.grp, value: value !== null && Number.isFinite(value) ? value : null };
+    });
   }
+}
+
+export interface MetricAggregateQuery {
+  metric: string;
+  aggregation: MetricAggregation;
+  fromMs: number;
+  stepSeconds: number;
+  service?: string;
+  host?: string;
+  /** `service`, `host` or `attr:<key>`; undefined for a single series. */
+  groupBy?: string;
+}
+
+const AGGREGATIONS: Record<MetricAggregation, string> = {
+  avg: 'avg(value)',
+  min: 'min(value)',
+  max: 'max(value)',
+  sum: 'sum(value)',
+  p95: 'quantile(0.95)(value)',
+  // Delta sums: total per bucket spread over the bucket.
+  rate: 'sum(value) / {step:UInt32}',
+};
+
+const GROUP_EXPRESSIONS = {
+  none: `''`,
+  service: 'service',
+  host: 'host',
+  attribute: 'attributes[{groupKey:String}]',
+} as const;
+
+function groupKind(groupBy: string | undefined): keyof typeof GROUP_EXPRESSIONS {
+  if (groupBy === 'service' || groupBy === 'host') return groupBy;
+  return groupBy?.startsWith('attr:') ? 'attribute' : 'none';
 }

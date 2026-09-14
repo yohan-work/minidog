@@ -44,6 +44,15 @@
   --chart-grid: #1c1c1c;
   --chart-axis: #8a8a8a;
   --chart-empty: #1c1c1c;
+
+  // Categorical series (grouped metrics), distinguishable with common
+  // color-vision deficiencies. Status colors are never reused here.
+  --chart-series-1: #52a8ff;
+  --chart-series-2: #3fc1c9;
+  --chart-series-3: #b18cf7;
+  --chart-series-4: #f07ab4;
+  --chart-series-5: #d9b26f;
+  --chart-series-6: #9aa0a6;
 }
 
 [data-theme='light'] {
@@ -87,4 +96,11 @@
   --chart-grid: #f2f2f2;
   --chart-axis: #666666;
   --chart-empty: #ededed;
+
+  --chart-series-1: #0068d6;
+  --chart-series-2: #0a8f97;
+  --chart-series-3: #7c4ddb;
+  --chart-series-4: #c9377f;
+  --chart-series-5: #a86a12;
+  --chart-series-6: #6b6f75;
 }

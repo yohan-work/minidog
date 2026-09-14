@@ -2,32 +2,57 @@ import type { ClickHouseClient } from '@clickhouse/client';
 import Fastify, { type FastifyInstance } from 'fastify';
 import type { DatabaseSync } from 'node:sqlite';
 import { ZodError } from 'zod';
-import type { ValidationIssue } from '@minidog/types';
+import type { ContextResponse, ValidationIssue } from '@minidog/types';
 import type { Config } from './config';
 import { createClickHouse, ensureClickHouseSchema } from './db/clickhouse';
 import { openDatabase } from './db/sqlite';
 import { errorBody, HttpError } from './lib/errors';
+import { AlertMonitorRepository } from './repositories/alert-monitor-repository';
+import { ApiKeyRepository } from './repositories/api-key-repository';
+import { LogRepository } from './repositories/log-repository';
 import { MetricRepository } from './repositories/metric-repository';
 import { MonitorRepository } from './repositories/monitor-repository';
 import { ProjectRepository, type Scope } from './repositories/project-repository';
+import { SpanRepository } from './repositories/span-repository';
 import { SyntheticResultRepository } from './repositories/synthetic-result-repository';
+import { registerAlertingRoutes } from './routes/alerting';
+import { registerApmRoutes } from './routes/apm';
 import { registerHostRoutes } from './routes/hosts';
 import { registerIngestRoutes } from './routes/ingest';
+import { registerLogRoutes } from './routes/logs';
+import { registerMetricRoutes } from './routes/metrics';
 import { registerMonitorRoutes } from './routes/monitors';
+import { registerSettingsRoutes } from './routes/settings';
 import { registerSystemRoutes } from './routes/system';
+import { AlertingService } from './services/alerting-service';
+import { ApmService } from './services/apm-service';
 import { HostService } from './services/host-service';
+import { LogService } from './services/log-service';
+import { MetricsExplorerService } from './services/metrics-explorer-service';
 import { MonitorService } from './services/monitor-service';
+import { AlertEvaluator } from './worker/alert-evaluator';
 import { ResultWriter } from './worker/result-writer';
 import { SyntheticScheduler } from './worker/synthetic-scheduler';
 
 export interface AppContext {
+  /** Project and environment the dashboard shows; switched in place. */
   scope: Scope;
-  projectName: string;
+  /** Where telemetry without an API key goes. */
+  defaultScope: Scope;
+  projects: ProjectRepository;
+  apiKeys: ApiKeyRepository;
+  ingest: ContextResponse['ingest'];
   monitors: MonitorRepository;
   results: SyntheticResultRepository;
   service: MonitorService;
   metrics: MetricRepository;
+  spans: SpanRepository;
+  logs: LogRepository;
   hosts: HostService;
+  apm: ApmService;
+  logSearch: LogService;
+  metricsExplorer: MetricsExplorerService;
+  alerting: AlertingService;
   /** Null when WORKER_ENABLED=false. */
   scheduler: SyntheticScheduler | null;
 }
@@ -43,23 +68,50 @@ export async function buildApp(config: Config, options: BuildAppOptions = {}): P
   const sqlite = options.sqlite ?? openDatabase(config.SQLITE_PATH);
   const clickhouse = options.clickhouse ?? createClickHouse(config);
 
-  const { projectName, ...scope } = new ProjectRepository(sqlite).ensureDefault();
+  const projects = new ProjectRepository(sqlite);
+  const defaults = projects.ensureDefault();
+  const defaultScope: Scope = { projectId: defaults.projectId, environment: defaults.environment };
+  // Shared by every service: switching projects updates this object in place.
+  const scope: Scope = { ...(projects.activeScope() ?? defaultScope) };
   const monitors = new MonitorRepository(sqlite);
   const results = new SyntheticResultRepository(clickhouse);
   const metrics = new MetricRepository(clickhouse);
+  const spans = new SpanRepository(clickhouse);
+  const logs = new LogRepository(clickhouse);
   const writer = new ResultWriter(results, app.log);
+  const alertMonitors = new AlertMonitorRepository(sqlite);
+  const evaluator = new AlertEvaluator({
+    monitors: alertMonitors,
+    spans,
+    metrics,
+    log: app.log,
+    intervalMs: config.ALERT_INTERVAL_SECONDS * 1000,
+  });
   const scheduler = config.WORKER_ENABLED
     ? new SyntheticScheduler({ monitors, writer, log: app.log, concurrency: config.WORKER_CONCURRENCY })
     : null;
 
   const ctx: AppContext = {
     scope,
-    projectName,
+    defaultScope,
+    projects,
+    apiKeys: new ApiKeyRepository(sqlite),
+    ingest: {
+      apiUrl: config.PUBLIC_API_URL,
+      collectorUrl: config.PUBLIC_COLLECTOR_URL,
+      requireApiKey: config.INGEST_REQUIRE_API_KEY,
+    },
     monitors,
     results,
     service: new MonitorService(monitors, results, scope),
     metrics,
+    spans,
+    logs,
     hosts: new HostService(metrics, scope),
+    apm: new ApmService(spans, logs, scope),
+    logSearch: new LogService(logs, scope),
+    metricsExplorer: new MetricsExplorerService(metrics, scope),
+    alerting: new AlertingService(alertMonitors, evaluator, scope),
     scheduler,
   };
 
@@ -68,10 +120,12 @@ export async function buildApp(config: Config, options: BuildAppOptions = {}): P
     void ensureClickHouseSchema(clickhouse, app.log, lifetime.signal);
     writer.start();
     scheduler?.start();
+    if (config.ALERTS_ENABLED) evaluator.start();
   });
   app.addHook('onClose', async () => {
     lifetime.abort();
     scheduler?.stop();
+    await evaluator.stop();
     await writer.stop();
     await clickhouse.close();
     sqlite.close();
@@ -111,6 +165,11 @@ export async function buildApp(config: Config, options: BuildAppOptions = {}): P
       registerSystemRoutes(routes, ctx);
       registerMonitorRoutes(routes, ctx);
       registerHostRoutes(routes, ctx);
+      registerApmRoutes(routes, ctx);
+      registerLogRoutes(routes, ctx);
+      registerMetricRoutes(routes, ctx);
+      registerAlertingRoutes(routes, ctx);
+      registerSettingsRoutes(routes, ctx);
       registerIngestRoutes(routes, ctx);
     },
     { logLevel: 'warn' },

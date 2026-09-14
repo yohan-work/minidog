@@ -38,6 +38,68 @@ const MIGRATIONS: readonly string[] = [
 
   CREATE INDEX synthetic_monitors_scope ON synthetic_monitors (project_id, environment);
   `,
+  /* 2 — alert monitors and their state history */ `
+  CREATE TABLE alert_monitors (
+    id                  TEXT PRIMARY KEY,
+    project_id          TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    environment         TEXT NOT NULL,
+    name                TEXT NOT NULL,
+    type                TEXT NOT NULL,
+    target              TEXT NOT NULL,
+    metric              TEXT NOT NULL DEFAULT '',
+    warning_threshold   REAL,
+    critical_threshold  REAL NOT NULL,
+    window_minutes      INTEGER NOT NULL,
+    webhook_url         TEXT NOT NULL DEFAULT '',
+    enabled             INTEGER NOT NULL DEFAULT 1,
+    state               TEXT NOT NULL DEFAULT 'no_data',
+    state_value         REAL,
+    state_message       TEXT NOT NULL DEFAULT '',
+    state_changed_at    TEXT,
+    last_evaluated_at   TEXT,
+    created_at          TEXT NOT NULL,
+    updated_at          TEXT NOT NULL
+  );
+
+  CREATE INDEX alert_monitors_scope ON alert_monitors (project_id, environment);
+
+  CREATE TABLE alert_events (
+    id              TEXT PRIMARY KEY,
+    monitor_id      TEXT NOT NULL REFERENCES alert_monitors(id) ON DELETE CASCADE,
+    project_id      TEXT NOT NULL,
+    environment     TEXT NOT NULL,
+    from_state      TEXT NOT NULL,
+    to_state        TEXT NOT NULL,
+    value           REAL,
+    message         TEXT NOT NULL,
+    created_at      TEXT NOT NULL,
+    acknowledged    INTEGER NOT NULL DEFAULT 0,
+    webhook_status  TEXT NOT NULL DEFAULT ''
+  );
+
+  CREATE INDEX alert_events_monitor ON alert_events (monitor_id, created_at);
+  CREATE INDEX alert_events_scope ON alert_events (project_id, environment, created_at);
+  `,
+  /* 3 — ingest API keys and app settings */ `
+  CREATE TABLE api_keys (
+    id            TEXT PRIMARY KEY,
+    project_id    TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    environment   TEXT NOT NULL,
+    name          TEXT NOT NULL,
+    prefix        TEXT NOT NULL,
+    hash          TEXT NOT NULL UNIQUE,
+    created_at    TEXT NOT NULL,
+    last_used_at  TEXT,
+    revoked_at    TEXT
+  );
+
+  CREATE INDEX api_keys_project ON api_keys (project_id);
+
+  CREATE TABLE settings (
+    key    TEXT PRIMARY KEY,
+    value  TEXT NOT NULL
+  );
+  `,
 ];
 
 export function openDatabase(path: string): DatabaseSync {

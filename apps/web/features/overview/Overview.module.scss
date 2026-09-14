@@ -1,30 +1,91 @@
 @use '../../styles/mixins' as *;
 
+.attentionShape {
+  display: inline-block;
+  width: var(--space-2);
+  height: var(--space-2);
+  background: var(--status-warning);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+
 .attention {
   display: grid;
 }
 
+// Name · what is wrong · where to look next.
 .attentionItem {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(calc(var(--space-16) * 3), max-content) minmax(0, 1fr) auto;
   align-items: baseline;
-  gap: var(--space-1) var(--space-3);
-  padding-block: var(--space-2);
+  gap: var(--space-2) var(--space-6);
+  padding-block: var(--space-3);
   border-top: 1px solid var(--border-default);
   font-size: var(--text-secondary);
 
   &:first-child {
     border-top: 0;
+    padding-top: 0;
   }
+
+  @include tablet-down {
+    grid-template-columns: minmax(0, 1fr) auto;
+
+    .attentionDetails {
+      grid-column: 1 / -1;
+      grid-row: 2;
+    }
+  }
+}
+
+.attentionHead {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  min-width: 0;
 }
 
 .attentionName {
   font-weight: var(--weight-medium);
+  @include truncate;
 
   &:hover {
     text-decoration: underline;
     text-underline-offset: 3px;
   }
+}
+
+.attentionDetails {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-6);
+  min-width: 0;
+}
+
+.detail {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.detailLabel {
+  font-size: var(--text-meta);
+  color: var(--foreground-muted);
+}
+
+.detailValue {
+  @include mono-numeric;
+  font-size: var(--text-meta);
+  white-space: nowrap;
+}
+
+.worse {
+  color: var(--status-error);
+}
+
+.better {
+  color: var(--status-success);
 }
 
 .attentionReason {
@@ -39,20 +100,21 @@
   max-width: calc(var(--space-16) * 6);
 }
 
-.unavailable {
-  font-size: var(--text-secondary);
-  color: var(--foreground-secondary);
-}
-
 .attentionLink {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  margin-left: auto;
+  white-space: nowrap;
   color: var(--foreground-secondary);
   @include transition(color);
 
   &:hover {
     color: var(--foreground-primary);
   }
+}
+
+.onboarding {
+  display: grid;
+  gap: var(--space-4);
+  justify-items: start;
 }

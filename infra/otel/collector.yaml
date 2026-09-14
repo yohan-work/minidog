@@ -2,9 +2,9 @@
 #
 # - Receives OTLP over gRPC (4317) and HTTP (4318).
 # - Scrapes host metrics (CPU, memory, disk, network) every 15s.
-# - Sends metrics to the minidog Ingestion API (POST /v1/metrics, OTLP/HTTP
-#   JSON). Traces and logs are only logged until APM (Phase 4) and Logs
-#   (Phase 5).
+# - Sends metrics, traces and logs to the minidog Ingestion API
+#   (POST /v1/{metrics,traces,logs}, OTLP/HTTP JSON). Set MINIDOG_API_KEY to
+#   ingest into a specific project and environment.
 #
 # Under Docker Desktop the host metrics describe the Docker VM. On a Linux
 # server, mount the host root read-only (`/:/hostfs:ro`), set
@@ -108,12 +108,12 @@ processors:
   batch: {}
 
 exporters:
-  debug:
-    verbosity: basic
   otlp_http/minidog:
     endpoint: ${env:MINIDOG_INGEST_ENDPOINT}
     encoding: json
     compression: gzip
+    headers:
+      x-minidog-api-key: ${env:MINIDOG_API_KEY}
 
 extensions:
   health_check:
@@ -125,7 +125,7 @@ service:
     traces:
       receivers: [otlp]
       processors: [memory_limiter, batch]
-      exporters: [debug]
+      exporters: [otlp_http/minidog]
     metrics:
       receivers: [otlp]
       processors: [memory_limiter, cumulative_to_delta, batch]
@@ -137,4 +137,4 @@ service:
     logs:
       receivers: [otlp]
       processors: [memory_limiter, batch]
-      exporters: [debug]
+      exporters: [otlp_http/minidog]

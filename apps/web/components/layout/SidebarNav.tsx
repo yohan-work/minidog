@@ -21,15 +21,21 @@ const NAV: NavGroup[] = [
   {
     label: 'Observe',
     items: [
-      { label: 'Services' },
+      { label: 'Services', href: '/services' },
       { label: 'Infrastructure', href: '/infrastructure' },
-      { label: 'Metrics' },
-      { label: 'Traces' },
-      { label: 'Logs' },
+      { label: 'Metrics', href: '/metrics' },
+      { label: 'Traces', href: '/traces' },
+      { label: 'Logs', href: '/logs' },
     ],
   },
-  { label: 'Monitor', items: [{ label: 'Synthetics', href: '/synthetics' }, { label: 'Monitors' }] },
-  { items: [{ label: 'Settings' }] },
+  {
+    label: 'Monitor',
+    items: [
+      { label: 'Synthetics', href: '/synthetics' },
+      { label: 'Monitors', href: '/monitors' },
+    ],
+  },
+  { items: [{ label: 'Settings', href: '/settings' }] },
 ];
 
 function isActive(href: string, pathname: string | null): boolean {

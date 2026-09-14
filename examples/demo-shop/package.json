@@ -1,0 +1,28 @@
+{
+  "name": "@minidog/demo-shop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Three instrumented Node.js services that send traces, logs and metrics to minidog.",
+  "scripts": {
+    "start": "tsx --disable-warning=ExperimentalWarning src/main.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/api-logs": "^0.222.0",
+    "@opentelemetry/exporter-logs-otlp-http": "^0.222.0",
+    "@opentelemetry/exporter-metrics-otlp-http": "^0.222.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.222.0",
+    "@opentelemetry/resources": "^2.11.0",
+    "@opentelemetry/sdk-logs": "^0.222.0",
+    "@opentelemetry/sdk-metrics": "^2.11.0",
+    "@opentelemetry/sdk-node": "^0.222.0"
+  },
+  "devDependencies": {
+    "@minidog/config": "workspace:*",
+    "@types/node": "^24.0.0",
+    "tsx": "^4.23.13",
+    "typescript": "~5.9.3"
+  }
+}
