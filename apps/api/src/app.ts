@@ -111,7 +111,7 @@ export async function buildApp(config: Config, options: BuildAppOptions = {}): P
     apm: new ApmService(spans, logs, scope),
     logSearch: new LogService(logs, scope),
     metricsExplorer: new MetricsExplorerService(metrics, scope),
-    alerting: new AlertingService(alertMonitors, evaluator, scope),
+    alerting: new AlertingService(alertMonitors, evaluator, scope, config.ALERTS_ENABLED),
     scheduler,
   };
 

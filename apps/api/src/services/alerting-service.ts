@@ -7,7 +7,7 @@ import {
   type UpdateAlertMonitorInput,
 } from '@minidog/types';
 import { z } from 'zod';
-import { ClickHouseUnavailableError, NotFoundError } from '../lib/errors';
+import { NotFoundError } from '../lib/errors';
 import {
   publicMonitor,
   type AlertMonitorRepository,
@@ -35,6 +35,8 @@ export class AlertingService {
     private readonly monitors: AlertMonitorRepository,
     private readonly evaluator: AlertEvaluator,
     private readonly scope: Scope,
+    /** ALERTS_ENABLED: evaluate monitors right after they are saved. */
+    private readonly automaticEvaluation: boolean,
   ) {}
 
   list(): AlertMonitorListResponse {
@@ -81,14 +83,13 @@ export class AlertingService {
     return monitor.enabled ? this.evaluateNow(monitor) : monitor;
   }
 
-  /** While ClickHouse is unreachable the monitor keeps its state until the next interval. */
+  /**
+   * The change is already saved, so a failed evaluation must not fail the
+   * request (a retry would create a duplicate); the next interval tries again.
+   * With ALERTS_ENABLED=false nothing is evaluated automatically, or notified.
+   */
   private async evaluateNow(monitor: ScopedAlertMonitor): Promise<ScopedAlertMonitor> {
-    try {
-      return await this.evaluator.evaluate(monitor);
-    } catch (error) {
-      if (error instanceof ClickHouseUnavailableError) return monitor;
-      throw error;
-    }
+    return this.automaticEvaluation ? this.evaluator.evaluateQuietly(monitor) : monitor;
   }
 
   delete(id: string): void {
