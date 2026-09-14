@@ -17,7 +17,7 @@ Metrics, traces, logs and uptime checks in one dashboard, built on OpenTelemetry
 
 ---
 
-<img width="1890" height="905" alt="스크린샷 2026-09-14 오후 5 11 14" src="https://github.com/user-attachments/assets/1ac1d07c-6d87-4099-ac14-8506b4b2f6dd" />
+<img width="1899" height="917" alt="스크린샷 2026-09-14 오후 5 47 22" src="https://github.com/user-attachments/assets/343b2aac-52bf-49f3-8d49-dee3c58d9c0d" />
 
 
 minidog takes the core Datadog workflow and scales it down for solo developers and small teams:
