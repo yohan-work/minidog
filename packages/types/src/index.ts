@@ -472,6 +472,39 @@ export interface ErrorListResponse {
   truncated: boolean;
 }
 
+/** Order of the query ranking: time spent (calls × duration), P95, or calls. */
+export const DB_QUERY_SORTS = ['total', 'p95', 'calls'] as const;
+export type DbQuerySort = (typeof DB_QUERY_SORTS)[number];
+
+/** Database client spans with the same statement shape (literals replaced by `?`). */
+export interface DbQuerySummary {
+  service: string;
+  /** `db.system.name`, e.g. `postgresql`. */
+  dbSystem: string;
+  statement: string;
+  /** `db.collection.name` (table); '' when not reported. */
+  collection: string;
+  calls: number;
+  errors: number;
+  errorRate: number | null;
+  /** Time spent in this statement in the window. */
+  totalMs: number;
+  avgMs: number | null;
+  p95Ms: number | null;
+  maxMs: number | null;
+  /** The slowest call, to open in its trace. */
+  slowestTraceId: string;
+  slowestSpanId: string;
+}
+
+export interface DbQueryListResponse {
+  range: TimeRange;
+  sort: DbQuerySort;
+  queries: DbQuerySummary[];
+  /** True when the result hit the limit. */
+  truncated: boolean;
+}
+
 export interface SpanEvent {
   timeUnixMs: number | null;
   name: string;

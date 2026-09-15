@@ -33,6 +33,7 @@ The goal is to reach the root cause in three screens or fewer, without first lea
 - **Logs**: search and filter by service and level. Log lines that carry a trace ID link to that trace.
 - **Correlation**: trace → related logs and log → trace, carrying the time range and filters across pages. Drag across a request or latency chart to open that window's slowest traces, error traces, error logs or exceptions.
 - **Errors**: exceptions recorded on spans, grouped by type and message, with affected traces, endpoints, first and last seen.
+- **Database queries**: statements from database client spans ranked by time spent, P95 or calls, with literals replaced by `?`; each opens its slowest call.
 - **Infrastructure**: host CPU, memory, disk and network through the OTel `hostmetrics` receiver.
 - **Metrics Explorer**: query any ingested metric with aggregation and filters.
 - **Synthetics**: HTTP checks with status, latency, availability and SSL expiry.

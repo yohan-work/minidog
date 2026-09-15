@@ -10,6 +10,8 @@ import {
   type ServiceMapNode,
   type ServiceMapResponse,
   type ServiceResponse,
+  type DbQueryListResponse,
+  type DbQuerySort,
   type ErrorListResponse,
   type ServiceSummary,
   type TimeRange,
@@ -29,6 +31,15 @@ const LOOKBACK_MS = 14 * 24 * 60 * 60 * 1000;
 
 /** `from`/`to` (epoch ms) is an absolute window selected on a chart; it overrides `range`. */
 export type TraceQuery = Omit<TraceFilters, 'fromMs' | 'toMs'> & { range: TimeRange; from?: number; to?: number };
+
+export interface DbQueryQuery {
+  range: TimeRange;
+  from?: number;
+  to?: number;
+  service?: string;
+  sort: DbQuerySort;
+  limit: number;
+}
 
 export interface ErrorQuery {
   range: TimeRange;
@@ -164,6 +175,12 @@ export class ApmService {
     const { range, from, to, ...filters } = query;
     const traces = await this.spans.traces(this.scope, { ...filters, ...queryBounds(range, from, to) });
     return { range, traces, truncated: traces.length >= filters.limit };
+  }
+
+  /** Database statements ranked by time spent, P95 or calls. */
+  async queries({ range, from, to, service, sort, limit }: DbQueryQuery): Promise<DbQueryListResponse> {
+    const queries = await this.spans.slowQueries(this.scope, { ...queryBounds(range, from, to), service, sort, limit });
+    return { range, sort, queries, truncated: queries.length >= limit };
   }
 
   /** Recorded exceptions grouped by type and message. */

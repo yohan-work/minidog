@@ -105,6 +105,7 @@ Observe
  ├ Metrics               지표 · 집계 · 서비스/호스트 필터 · 그룹
  ├ Traces                Trace Explorer · Trace 상세(Waterfall, 느린 span, 관련 로그) · 느린 순 정렬
  ├ Errors                예외(type+message) 묶음 · 영향받은 트레이스 수 · 엔드포인트 · 처음/마지막 발생
+ ├ Queries               DB 쿼리 순위(총 소요 시간 · P95 · 호출 수, 값은 ? 로 묶음) · 가장 느린 호출의 트레이스로 이동
  └ Logs                  Log Explorer(서비스/레벨/검색/trace id) → Trace
 Monitor
  ├ Synthetics            URL 체크(상태 코드, 지연, 가용성, SSL 만료)
@@ -126,6 +127,7 @@ Settings                 프로젝트 · 환경 · API key · 연결 정보
 | E. URL 다운 알림 | Synthetics → 모니터 상세 → Create alert(Synthetic check · Failed checks, Webhook URL). 다운되면 Critical로 바뀌고 Webhook이 간다. Alert after를 고르면 그 시간 동안 계속될 때만, Mute 중에는 기록만 하고 해제 후 한 번 보낸다 |
 | F. 구간 드릴다운 · Errors | `pnpm demo` 후 `curl -X POST localhost:5100/__demo/scenario -d '{"paymentErrorRate":0.5,"dbDelayMs":300}'` → Services 요청 차트를 드래그 → Slowest traces / Exceptions. Errors에 `card declined by issuer`가 묶여 보인다 |
 | G. 배포 표시선 | `pnpm demo`를 끄고 `DEMO_VERSION=1.1.0 pnpm demo`로 다시 실행 → 서비스 차트에 `1.1.0` 세로선, 서비스 상세 Versions에 1.0.0 / 1.1.0 비교 |
+| H. 느린 DB 쿼리 | `pnpm demo` 후 `curl -X POST localhost:5100/__demo/scenario -d '{"dbDelayMs":300}'` → Queries에서 `INSERT INTO orders …`가 총 소요 시간 1위, 행을 누르면 가장 느린 호출의 트레이스 |
 
 ## 개발
 

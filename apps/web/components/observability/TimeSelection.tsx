@@ -42,8 +42,8 @@ export interface DrilldownLink {
 }
 
 /**
- * Where to look next for a window: its slowest and failed requests, error logs
- * and exceptions. The range is kept so clearing the window returns to it.
+ * Where to look next for a window: its slowest and failed requests, error logs,
+ * exceptions and database queries. The range is kept so clearing the window returns to it.
  */
 export function drilldownLinks(selection: TimeWindowSelection, range: TimeRange, service?: string): DrilldownLink[] {
   const scope = { ...(service ? { service } : {}), ...windowParams(selection) };
@@ -52,6 +52,7 @@ export function drilldownLinks(selection: TimeWindowSelection, range: TimeRange,
     { label: 'Error traces', href: withRange(`/traces${toQuery({ ...scope, status: 'error' })}`, range) },
     { label: 'Error logs', href: withRange(`/logs${toQuery({ ...scope, level: 'error' })}`, range) },
     { label: 'Exceptions', href: withRange(`/errors${toQuery(scope)}`, range) },
+    { label: 'Slow queries', href: withRange(`/queries${toQuery(scope)}`, range) },
   ];
 }
 

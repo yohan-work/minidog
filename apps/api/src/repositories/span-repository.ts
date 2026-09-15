@@ -1,4 +1,4 @@
-import type { ErrorGroup, SpanEvent, SpanKind, SpanStatus, TraceSort } from '@minidog/types';
+import type { DbQuerySort, DbQuerySummary, ErrorGroup, SpanEvent, SpanKind, SpanStatus, TraceSort } from '@minidog/types';
 import { ClickHouseRepository } from '../db/clickhouse-repository';
 import type { SpanRow } from '../ingest/otlp-traces';
 import type { Scope } from './project-repository';
@@ -94,6 +94,30 @@ export interface RawVersionRow {
   errors: number;
   p95Ms: number | null;
 }
+
+export interface DbQueryFilters {
+  fromMs: number;
+  toMs?: number;
+  service?: string;
+  sort: DbQuerySort;
+  limit: number;
+}
+
+// Statement normalisation, passed as query parameters so ClickHouse string
+// escaping never touches the regular expressions. String literals and bare
+// numbers become `?` (numbers inside names or `$1` placeholders are kept).
+const STATEMENT_PATTERNS = {
+  stringLiteral: String.raw`'(?:[^']|'')*'`,
+  numberLiteral: String.raw`(^|[^\w$.])-?\d+(?:\.\d+)?`,
+  numberReplacement: String.raw`\1?`,
+  whitespace: String.raw`\s+`,
+};
+
+const QUERY_ORDER: Record<DbQuerySort, string> = {
+  total: 'total_ms DESC',
+  p95: 'p95 DESC',
+  calls: 'calls DESC',
+};
 
 export interface ErrorGroupFilters {
   fromMs: number;
@@ -491,6 +515,82 @@ export class SpanRepository extends ClickHouseRepository {
       errors: Number(row.errors),
       p95Ms: toMs(row.p95),
     }));
+  }
+
+  /**
+   * Database client spans (those with `db.system.name`) grouped by service,
+   * system and normalised statement (`db.query.text`, or the older
+   * `db.statement`, else the span name).
+   */
+  async slowQueries(scope: Scope, filters: DbQueryFilters): Promise<DbQuerySummary[]> {
+    const rows = await this.query<{
+      service: string;
+      db_system: string;
+      statement: string;
+      collection: string;
+      calls: Num;
+      errors: Num;
+      total_ms: NullableNum;
+      avg_ms: NullableNum;
+      p95: NullableNum;
+      max_ms: NullableNum;
+      slowest_trace_id: string;
+      slowest_span_id: string;
+    }>(
+      `SELECT
+         service,
+         db_system,
+         statement,
+         any(collection) AS collection,
+         count() AS calls,
+         sum(is_error) AS errors,
+         sum(duration_ms) AS total_ms,
+         avg(duration_ms) AS avg_ms,
+         quantile(0.95)(duration_ms) AS p95,
+         max(duration_ms) AS max_ms,
+         argMax(trace_id, duration_ms) AS slowest_trace_id,
+         argMax(span_id, duration_ms) AS slowest_span_id
+       FROM (
+         SELECT service, db_system, trace_id, span_id, duration_ms, is_error,
+                if(attributes['db.collection.name'] != '', attributes['db.collection.name'], attributes['db.sql.table']) AS collection,
+                substring(trimBoth(replaceRegexpAll(replaceRegexpAll(replaceRegexpAll(
+                  multiIf(attributes['db.query.text'] != '', attributes['db.query.text'],
+                          attributes['db.statement'] != '', attributes['db.statement'],
+                          name),
+                  {stringLiteral:String}, '?'),
+                  {numberLiteral:String}, {numberReplacement:String}),
+                  {whitespace:String}, ' ')), 1, 2000) AS statement
+         FROM spans
+         WHERE ${SCOPE_FILTER}
+           AND db_system != ''
+           ${optional(filters.service, 'service = {service:String}')}
+           AND ${since('fromMs')}
+           ${optional(filters.toMs, before('toMs'))}
+       )
+       GROUP BY service, db_system, statement
+       ORDER BY ${QUERY_ORDER[filters.sort]}
+       LIMIT {limit:UInt32}`,
+      { ...scope, ...filters, ...STATEMENT_PATTERNS },
+    );
+    return rows.map((row) => {
+      const calls = Number(row.calls);
+      const errors = Number(row.errors);
+      return {
+        service: row.service,
+        dbSystem: row.db_system,
+        statement: row.statement,
+        collection: row.collection,
+        calls,
+        errors,
+        errorRate: calls > 0 ? errors / calls : null,
+        totalMs: toMs(row.total_ms) ?? 0,
+        avgMs: toMs(row.avg_ms),
+        p95Ms: toMs(row.p95),
+        maxMs: toMs(row.max_ms),
+        slowestTraceId: row.slowest_trace_id,
+        slowestSpanId: row.slowest_span_id,
+      };
+    });
   }
 
   async trace(scope: Scope, traceId: string): Promise<RawSpan[]> {
