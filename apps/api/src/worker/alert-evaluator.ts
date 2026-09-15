@@ -36,6 +36,11 @@ export class AlertEvaluator {
 
   constructor(private readonly deps: AlertEvaluatorDeps) {}
 
+  /** Evaluations further apart than this (missed passes, an outage) restart pending delays. */
+  private get maxGapMs(): number {
+    return Math.max(this.deps.intervalMs * 3, 2 * 60_000);
+  }
+
   start(): void {
     if (this.timer) return;
     this.timer = setInterval(() => void this.evaluateAll(), this.deps.intervalMs);
@@ -103,7 +108,7 @@ export class AlertEvaluator {
     // The value covers the window it was measured over.
     const message = alertMessage({ ...current, windowMinutes: measured.windowMinutes, thresholds }, state, value);
     const now = new Date();
-    const event = this.deps.monitors.recordEvaluation(current, { state, value, message }, now);
+    const event = this.deps.monitors.recordEvaluation(current, { state, value, message }, now, this.maxGapMs);
     this.notify(current, event, now.getTime());
     return this.deps.monitors.get(monitor.id) ?? current;
   }

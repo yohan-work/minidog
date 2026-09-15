@@ -57,7 +57,7 @@ test('synthetic SSL expiry alerts below; other synthetic signals above', () => {
 
 test('transition delay: immediate without a delay, pending with one', () => {
   const at = new Date('2026-09-14T12:00:00Z');
-  const base = { stored: 'ok', pending: null, at, alertAfterMinutes: 0, recoverAfterMinutes: 0 } as const;
+  const base = { stored: 'ok', pending: null, at, alertAfterMinutes: 0, recoverAfterMinutes: 0, lastEvaluatedAt: null, maxGapMs: 120_000 } as const;
 
   assert.deepEqual(applyTransitionDelay({ ...base, derived: 'critical' }), { state: 'critical', pending: null });
   assert.deepEqual(applyTransitionDelay({ ...base, derived: 'critical', alertAfterMinutes: 5 }), {

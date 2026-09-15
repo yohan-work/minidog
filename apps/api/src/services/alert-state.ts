@@ -133,13 +133,18 @@ export interface DelayInput {
   at: Date;
   alertAfterMinutes: number;
   recoverAfterMinutes: number;
+  /** Previous evaluation (ISO). A pending clock only keeps running across consecutive evaluations. */
+  lastEvaluatedAt: string | null;
+  /** Longest gap between evaluations that still counts as consecutive. */
+  maxGapMs: number;
 }
 
 /**
  * Noise control: a worse state is entered only after it has lasted
  * `alertAfterMinutes`, a better one after `recoverAfterMinutes`. The clock
  * keeps running while measurements move the same way (e.g. warning, then
- * critical) and restarts when they reverse.
+ * critical) and restarts when they reverse — or when evaluations stopped for
+ * a while (paused, ClickHouse outage): time nobody measured never counts.
  */
 export function applyTransitionDelay(input: DelayInput): { state: AlertState; pending: PendingTransition | null } {
   const { stored, pending, derived, at } = input;
@@ -149,7 +154,10 @@ export function applyTransitionDelay(input: DelayInput): { state: AlertState; pe
   const delayMinutes = direction > 0 ? input.alertAfterMinutes : direction < 0 ? input.recoverAfterMinutes : 0;
   if (delayMinutes <= 0) return { state: derived, pending: null };
 
-  const continues = pending !== null && Math.sign(SEVERITY[pending.state] - SEVERITY[stored]) === direction;
+  const measuredWithoutGap =
+    input.lastEvaluatedAt !== null && at.getTime() - Date.parse(input.lastEvaluatedAt) <= input.maxGapMs;
+  const continues =
+    pending !== null && measuredWithoutGap && Math.sign(SEVERITY[pending.state] - SEVERITY[stored]) === direction;
   const since = continues ? pending.since : at.toISOString();
   if (at.getTime() - Date.parse(since) >= delayMinutes * 60_000) return { state: derived, pending: null };
   return { state: stored, pending: { state: derived, since } };

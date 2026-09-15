@@ -213,6 +213,8 @@ export class AlertMonitorRepository {
       assignments.push(`${COLUMNS[key]} = ?`);
       values.push(typeof value === 'boolean' ? Number(value) : value);
     }
+    // Pausing or resuming ends any pending transition: the paused time was not measured.
+    if (patch.enabled !== undefined) assignments.push('pending_state = NULL', 'pending_since = NULL');
     if (assignments.length > 0) {
       assignments.push('updated_at = ?');
       values.push(new Date().toISOString());
@@ -238,6 +240,8 @@ export class AlertMonitorRepository {
     monitor: ScopedAlertMonitor,
     result: { state: AlertState; value: number | null; message: string },
     at: Date,
+    /** Longest gap between evaluations that keeps a pending clock running. */
+    maxGapMs: number = Number.POSITIVE_INFINITY,
   ): AlertEvent | null {
     const now = at.toISOString();
     let eventId: string | null = null;
@@ -245,7 +249,7 @@ export class AlertMonitorRepository {
     try {
       const stored = this.db
         .prepare(
-          `SELECT state, pending_state, pending_since, alert_after_minutes, recover_after_minutes
+          `SELECT state, pending_state, pending_since, last_evaluated_at, alert_after_minutes, recover_after_minutes
              FROM alert_monitors WHERE id = ?`,
         )
         .get(monitor.id) as
@@ -253,6 +257,7 @@ export class AlertMonitorRepository {
             state: AlertState;
             pending_state: AlertState | null;
             pending_since: string | null;
+            last_evaluated_at: string | null;
             alert_after_minutes: number;
             recover_after_minutes: number;
           }
@@ -266,6 +271,8 @@ export class AlertMonitorRepository {
           at,
           alertAfterMinutes: stored.alert_after_minutes,
           recoverAfterMinutes: stored.recover_after_minutes,
+          lastEvaluatedAt: stored.last_evaluated_at,
+          maxGapMs,
         });
         const changed = next.state !== stored.state;
         this.db

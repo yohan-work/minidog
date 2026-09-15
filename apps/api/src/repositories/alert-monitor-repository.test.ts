@@ -131,3 +131,33 @@ test('a held notification can be claimed once', () => {
   assert.equal(monitors.claimMutedEvent(event.id), true);
   assert.equal(monitors.claimMutedEvent(event.id), false);
 });
+
+test('a pending clock does not count time without evaluations', () => {
+  const { monitors, monitor } = setup({ alertAfterMinutes: 5 });
+  const gap = 2 * 60_000;
+  monitors.recordEvaluation(monitor, ok, at, gap);
+  monitors.recordEvaluation(monitor, critical, minutesLater(1), gap);
+
+  // Evaluations stop (outage) and resume a day later with the breach still there.
+  assert.equal(monitors.recordEvaluation(monitor, critical, minutesLater(24 * 60), gap), null, 'no instant alert');
+  assert.equal(monitors.get(monitor.id)?.pendingSince, minutesLater(24 * 60).toISOString(), 'the clock restarts');
+  // Consecutive evaluations (every minute) then let the delay run out.
+  for (const minute of [1, 2, 3, 4]) {
+    assert.equal(monitors.recordEvaluation(monitor, critical, minutesLater(24 * 60 + minute), gap), null);
+  }
+  assert.equal(monitors.recordEvaluation(monitor, critical, minutesLater(24 * 60 + 5), gap)?.toState, 'critical');
+});
+
+test('pausing or resuming clears a pending transition', () => {
+  const { monitors, monitor } = setup({ alertAfterMinutes: 5 });
+  monitors.recordEvaluation(monitor, ok, at);
+  monitors.recordEvaluation(monitor, critical, minutesLater(1));
+  assert.equal(monitors.get(monitor.id)?.pendingState, 'critical');
+
+  monitors.update(monitor.id, { enabled: false });
+  assert.equal(monitors.get(monitor.id)?.pendingState, null);
+  assert.equal(monitors.get(monitor.id)?.pendingSince, null);
+
+  monitors.update(monitor.id, { enabled: true });
+  assert.equal(monitors.recordEvaluation(monitor, critical, minutesLater(10)), null, 'the delay starts again after resume');
+});
