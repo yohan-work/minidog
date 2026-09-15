@@ -106,8 +106,10 @@ export interface DbQueryFilters {
 // Statement normalisation, passed as query parameters so ClickHouse string
 // escaping never touches the regular expressions. String literals and bare
 // numbers become `?` (numbers inside names or `$1` placeholders are kept).
+// Quotes inside a literal may be doubled (`''`, standard SQL) or
+// backslash-escaped (`\'`, MySQL).
 const STATEMENT_PATTERNS = {
-  stringLiteral: String.raw`'(?:[^']|'')*'`,
+  stringLiteral: String.raw`'(?:[^'\\]|\\.|'')*'`,
   numberLiteral: String.raw`(^|[^\w$.])-?\d+(?:\.\d+)?`,
   numberReplacement: String.raw`\1?`,
   whitespace: String.raw`\s+`,
