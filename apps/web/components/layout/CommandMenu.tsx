@@ -27,14 +27,24 @@ export function openCommandMenu(): void {
   window.dispatchEvent(new Event(OPEN_EVENT));
 }
 
+/**
+ * ⌘K on Apple devices, Ctrl+K elsewhere. Only the platform's own modifier is
+ * taken: on macOS Ctrl+K in a text field deletes to the end of the line.
+ */
+function isApplePlatform(): boolean {
+  return /mac|iphone|ipad/i.test(navigator.userAgent);
+}
+
 /** Mounted once in the shell: ⌘K / Ctrl+K toggles the menu; navigating closes it. */
 export function CommandMenu() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
   useEffect(() => {
+    const apple = isApplePlatform();
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+      if (event.isComposing) return;
+      if ((apple ? event.metaKey : event.ctrlKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
         setOpen((current) => !current);
       }
@@ -138,6 +148,9 @@ function CommandDialog({ onClose }: { onClose: () => void }) {
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    // While an input method composes (e.g. Hangul), Enter and Escape belong to
+    // the composition, not to the menu.
+    if (event.nativeEvent.isComposing || event.keyCode === 229) return;
     const count = flat.length;
     if (event.key === 'ArrowDown' && count > 0) {
       event.preventDefault();
@@ -235,15 +248,13 @@ function CommandDialog({ onClose }: { onClose: () => void }) {
 
 /** Top bar button; shows ⌘K on Apple devices and Ctrl K elsewhere. */
 export function CommandMenuTrigger() {
-  const [shortcut, setShortcut] = useState('Ctrl K');
-  useEffect(() => {
-    if (/mac|iphone|ipad/i.test(navigator.userAgent)) setShortcut('⌘K');
-  }, []);
+  const [apple, setApple] = useState(false);
+  useEffect(() => setApple(isApplePlatform()), []);
   return (
-    <button type="button" className={styles.trigger} onClick={openCommandMenu} aria-keyshortcuts="Meta+K Control+K">
+    <button type="button" className={styles.trigger} onClick={openCommandMenu} aria-keyshortcuts={apple ? 'Meta+K' : 'Control+K'}>
       <Icon name="search" size={14} />
       <span className={styles.triggerLabel}>Search</span>
-      <kbd className={styles.kbd}>{shortcut}</kbd>
+      <kbd className={styles.kbd}>{apple ? '⌘K' : 'Ctrl K'}</kbd>
     </button>
   );
 }
