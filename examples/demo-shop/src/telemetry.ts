@@ -5,7 +5,7 @@ import { logs, SeverityNumber } from '@opentelemetry/api-logs';
 import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-http';
 import { AggregationTemporalityPreference, OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
-import { resourceFromAttributes } from '@opentelemetry/resources';
+import { envDetector, resourceFromAttributes } from '@opentelemetry/resources';
 import { BatchLogRecordProcessor } from '@opentelemetry/sdk-logs';
 import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
 import { NodeSDK } from '@opentelemetry/sdk-node';
@@ -17,8 +17,9 @@ import { NodeSDK } from '@opentelemetry/sdk-node';
  */
 export function startTelemetry(service: string): NodeSDK {
   const sdk = new NodeSDK({
-    // Detected attributes would replace these (host.name became the container id in Docker).
-    autoDetectResources: false,
+    // Only the standard OTEL_RESOURCE_ATTRIBUTES / OTEL_SERVICE_NAME may override these; the
+    // host detector would replace host.name with the container id in Docker.
+    resourceDetectors: [envDetector],
     resource: resourceFromAttributes({
       'service.name': service,
       // Restart with DEMO_VERSION=1.1.0 to simulate a deployment.

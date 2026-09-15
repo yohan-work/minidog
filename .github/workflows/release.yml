@@ -1,13 +1,12 @@
 name: Release images
 
-# Publishes ghcr.io/<owner>/minidog-{api,web,demo} for a version tag (v0.1.0),
+# Publishes ghcr.io/<owner>/minidog-{api,web,demo} when a version tag (v0.1.0) is pushed,
 # for amd64 and arm64. Each platform is built in its own emulated build (the
 # dashboard's standalone output includes a platform-specific native module),
 # so arm64 takes longer; layers are cached between releases.
 on:
   push:
     tags: ['v*']
-  workflow_dispatch:
 
 permissions:
   contents: read
