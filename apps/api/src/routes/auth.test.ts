@@ -63,6 +63,17 @@ test('the Query API needs a password set on first run and a session afterwards',
     assert.equal(logout.statusCode, 204);
     assert.equal((await app.inject({ url: '/api/dashboards', headers: { cookie } })).statusCode, 401);
 
+    // Percent-encoding the path does not get around the guard.
+    assert.equal((await app.inject({ url: '/%61pi/dashboards' })).statusCode, 401);
+    const encoded = await app.inject({ method: 'POST', url: '/%61pi/dashboards', headers: { 'content-type': 'application/json' }, payload: { name: 'x' } });
+    assert.equal(encoded.statusCode, 403);
+
+    // A malformed cookie reads as signed out instead of breaking every call.
+    const garbled = await app.inject({ url: '/api/auth/status', headers: { cookie: 'minidog_session=%E0' } });
+    assert.equal(garbled.statusCode, 200);
+    assert.equal(garbled.json().signedIn, false);
+    assert.equal((await app.inject({ url: '/api/dashboards', headers: { cookie: 'minidog_session=%E0' } })).statusCode, 401);
+
     // Health stays public for probes; ingest is not behind the session.
     assert.notEqual((await app.inject({ url: '/api/health' })).statusCode, 401);
   } finally {

@@ -19,10 +19,11 @@ const setupSchema = z.object({ password }).strict();
 const loginSchema = z.object({ password: z.string().min(1, 'Enter the password.').max(200) }).strict();
 const changeSchema = z.object({ current: z.string().min(1, 'Enter the current password.').max(200), next: password }).strict();
 
+/** Tokens are base64url, so the value is read as is (decoding a malformed cookie would throw). */
 export function readSessionToken(request: FastifyRequest): string | undefined {
   for (const part of (request.headers.cookie ?? '').split(';')) {
     const [name, ...value] = part.trim().split('=');
-    if (name === SESSION_COOKIE) return decodeURIComponent(value.join('='));
+    if (name === SESSION_COOKIE) return value.join('=') || undefined;
   }
   return undefined;
 }
@@ -39,7 +40,8 @@ function setSessionCookie(request: FastifyRequest, reply: FastifyReply, token: s
  */
 export function authGuard(ctx: AppContext) {
   return async (request: FastifyRequest): Promise<void> => {
-    const path = request.url.split('?')[0] ?? '';
+    // The route the router matched, not the raw URL: /%61pi/... decodes to /api/... when routed.
+    const path = request.routeOptions.url ?? '';
     if (!path.startsWith('/api/')) return;
     if (CHANGES_DATA.has(request.method) && request.headers[REQUEST_HEADER] !== '1') {
       throw new HttpError(403, 'missing_request_header', `Requests that change data need the ${REQUEST_HEADER} header.`);

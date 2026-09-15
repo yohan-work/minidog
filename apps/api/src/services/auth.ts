@@ -11,6 +11,8 @@ const SCRYPT = { N: 16_384, r: 8, p: 1, keyLength: 64 };
 const FREE_FAILURES = 5;
 const FAILURE_WINDOW_MS = 15 * 60_000;
 const MAX_DELAY_MS = 5_000;
+/** More simultaneous attempts than this are turned away until some finish. */
+const MAX_IN_FLIGHT = 10;
 
 function derive(password: string, salt: Buffer, params: { N: number; r: number; p: number; keyLength: number }): Promise<Buffer> {
   return new Promise((resolve, reject) =>
@@ -45,7 +47,9 @@ export const hashToken = (token: string): string => createHash('sha256').update(
 export class AuthService {
   /** Recent wrong passwords, for everyone: behind the dashboard's proxy every request has the same address. */
   private failures: number[] = [];
-  /** Sign-in and setup run one at a time, so parallel requests cannot outrun the delay or race the first password. */
+  /** Attempts still being checked; they count towards the delay, so a burst cannot outrun it. */
+  private inFlight = 0;
+  /** First-run setup runs one at a time, so two requests cannot race the first password. */
   private queue: Promise<unknown> = Promise.resolve();
 
   constructor(
@@ -77,13 +81,15 @@ export class AuthService {
 
   /**
    * After a few wrong passwords each attempt waits longer (up to 5 s), for
-   * everyone. Nobody is locked out: the owner gets in after the wait.
+   * everyone. Nobody is locked out: the owner gets in after at most the wait.
    */
-  signIn(password: string): Promise<string> {
-    return this.serialized(async () => {
+  async signIn(password: string): Promise<string> {
+    if (this.inFlight >= MAX_IN_FLIGHT) throw new HttpError(429, 'too_many_attempts', 'Too many sign-in attempts at once. Try again in a moment.');
+    this.inFlight += 1;
+    try {
       const now = Date.now();
       this.failures = this.failures.filter((at) => now - at < FAILURE_WINDOW_MS);
-      const extra = this.failures.length - FREE_FAILURES;
+      const extra = this.failures.length + (this.inFlight - 1) - FREE_FAILURES;
       if (extra >= 0) await new Promise((resolve) => setTimeout(resolve, Math.min(MAX_DELAY_MS, 250 * 2 ** extra)));
 
       const stored = this.store.passwordHash();
@@ -94,7 +100,9 @@ export class AuthService {
       }
       this.failures = [];
       return this.startSession();
-    });
+    } finally {
+      this.inFlight -= 1;
+    }
   }
 
   signOut(token: string | undefined): void {
