@@ -4,6 +4,7 @@ import type { Socket } from 'node:net';
 import { performance } from 'node:perf_hooks';
 import type { TLSSocket } from 'node:tls';
 import type { CheckStatus, HttpMethod } from '@minidog/types';
+import { checkHost, guardedLookup } from '../lib/network-guard';
 import { formatExpectedStatus, matchesStatus, type StatusMatcher } from './expected-status';
 
 const MAX_BODY_BYTES = 1024 * 1024;
@@ -135,6 +136,9 @@ export async function performHttpCheck(target: HttpCheckTarget): Promise<HttpChe
   for (;;) {
     const remaining = deadline - performance.now();
     if (remaining <= 0) return finish(failedHop(timeoutMessage), url.toString());
+    // Every hop, redirects included: an IP literal connects without the guarded DNS lookup.
+    const blocked = checkHost(url.hostname);
+    if (blocked) return finish(failedHop(blocked.message), url.toString());
     const hop = await requestOnce(url, target.method, remaining, readBody, timeoutMessage);
     firstCertificate ??= hop.sslExpiresAt;
 
@@ -195,6 +199,7 @@ function requestOnce(url: URL, method: HttpMethod, timeoutMs: number, readBody: 
       request = client.request(url, {
         method,
         agent: false,
+        lookup: guardedLookup,
         headers: { 'user-agent': USER_AGENT, accept: '*/*' },
       });
     } catch (error) {
@@ -240,6 +245,8 @@ function requestOnce(url: URL, method: HttpMethod, timeoutMs: number, readBody: 
 
 function describeError(error: NodeJS.ErrnoException): string {
   switch (error.code) {
+    case 'EBLOCKED':
+      return error.message;
     case 'ENOTFOUND':
     case 'EAI_AGAIN':
       return `DNS lookup failed (${error.code})`;

@@ -7,6 +7,7 @@ import type { Config } from './config';
 import { createClickHouse, ensureClickHouseSchema } from './db/clickhouse';
 import { openDatabase } from './db/sqlite';
 import { errorBody, HttpError } from './lib/errors';
+import { networkPolicy } from './lib/network-guard';
 import { AlertMonitorRepository } from './repositories/alert-monitor-repository';
 import { ApiKeyRepository } from './repositories/api-key-repository';
 import { DashboardRepository } from './repositories/dashboard-repository';
@@ -78,6 +79,7 @@ export interface BuildAppOptions {
 
 export async function buildApp(config: Config, options: BuildAppOptions = {}): Promise<FastifyInstance> {
   const app = Fastify({ logger: { level: config.LOG_LEVEL } });
+  networkPolicy.blockPrivate = config.BLOCK_PRIVATE_TARGETS;
 
   const sqlite = options.sqlite ?? openDatabase(config.SQLITE_PATH);
   const clickhouse = options.clickhouse ?? createClickHouse(config);
