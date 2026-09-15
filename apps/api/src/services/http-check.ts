@@ -31,11 +31,16 @@ export interface HttpCheckResult {
   statusCode: number;
   /** Total time until the final body was read (or the check failed), redirects included. */
   latencyMs: number;
-  /** Connection timings and certificate are those of the final request. */
+  /** Connection timings are those of the final request. */
   dnsMs: number | null;
   connectMs: number | null;
   tlsMs: number | null;
   ttfbMs: number | null;
+  /**
+   * The first certificate presented: the monitored host's own, or for an
+   * http:// URL the one it redirects to. A later hop on another host must not
+   * hide an expiring certificate on the monitored one.
+   */
   sslExpiresAt: Date | null;
   /** Empty when the check passed. */
   error: string;
@@ -94,6 +99,7 @@ export async function performHttpCheck(target: HttpCheckTarget): Promise<HttpChe
   const expected = target.bodyContains ?? '';
   const readBody = expected !== '' && target.method !== 'HEAD';
   let redirects = 0;
+  let firstCertificate: Date | null = null;
 
   const finish = (hop: Hop, url: string, failure = ''): HttpCheckResult => {
     let error = failure || hop.error;
@@ -112,7 +118,7 @@ export async function performHttpCheck(target: HttpCheckTarget): Promise<HttpChe
       connectMs: hop.connectMs,
       tlsMs: hop.tlsMs,
       ttfbMs: hop.ttfbMs,
-      sslExpiresAt: hop.sslExpiresAt,
+      sslExpiresAt: firstCertificate ?? hop.sslExpiresAt,
       error: passed ? '' : error,
       redirects,
       finalUrl: url,
@@ -130,6 +136,7 @@ export async function performHttpCheck(target: HttpCheckTarget): Promise<HttpChe
     const remaining = deadline - performance.now();
     if (remaining <= 0) return finish(failedHop(timeoutMessage), url.toString());
     const hop = await requestOnce(url, target.method, remaining, readBody, timeoutMessage);
+    firstCertificate ??= hop.sslExpiresAt;
 
     const redirected = target.followRedirects && hop.error === '' && REDIRECT_STATUSES.has(hop.statusCode) && hop.location;
     if (!redirected) return finish(hop, url.toString());
