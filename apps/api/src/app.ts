@@ -9,6 +9,7 @@ import { openDatabase } from './db/sqlite';
 import { errorBody, HttpError } from './lib/errors';
 import { AlertMonitorRepository } from './repositories/alert-monitor-repository';
 import { ApiKeyRepository } from './repositories/api-key-repository';
+import { DashboardRepository } from './repositories/dashboard-repository';
 import { GapRepository } from './repositories/gap-repository';
 import { LogRepository } from './repositories/log-repository';
 import { MetricRepository } from './repositories/metric-repository';
@@ -20,6 +21,7 @@ import { SummaryRepository } from './repositories/summary-repository';
 import { SyntheticResultRepository } from './repositories/synthetic-result-repository';
 import { registerAlertingRoutes } from './routes/alerting';
 import { registerApmRoutes } from './routes/apm';
+import { registerDashboardRoutes } from './routes/dashboards';
 import { registerHostRoutes } from './routes/hosts';
 import { registerIngestRoutes } from './routes/ingest';
 import { registerLogRoutes } from './routes/logs';
@@ -62,6 +64,7 @@ export interface AppContext {
   logSearch: LogService;
   metricsExplorer: MetricsExplorerService;
   alerting: AlertingService;
+  dashboards: DashboardRepository;
   storage: StorageService;
   summary: SummaryService;
   /** Null when WORKER_ENABLED=false. */
@@ -132,6 +135,7 @@ export async function buildApp(config: Config, options: BuildAppOptions = {}): P
     logSearch: new LogService(logs, scope),
     metricsExplorer: new MetricsExplorerService(metrics, scope),
     alerting: new AlertingService(alertMonitors, evaluator, scope, config.ALERTS_ENABLED, monitors),
+    dashboards: new DashboardRepository(sqlite),
     storage: new StorageService(new StorageRepository(clickhouse), config.SQLITE_PATH),
     summary,
     scheduler,
@@ -189,6 +193,7 @@ export async function buildApp(config: Config, options: BuildAppOptions = {}): P
   await app.register(
     async (routes) => {
       registerSystemRoutes(routes, ctx);
+      registerDashboardRoutes(routes, ctx);
       registerStorageRoutes(routes, ctx);
       registerSummaryRoutes(routes, ctx);
       registerMonitorRoutes(routes, ctx);

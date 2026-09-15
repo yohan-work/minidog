@@ -20,9 +20,10 @@ import { formatMetricValue } from '@/lib/format';
 import { toQuery, useQueryParams } from '@/lib/query-params';
 import { useTimeRange } from '@/lib/time-range';
 import { useApi } from '@/lib/use-api';
+import { AddToDashboard } from '../dashboards/AddToDashboard';
 import styles from './Metrics.module.scss';
 
-const AGGREGATION_LABELS: Record<MetricAggregation, string> = {
+export const AGGREGATION_LABELS: Record<MetricAggregation, string> = {
   avg: 'Average',
   min: 'Minimum',
   max: 'Maximum',
@@ -39,11 +40,11 @@ const COLUMNS = [
 ] as const satisfies readonly ColumnSpec[];
 
 /** Delta counters read best as a rate; everything else as an average. */
-function defaultAggregation(entry: MetricCatalogEntry | undefined): MetricAggregation {
+export function defaultAggregation(entry: MetricCatalogEntry | undefined): MetricAggregation {
   return entry?.type === 'sum' && entry.temporality === 'delta' ? 'rate' : 'avg';
 }
 
-const seriesColor = (index: number) => `--chart-series-${index + 1}`;
+export const seriesColor = (index: number) => `--chart-series-${index + 1}`;
 
 /** Start on a metric that answers a question; counts of CPUs do not. */
 const PREFERRED_METRICS = ['system.cpu.utilization', 'system.memory.utilization', 'system.network.io'];
@@ -115,7 +116,16 @@ export function MetricsView() {
 
   return (
     <>
-      <PageHeader title="Metrics" />
+      <PageHeader
+        title="Metrics"
+        actions={
+          metric ? (
+            <AddToDashboard
+              widget={{ kind: 'metric', metric, aggregation, service: filters.service || '', host: filters.host || '', groupBy: filters.groupBy || '', size: 'half', title: '' }}
+            />
+          ) : undefined
+        }
+      />
       <FilterBar trailing={entry && <span className={styles.unit}>{entry.type}{entry.temporality && ` · ${entry.temporality}`}{entry.unit && ` · ${entry.unit}`}</span>}>
         <FilterSelect label="Metric" value={metric} options={metricOptions} onChange={choose} />
         <FilterSelect

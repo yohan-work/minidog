@@ -165,6 +165,7 @@ Settings                 프로젝트 · 환경 · API key · 연결 정보
 | N. 디스크 관리 | Settings → Storage → 신호별 용량·가장 오래된 기록 확인 → Logs 보관 기간을 7 days로 → 확인 창 → 오래된 로그가 지워지고 용량이 줄어듦 |
 | O. 측정 공백 | minidog을 끄고 몇 분 뒤 다시 켬(또는 맥 잠자기) → Synthetics 모니터 상세의 Availability에 빗금 구간과 "not measured for …" → 막대에 마우스를 올리면 이유 표시. 깨어난 직후 45초는 체크·알림을 쉬어 가짜 Down이 없음 |
 | P. 하루 요약 | Settings → Daily summary → 켜기, Webhook URL에 `https://ntfy.sh/<토픽>`, 시각 선택 → Save → **Send now** 로 바로 받아보기, 아래 Preview에서 내용 확인 |
+| Q. 내 대시보드 | Dashboards → New dashboard 이름 입력 → 편집 화면에서 Synthetic monitor·Service chart·Metric 위젯 추가 → ↑↓·Full width로 배치 → Save. Metrics 화면의 **Add to dashboard** 로도 추가 |
 
 ## 개발
 
