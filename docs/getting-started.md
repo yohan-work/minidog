@@ -107,7 +107,8 @@ Observe
  └ Logs                  Log Explorer(서비스/레벨/검색/trace id) → Trace
 Monitor
  ├ Synthetics            URL 체크(상태 코드, 지연, 가용성, SSL 만료)
- └ Monitors              Service down · Error rate · Latency · CPU/Memory, 상태 이력, Webhook
+ └ Monitors              Service down · Error rate · Latency · CPU/Memory · Synthetic check(실패율 · 응답 시간 · SSL 만료),
+                         상태 이력, Webhook(Slack 호환), N분 지속 시 알림 · 해제 지연 · 음소거
 Settings                 프로젝트 · 환경 · API key · 연결 정보
 ```
 
@@ -121,6 +122,7 @@ Settings                 프로젝트 · 환경 · API key · 연결 정보
 | B. Node.js OTel | `pnpm demo` → Services → `api` → Endpoints `POST /checkout` → Trace → Span |
 | C. 에러 트레이스 → 로그 | Traces에서 Status: Errors → 트레이스 → Related logs (Logs 화면의 trace 링크로 역방향) |
 | D. Latency 모니터 | Monitors → New monitor(Latency, `api`, warning 250 ms, critical 500 ms, 1 min) → `dbDelayMs` 200 → 600. 이력에 Healthy → Warning → Critical |
+| E. URL 다운 알림 | Synthetics → 모니터 상세 → Create alert(Synthetic check · Failed checks, Webhook URL). 다운되면 Critical로 바뀌고 Webhook이 간다. Alert after를 고르면 그 시간 동안 계속될 때만, Mute 중에는 기록만 하고 해제 후 한 번 보낸다 |
 
 ## 개발
 

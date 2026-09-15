@@ -1,10 +1,12 @@
 'use client';
 
 import {
-  ALERT_WINDOWS_MINUTES,
+  ALERT_MUTE_MINUTES,
+  usesWindow,
   type AlertMonitor,
   type AlertMonitorResponse,
   type HostResponse,
+  type Series,
   type ServiceResponse,
   type TimeRange,
 } from '@minidog/types';
@@ -23,16 +25,29 @@ import { Notice } from '@/components/ui/Notice';
 import { Select } from '@/components/ui/Select';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { apiFetch, toApiClientError } from '@/lib/api-client';
-import { formatRelative } from '@/lib/format';
-import { serviceHref } from '@/lib/links';
+import { formatDateTime, formatRelative, formatTime } from '@/lib/format';
 import { useTimeRange, withRange } from '@/lib/time-range';
 import { useApi } from '@/lib/use-api';
-import { hostHref } from '../infrastructure/host';
 import { AlertEventTable } from './AlertEventTable';
-import { AlertStateIndicator, conditionText, formatAlertValue, signalLabel, THRESHOLD_UNITS, TYPE_LABELS } from './alerting';
+import {
+  AlertStateIndicator,
+  conditionText,
+  DelayOptions,
+  delayLabel,
+  formatAlertValue,
+  isEscalation,
+  isMutedNow,
+  muteLabel,
+  signalLabel,
+  STATE_LABELS,
+  targetHref,
+  thresholdUnit,
+  TYPE_LABELS,
+  WindowOptions,
+} from './alerting';
 import styles from './Monitors.module.scss';
 
-type Pending = 'evaluate' | 'toggle' | 'delete' | 'save';
+type Pending = 'evaluate' | 'toggle' | 'delete' | 'save' | 'mute';
 
 export function AlertMonitorDetailView({ id }: { id: string }) {
   const range = useTimeRange();
@@ -78,6 +93,18 @@ export function AlertMonitorDetailView({ id }: { id: string }) {
       refetch();
     });
 
+  const mute = (minutes: number) =>
+    perform('mute', async () => {
+      await apiFetch(`/alerting/monitors/${id}/mute`, { method: 'POST', body: JSON.stringify({ minutes }) });
+      refetch();
+    });
+
+  const unmute = () =>
+    perform('mute', async () => {
+      await apiFetch(`/alerting/monitors/${id}/mute`, { method: 'DELETE' });
+      refetch();
+    });
+
   const remove = () =>
     perform('delete', async () => {
       await apiFetch(`/alerting/monitors/${id}`, { method: 'DELETE' });
@@ -85,6 +112,7 @@ export function AlertMonitorDetailView({ id }: { id: string }) {
     });
 
   const tone = monitor?.state === 'critical' ? 'error' : monitor?.state === 'warning' ? 'warning' : undefined;
+  const muted = monitor ? isMutedNow(monitor) : false;
 
   return (
     <>
@@ -117,6 +145,29 @@ export function AlertMonitorDetailView({ id }: { id: string }) {
               <Button size="sm" loading={pending === 'evaluate'} disabled={pending !== null || !monitor.enabled} onClick={evaluate}>
                 Evaluate now
               </Button>
+              {muted ? (
+                <Button size="sm" loading={pending === 'mute'} disabled={pending !== null} onClick={unmute}>
+                  Unmute
+                </Button>
+              ) : (
+                <Select
+                  controlSize="sm"
+                  aria-label="Mute notifications"
+                  value=""
+                  disabled={pending !== null}
+                  onChange={(event) => {
+                    const minutes = Number(event.target.value);
+                    if (minutes > 0) void mute(minutes);
+                  }}
+                >
+                  <option value="">Mute…</option>
+                  {ALERT_MUTE_MINUTES.map((minutes) => (
+                    <option key={minutes} value={minutes}>
+                      Mute for {muteLabel(minutes)}
+                    </option>
+                  ))}
+                </Select>
+              )}
               <Button size="sm" loading={pending === 'toggle'} disabled={pending !== null} onClick={() => toggle(monitor)}>
                 {monitor.enabled ? 'Pause' : 'Resume'}
               </Button>
@@ -133,6 +184,12 @@ export function AlertMonitorDetailView({ id }: { id: string }) {
         </Notice>
       )}
       <StaleNotice error={data ? error : undefined} updatedAt={updatedAt} onRetry={refetch} />
+      {monitor && muted && monitor.mutedUntil && (
+        <Notice tone="info" title={`Notifications muted until ${formatDateTime(Date.parse(monitor.mutedUntil))}.`}>
+          State changes are still recorded. If the monitor is still alerting when the mute ends, that notification is sent then.
+        </Notice>
+      )}
+      {monitor?.enabled && <PendingNotice monitor={monitor} />}
 
       {!data && !isLoading ? (
         <ErrorState title="Unable to load monitor." description={error?.message} onRetry={refetch} />
@@ -142,17 +199,23 @@ export function AlertMonitorDetailView({ id }: { id: string }) {
             <Metric
               label={monitor ? signalLabel(monitor) : 'Value'}
               loading={!monitor}
-              value={monitor && formatAlertValue(monitor.type, monitor.stateValue)}
+              value={monitor && formatAlertValue(monitor, monitor.stateValue)}
               tone={tone}
-              meta={monitor && `last ${monitor.windowMinutes} min`}
+              meta={monitor && (usesWindow(monitor.type, monitor.metric) ? `last ${monitor.windowMinutes} min` : 'latest check')}
             />
             <Metric
               label="Warning"
               loading={!monitor}
-              value={monitor && formatAlertValue(monitor.type, monitor.warningThreshold)}
+              value={monitor && formatAlertValue(monitor, monitor.warningThreshold)}
               meta={monitor?.warningThreshold === null ? 'not set' : 'threshold'}
             />
-            <Metric label="Critical" loading={!monitor} value={monitor && formatAlertValue(monitor.type, monitor.criticalThreshold)} meta="threshold" />
+            <Metric label="Critical" loading={!monitor} value={monitor && formatAlertValue(monitor, monitor.criticalThreshold)} meta="threshold" />
+            <Metric
+              label="Alert after"
+              loading={!monitor}
+              value={monitor && delayLabel(monitor.alertAfterMinutes)}
+              meta={monitor && `recovery ${delayLabel(monitor.recoverAfterMinutes).toLowerCase()}`}
+            />
             <Metric
               label="Last evaluated"
               loading={!monitor}
@@ -161,7 +224,7 @@ export function AlertMonitorDetailView({ id }: { id: string }) {
             />
           </MetricGrid>
 
-          {monitor && <SignalSection monitor={monitor} range={range} />}
+          {monitor && usesWindow(monitor.type, monitor.metric) && <SignalSection monitor={monitor} range={range} />}
 
           <Section
             title={
@@ -174,7 +237,7 @@ export function AlertMonitorDetailView({ id }: { id: string }) {
             {!data ? (
               <Skeleton height="calc(var(--row-height) * 3)" />
             ) : data.events.length > 0 ? (
-              <AlertEventTable events={data.events} range={range} types={new Map([[id, data.monitor.type]])} showMonitor={false} />
+              <AlertEventTable events={data.events} range={range} types={new Map([[id, data.monitor]])} showMonitor={false} />
             ) : (
               <EmptyState
                 title="No state changes yet"
@@ -195,16 +258,28 @@ export function AlertMonitorDetailView({ id }: { id: string }) {
   );
 }
 
+/** A state the measurements point to, waiting for Alert after / Recover after. */
+function PendingNotice({ monitor }: { monitor: AlertMonitor }) {
+  if (!monitor.pendingState || !monitor.pendingSince) return null;
+  const escalating = isEscalation(monitor.state, monitor.pendingState);
+  const delay = escalating ? monitor.alertAfterMinutes : monitor.recoverAfterMinutes;
+  const label = STATE_LABELS[monitor.pendingState];
+  return (
+    <Notice tone={escalating ? 'warning' : 'info'} title={`${label} pending.`}>
+      Changes to {label} and notifies if it lasts {delay} min — measured since {formatTime(Date.parse(monitor.pendingSince))}.
+    </Notice>
+  );
+}
+
 function MonitorMeta({ monitor, range }: { monitor: AlertMonitor; range: TimeRange }) {
-  const targetHref = monitor.type === 'host_resource' ? hostHref(monitor.target, range) : serviceHref(monitor.target, range);
   return (
     <>
       <span>{TYPE_LABELS[monitor.type]}</span>
       <span className={styles.metaSeparator} aria-hidden>
         ·
       </span>
-      <Link href={targetHref} className={`${styles.mono} ${styles.metaLink}`}>
-        {monitor.target}
+      <Link href={targetHref(monitor, range)} className={`${styles.mono} ${styles.metaLink}`}>
+        {monitor.targetLabel}
       </Link>
       <span className={styles.metaSeparator} aria-hidden>
         ·
@@ -217,19 +292,27 @@ function MonitorMeta({ monitor, range }: { monitor: AlertMonitor; range: TimeRan
 /** The monitored signal over the selected range, with the thresholds drawn in. */
 function SignalSection({ monitor, range }: { monitor: AlertMonitor; range: TimeRange }) {
   const isHost = monitor.type === 'host_resource';
+  const isSynthetic = monitor.type === 'synthetic_check';
   const encoded = encodeURIComponent(monitor.target);
-  const service = useApi<ServiceResponse>(isHost ? null : `/services/${encoded}?range=${range}`, 30_000);
+  const service = useApi<ServiceResponse>(!isHost && !isSynthetic ? `/services/${encoded}?range=${range}` : null, 30_000);
   const host = useApi<HostResponse>(isHost ? `/hosts/${encoded}?range=${range}` : null, 30_000);
-  const source = isHost ? host : service;
+  const synthetic = useApi<Series>(isSynthetic ? `/monitors/${encoded}/series?range=${range}` : null, 30_000);
+  const source = isHost ? host : isSynthetic ? synthetic : service;
 
   const chart = useMemo(() => {
     let timestamps: number[] = [];
     let values: (number | null)[] = [];
     if (isHost && host.data) {
-      const metric = monitor.metric ?? 'cpu';
+      const metric = monitor.metric === 'memory' || monitor.metric === 'disk' ? monitor.metric : 'cpu';
       timestamps = host.data.series.points.map((point) => point.t);
       values = host.data.series.points.map((point) => (point[metric] === null ? null : point[metric] * 100));
-    } else if (!isHost && service.data) {
+    } else if (isSynthetic && synthetic.data) {
+      const points = synthetic.data.points;
+      timestamps = points.map((point) => point.t);
+      values = points.map((point) =>
+        monitor.metric === 'response_time' ? point.p95LatencyMs : point.checks > 0 ? (point.failures / point.checks) * 100 : null,
+      );
+    } else if (!isHost && !isSynthetic && service.data) {
       const points = service.data.series.points;
       timestamps = points.map((point) => point.t);
       values = points.map((point) =>
@@ -252,29 +335,31 @@ function SignalSection({ monitor, range }: { monitor: AlertMonitor; range: TimeR
       series.push({ label: 'Critical', color: '--status-error', dashed: true, values: constant(monitor.criticalThreshold) });
     }
     return { timestamps, series, hasData: values.some((value) => value !== null) };
-  }, [host.data, isHost, monitor, service.data]);
+  }, [host.data, isHost, isSynthetic, monitor, service.data, synthetic.data]);
 
-  const format = useMemo(() => (value: number) => formatAlertValue(monitor.type, value), [monitor.type]);
-  const formatAxis = useMemo(() => (value: number) => (value === 0 ? '0' : formatAlertValue(monitor.type, value)), [monitor.type]);
+  const format = useMemo(() => (value: number) => formatAlertValue(monitor, value), [monitor]);
+  const formatAxis = useMemo(() => (value: number) => (value === 0 ? '0' : formatAlertValue(monitor, value)), [monitor]);
 
   return (
-    <Section title={`${signalLabel(monitor)} · ${monitor.target}`} actions={chart.hasData ? <ChartLegend series={chart.series} /> : undefined}>
+    <Section title={`${signalLabel(monitor)} · ${monitor.targetLabel}`} actions={chart.hasData ? <ChartLegend series={chart.series} /> : undefined}>
       {chart.hasData ? (
         <TimeSeriesChart
-          key={`${monitor.type}|${monitor.warningThreshold}|${monitor.criticalThreshold}`}
+          key={`${monitor.type}|${monitor.metric}|${monitor.warningThreshold}|${monitor.criticalThreshold}`}
           timestamps={chart.timestamps}
           series={chart.series}
           formatValue={format}
           formatAxis={formatAxis}
-          ariaLabel={`${signalLabel(monitor)} of ${monitor.target} with alert thresholds.`}
+          ariaLabel={`${signalLabel(monitor)} of ${monitor.targetLabel} with alert thresholds.`}
         />
       ) : source.error && source.error.status !== 404 ? (
         <ErrorState fill="chart" title="Unable to load the signal." description={source.error.message} onRetry={source.refetch} />
       ) : source.data || source.error ? (
         <EmptyState
           fill="chart"
-          title={`No data from ${monitor.target} in this range`}
-          description="The monitor reports No data until the target sends telemetry."
+          title={`No data from ${monitor.targetLabel} in this range`}
+          description={
+            isSynthetic ? 'The monitor reports No data while the synthetic check is paused or has no results.' : 'The monitor reports No data until the target sends telemetry.'
+          }
           action={
             <Button size="sm" onClick={source.refetch}>
               Refresh
@@ -293,12 +378,15 @@ function SettingsSection({ monitor, onSaved }: { monitor: AlertMonitor; onSaved:
     warningThreshold: monitor.warningThreshold === null ? '' : String(monitor.warningThreshold),
     criticalThreshold: String(monitor.criticalThreshold),
     windowMinutes: String(monitor.windowMinutes),
+    alertAfterMinutes: String(monitor.alertAfterMinutes),
+    recoverAfterMinutes: String(monitor.recoverAfterMinutes),
     webhookUrl: monitor.webhookUrl,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const unit = THRESHOLD_UNITS[monitor.type];
+  const unit = thresholdUnit(monitor);
+  const showWindow = usesWindow(monitor.type, monitor.metric);
 
   const update = (name: keyof typeof values) => (event: { target: { value: string } }) => {
     setValues((current) => ({ ...current, [name]: event.target.value }));
@@ -317,6 +405,8 @@ function SettingsSection({ monitor, onSaved }: { monitor: AlertMonitor; onSaved:
           warningThreshold: values.warningThreshold.trim() === '' ? null : Number(values.warningThreshold),
           criticalThreshold: Number(values.criticalThreshold),
           windowMinutes: Number(values.windowMinutes),
+          alertAfterMinutes: Number(values.alertAfterMinutes),
+          recoverAfterMinutes: Number(values.recoverAfterMinutes),
           webhookUrl: values.webhookUrl.trim(),
         }),
       });
@@ -341,15 +431,23 @@ function SettingsSection({ monitor, onSaved }: { monitor: AlertMonitor; onSaved:
         <Field id="edit-critical" label={`Critical (${unit})`} error={errors.criticalThreshold}>
           <Input id="edit-critical" value={values.criticalThreshold} onChange={update('criticalThreshold')} type="number" inputMode="decimal" mono min={0} invalid={Boolean(errors.criticalThreshold)} />
         </Field>
-        <Field id="edit-window" label="Window" error={errors.windowMinutes}>
-          <Select id="edit-window" value={values.windowMinutes} onChange={update('windowMinutes')}>
-            {ALERT_WINDOWS_MINUTES.map((minutes) => (
-              <option key={minutes} value={minutes}>
-                Last {minutes} min
-              </option>
-            ))}
+        <Field id="edit-alert-after" label="Alert after" hint="How long a breach must last." error={errors.alertAfterMinutes}>
+          <Select id="edit-alert-after" value={values.alertAfterMinutes} onChange={update('alertAfterMinutes')}>
+            <DelayOptions />
           </Select>
         </Field>
+        <Field id="edit-recover-after" label="Recover after" hint="How long recovery must hold." error={errors.recoverAfterMinutes}>
+          <Select id="edit-recover-after" value={values.recoverAfterMinutes} onChange={update('recoverAfterMinutes')}>
+            <DelayOptions />
+          </Select>
+        </Field>
+        {showWindow && (
+          <Field id="edit-window" label="Window" error={errors.windowMinutes}>
+            <Select id="edit-window" value={values.windowMinutes} onChange={update('windowMinutes')}>
+              <WindowOptions />
+            </Select>
+          </Field>
+        )}
         <Field id="edit-webhook" label="Webhook URL" hint="Optional." error={errors.webhookUrl}>
           <Input id="edit-webhook" value={values.webhookUrl} onChange={update('webhookUrl')} type="url" mono invalid={Boolean(errors.webhookUrl)} />
         </Field>

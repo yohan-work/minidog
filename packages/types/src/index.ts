@@ -488,42 +488,111 @@ export interface ServiceMapResponse {
 // Monitors (alerting)
 // ---------------------------------------------------------------------------
 
-export const ALERT_MONITOR_TYPES = ['service_down', 'error_rate', 'latency', 'host_resource'] as const;
+export const ALERT_MONITOR_TYPES = ['service_down', 'error_rate', 'latency', 'host_resource', 'synthetic_check'] as const;
 export type AlertMonitorType = (typeof ALERT_MONITOR_TYPES)[number];
 
 export const HOST_RESOURCE_METRICS = ['cpu', 'memory', 'disk'] as const;
 export type HostResourceMetric = (typeof HOST_RESOURCE_METRICS)[number];
 
+/** Signals of a synthetic_check monitor: failed checks (%), P95 response time (ms), days until SSL expiry. */
+export const SYNTHETIC_ALERT_METRICS = ['failure_rate', 'response_time', 'ssl_days'] as const;
+export type SyntheticAlertMetric = (typeof SYNTHETIC_ALERT_METRICS)[number];
+
+export const ALERT_METRICS = [...HOST_RESOURCE_METRICS, ...SYNTHETIC_ALERT_METRICS] as const;
+export type AlertMetric = HostResourceMetric | SyntheticAlertMetric;
+
+export function isHostResourceMetric(value: unknown): value is HostResourceMetric {
+  return (HOST_RESOURCE_METRICS as readonly unknown[]).includes(value);
+}
+
+export function isSyntheticAlertMetric(value: unknown): value is SyntheticAlertMetric {
+  return (SYNTHETIC_ALERT_METRICS as readonly unknown[]).includes(value);
+}
+
 export type AlertState = 'ok' | 'warning' | 'critical' | 'no_data';
 
 export const ALERT_WINDOWS_MINUTES = [1, 5, 10, 15, 30, 60] as const;
 
+/** How long a worse (or better) state must last before the monitor enters it. 0 = immediately. */
+export const ALERT_DELAYS_MINUTES = [0, 1, 2, 5, 10, 15, 30] as const;
+
+/** Mute durations offered in the dashboard. */
+export const ALERT_MUTE_MINUTES = [30, 60, 240, 1440] as const;
+
+export interface AlertDefaults {
+  warning: number | null;
+  critical: number;
+  windowMinutes: number;
+}
+
 /**
  * Thresholds by type. Units: service_down — requests in the window (alerts
- * when fewer arrive); error_rate and host_resource — percent; latency — P95 ms.
+ * when fewer arrive); error_rate and host_resource — percent; latency — P95 ms;
+ * synthetic_check — see SYNTHETIC_ALERT_DEFAULTS (failure rate shown here).
  */
-export const ALERT_MONITOR_DEFAULTS: Record<AlertMonitorType, { warning: number | null; critical: number; windowMinutes: number }> = {
+export const ALERT_MONITOR_DEFAULTS: Record<AlertMonitorType, AlertDefaults> = {
   service_down: { warning: null, critical: 1, windowMinutes: 5 },
   error_rate: { warning: 2, critical: 10, windowMinutes: 5 },
   latency: { warning: 1_000, critical: 2_000, windowMinutes: 5 },
   host_resource: { warning: 85, critical: 95, windowMinutes: 5 },
+  synthetic_check: { warning: null, critical: 50, windowMinutes: 5 },
 };
+
+/** failure_rate — % of failed checks; response_time — P95 ms; ssl_days — days left (alerts below). */
+export const SYNTHETIC_ALERT_DEFAULTS: Record<SyntheticAlertMetric, AlertDefaults> = {
+  failure_rate: { warning: null, critical: 50, windowMinutes: 5 },
+  response_time: { warning: 1_000, critical: 3_000, windowMinutes: 5 },
+  ssl_days: { warning: 14, critical: 7, windowMinutes: 60 },
+};
+
+export function alertDefaults(type: AlertMonitorType, metric: AlertMetric | null): AlertDefaults {
+  if (type === 'synthetic_check') return SYNTHETIC_ALERT_DEFAULTS[isSyntheticAlertMetric(metric) ? metric : 'failure_rate'];
+  return ALERT_MONITOR_DEFAULTS[type];
+}
+
+/**
+ * `above`: alert when the value rises to a threshold. `below`: alert when it
+ * falls under it — requests for Service down, days left for SSL expiry.
+ */
+export type AlertDirection = 'above' | 'below';
+
+export function alertDirection(type: AlertMonitorType, metric: AlertMetric | null): AlertDirection {
+  if (type === 'service_down') return 'below';
+  if (type === 'synthetic_check' && metric === 'ssl_days') return 'below';
+  return 'above';
+}
+
+/** SSL expiry is judged on the latest certificate; every other signal on its window. */
+export function usesWindow(type: AlertMonitorType, metric: AlertMetric | null): boolean {
+  return !(type === 'synthetic_check' && metric === 'ssl_days');
+}
 
 export interface AlertMonitor {
   id: string;
   name: string;
   type: AlertMonitorType;
-  /** Service name, or host name for host_resource. */
+  /** Service name; host name for host_resource; synthetic monitor id for synthetic_check. */
   target: string;
-  /** host_resource only. */
-  metric: HostResourceMetric | null;
+  /** Display name of the target (the synthetic monitor's name for synthetic_check). */
+  targetLabel: string;
+  /** host_resource and synthetic_check only. */
+  metric: AlertMetric | null;
   warningThreshold: number | null;
   criticalThreshold: number;
   windowMinutes: number;
   /** Optional; state changes are POSTed as JSON. */
   webhookUrl: string;
+  /** Minutes a worse state must last before the monitor enters it (and notifies). */
+  alertAfterMinutes: number;
+  /** Minutes a better state must last before recovery is reported. */
+  recoverAfterMinutes: number;
+  /** ISO time until which webhooks are held; states are still recorded. */
+  mutedUntil: string | null;
   enabled: boolean;
   state: AlertState;
+  /** State the measurements point to while alertAfter/recoverAfter is running. */
+  pendingState: AlertState | null;
+  pendingSince: string | null;
   /** Last measured value, in the unit of the type. */
   stateValue: number | null;
   stateMessage: string;
@@ -544,7 +613,7 @@ export interface AlertEvent {
   createdAt: string;
   /** Read in the dashboard. */
   acknowledged: boolean;
-  /** '' when no webhook is configured, otherwise `sent 200` or `failed …`. */
+  /** '' when no webhook is configured, otherwise `sent 200`, `failed …` or `muted` (held until the mute ends). */
   webhookStatus: string;
 }
 
@@ -552,15 +621,20 @@ export interface CreateAlertMonitorInput {
   name?: string;
   type: AlertMonitorType;
   target: string;
-  metric?: HostResourceMetric;
+  metric?: AlertMetric;
   warningThreshold?: number | null;
   criticalThreshold?: number;
   windowMinutes?: number;
   webhookUrl?: string;
+  alertAfterMinutes?: number;
+  recoverAfterMinutes?: number;
 }
 
 export type UpdateAlertMonitorInput = Partial<
-  Pick<AlertMonitor, 'name' | 'warningThreshold' | 'criticalThreshold' | 'windowMinutes' | 'webhookUrl' | 'enabled'>
+  Pick<
+    AlertMonitor,
+    'name' | 'warningThreshold' | 'criticalThreshold' | 'windowMinutes' | 'webhookUrl' | 'enabled' | 'alertAfterMinutes' | 'recoverAfterMinutes'
+  >
 >;
 
 export interface AlertMonitorListResponse {

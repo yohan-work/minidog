@@ -4,8 +4,10 @@ import type { FastifyBaseLogger } from 'fastify';
 import { openDatabase } from '../db/sqlite';
 import { AlertMonitorRepository } from '../repositories/alert-monitor-repository';
 import type { MetricRepository } from '../repositories/metric-repository';
+import { MonitorRepository } from '../repositories/monitor-repository';
 import { ProjectRepository } from '../repositories/project-repository';
 import type { SpanRepository } from '../repositories/span-repository';
+import type { SyntheticResultRepository } from '../repositories/synthetic-result-repository';
 import { AlertingService } from '../services/alerting-service';
 import { AlertEvaluator } from './alert-evaluator';
 
@@ -23,7 +25,16 @@ function setup(p95Ms: number | Error) {
       return { requests: 100, errors: 0, p95Ms };
     },
   } as unknown as SpanRepository;
-  const evaluator = new AlertEvaluator({ monitors, spans, metrics: {} as MetricRepository, log: silentLog, intervalMs: 30_000 });
+  const syntheticMonitors = new MonitorRepository(db);
+  const evaluator = new AlertEvaluator({
+    monitors,
+    spans,
+    metrics: {} as MetricRepository,
+    syntheticMonitors,
+    syntheticResults: {} as SyntheticResultRepository,
+    log: silentLog,
+    intervalMs: 30_000,
+  });
   const latency = () =>
     monitors.create(scope, {
       name: 'P95 · api',
@@ -35,7 +46,8 @@ function setup(p95Ms: number | Error) {
       windowMinutes: 1,
       webhookUrl: '',
     });
-  const service = (automaticEvaluation: boolean) => new AlertingService(monitors, evaluator, scope, automaticEvaluation);
+  const service = (automaticEvaluation: boolean) =>
+    new AlertingService(monitors, evaluator, scope, automaticEvaluation, syntheticMonitors);
   return { monitors, evaluator, latency, service };
 }
 

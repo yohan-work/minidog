@@ -13,7 +13,7 @@ import { formatRelative } from '@/lib/format';
 import { useTimeRange, withRange } from '@/lib/time-range';
 import { useApi } from '@/lib/use-api';
 import { AlertEventTable } from './AlertEventTable';
-import { AlertStateIndicator, conditionText, formatAlertValue, monitorHref, TYPE_LABELS } from './alerting';
+import { AlertStateIndicator, conditionText, formatAlertValue, isMutedNow, monitorHref, TYPE_LABELS } from './alerting';
 import styles from './Monitors.module.scss';
 
 const COLUMNS = [
@@ -30,7 +30,7 @@ export function MonitorsView() {
   const summary = useApi<AlertSummaryResponse>('/alerting/summary');
   const [acknowledging, setAcknowledging] = useState(false);
   const newHref = withRange('/monitors/new', range);
-  const types = new Map(data?.monitors.map((monitor) => [monitor.id, monitor.type]) ?? []);
+  const types = new Map(data?.monitors.map((monitor) => [monitor.id, monitor]) ?? []);
 
   const acknowledge = async () => {
     setAcknowledging(true);
@@ -64,7 +64,7 @@ export function MonitorsView() {
       ) : data.monitors.length === 0 ? (
         <EmptyState
           title="No monitors yet"
-          description="Monitors watch service availability, error rate, latency and host CPU or memory, and notify on every state change."
+          description="Monitors watch service availability, error rate, latency, host CPU or memory and synthetic URL checks, and notify on every state change."
           action={<ButtonLink href={newHref}>New monitor</ButtonLink>}
         />
       ) : (
@@ -83,7 +83,10 @@ export function MonitorsView() {
                 {data.monitors.map((monitor) => (
                   <Tr key={monitor.id} interactive>
                     <Td>
-                      <AlertStateIndicator state={monitor.state} enabled={monitor.enabled} />
+                      <span className={styles.transition}>
+                        <AlertStateIndicator state={monitor.state} enabled={monitor.enabled} />
+                        {monitor.enabled && isMutedNow(monitor) && <span className={styles.note}>muted</span>}
+                      </span>
                     </Td>
                     <Td>
                       <span className={styles.monitor}>
@@ -91,7 +94,7 @@ export function MonitorsView() {
                           {monitor.name}
                         </RowLink>
                         <span className={styles.target}>
-                          {TYPE_LABELS[monitor.type]} · {monitor.target}
+                          {TYPE_LABELS[monitor.type]} · {monitor.targetLabel}
                         </span>
                       </span>
                     </Td>
@@ -100,7 +103,7 @@ export function MonitorsView() {
                       mono
                       className={monitor.state === 'critical' ? styles.error : monitor.state === 'warning' ? styles.warning : undefined}
                     >
-                      {formatAlertValue(monitor.type, monitor.stateValue)}
+                      {formatAlertValue(monitor, monitor.stateValue)}
                     </Td>
                     <Td mono muted hideBelow="tablet">
                       {conditionText(monitor)}

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { alertMessage, deriveAlertState, thresholdsInOrder } from './alert-state';
+import { alertDirection } from '@minidog/types';
+import { alertMessage, applyTransitionDelay, deriveAlertState, isMuted, thresholdsInOrder } from './alert-state';
 
 test('above: warning and critical as the value rises', () => {
   const thresholds = { warning: 1000, critical: 2000 };
@@ -40,4 +41,36 @@ test('messages name the signal, value and threshold', () => {
 
   const memory = { type: 'host_resource' as const, metric: 'memory' as const, windowMinutes: 5, thresholds: { warning: 85, critical: 95 } };
   assert.equal(alertMessage(memory, 'critical', 96.24), 'Memory 96.2% ≥ critical 95.0% (last 5 min)');
+});
+
+test('synthetic SSL expiry alerts below; other synthetic signals above', () => {
+  assert.equal(alertDirection('synthetic_check', 'ssl_days'), 'below');
+  assert.equal(alertDirection('synthetic_check', 'failure_rate'), 'above');
+  assert.equal(thresholdsInOrder({ warning: 14, critical: 7 }, alertDirection('synthetic_check', 'ssl_days')), true);
+
+  const ssl = { type: 'synthetic_check' as const, metric: 'ssl_days' as const, windowMinutes: 60, thresholds: { warning: 14, critical: 7 } };
+  assert.equal(deriveAlertState(10.5, ssl.thresholds, 'below'), 'warning');
+  assert.equal(alertMessage(ssl, 'warning', 10.5), 'SSL expiry 10 days < warning 14 days');
+  assert.equal(alertMessage(ssl, 'critical', -1), 'SSL certificate expired');
+  assert.equal(alertMessage(ssl, 'no_data', null), 'No SSL certificate in recent checks');
+});
+
+test('transition delay: immediate without a delay, pending with one', () => {
+  const at = new Date('2026-09-14T12:00:00Z');
+  const base = { stored: 'ok', pending: null, at, alertAfterMinutes: 0, recoverAfterMinutes: 0, lastEvaluatedAt: null, maxGapMs: 120_000 } as const;
+
+  assert.deepEqual(applyTransitionDelay({ ...base, derived: 'critical' }), { state: 'critical', pending: null });
+  assert.deepEqual(applyTransitionDelay({ ...base, derived: 'critical', alertAfterMinutes: 5 }), {
+    state: 'ok',
+    pending: { state: 'critical', since: at.toISOString() },
+  });
+  // Healthy and No data are equally quiet; moving between them is never delayed.
+  assert.deepEqual(applyTransitionDelay({ ...base, derived: 'no_data', recoverAfterMinutes: 5 }), { state: 'no_data', pending: null });
+});
+
+test('muted only until the given time', () => {
+  const now = Date.parse('2026-09-14T12:00:00Z');
+  assert.equal(isMuted('2026-09-14T13:00:00Z', now), true);
+  assert.equal(isMuted('2026-09-14T11:00:00Z', now), false);
+  assert.equal(isMuted(null, now), false);
 });

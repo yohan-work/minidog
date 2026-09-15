@@ -1,4 +1,4 @@
-import { ALERT_MONITOR_TYPES, ALERT_WINDOWS_MINUTES, HOST_RESOURCE_METRICS } from '@minidog/types';
+import { ALERT_DELAYS_MINUTES, ALERT_METRICS, ALERT_MONITOR_TYPES, ALERT_MUTE_MINUTES, ALERT_WINDOWS_MINUTES } from '@minidog/types';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { AppContext } from '../app';
@@ -14,11 +14,15 @@ function isHttpUrl(value: string): boolean {
   }
 }
 
+const oneOf = (allowed: readonly number[], message: string) =>
+  z
+    .number()
+    .int()
+    .refine((value) => allowed.includes(value), message);
+
 const threshold = z.number().finite().min(0, 'Thresholds cannot be negative.').max(1_000_000);
-const windowMinutes = z
-  .number()
-  .int()
-  .refine((value) => (ALERT_WINDOWS_MINUTES as readonly number[]).includes(value), 'Unsupported window.');
+const windowMinutes = oneOf(ALERT_WINDOWS_MINUTES, 'Unsupported window.');
+const delayMinutes = oneOf(ALERT_DELAYS_MINUTES, 'Unsupported delay.');
 const webhookUrl = z
   .string()
   .trim()
@@ -29,12 +33,14 @@ const createSchema = z
   .object({
     name: z.string().trim().max(100, 'Use at most 100 characters.').optional(),
     type: z.enum(ALERT_MONITOR_TYPES),
-    target: z.string().trim().min(1, 'Choose a service or host.').max(255),
-    metric: z.enum(HOST_RESOURCE_METRICS).optional(),
+    target: z.string().trim().min(1, 'Choose a target.').max(255),
+    metric: z.enum(ALERT_METRICS).optional(),
     warningThreshold: threshold.nullable().optional(),
     criticalThreshold: threshold.optional(),
     windowMinutes: windowMinutes.optional(),
     webhookUrl: webhookUrl.optional(),
+    alertAfterMinutes: delayMinutes.optional(),
+    recoverAfterMinutes: delayMinutes.optional(),
   })
   .strict();
 
@@ -45,10 +51,14 @@ const updateSchema = z
     criticalThreshold: threshold,
     windowMinutes,
     webhookUrl,
+    alertAfterMinutes: delayMinutes,
+    recoverAfterMinutes: delayMinutes,
     enabled: z.boolean(),
   })
   .partial()
   .strict();
+
+const muteSchema = z.object({ minutes: oneOf(ALERT_MUTE_MINUTES, 'Unsupported mute duration.') }).strict();
 
 export function registerAlertingRoutes(app: FastifyInstance, ctx: AppContext): void {
   const { alerting } = ctx;
@@ -79,6 +89,17 @@ export function registerAlertingRoutes(app: FastifyInstance, ctx: AppContext): v
   app.post('/api/alerting/monitors/:id/evaluate', async (request) => {
     const { id } = idParamsSchema.parse(request.params);
     return alerting.evaluate(id);
+  });
+
+  app.post('/api/alerting/monitors/:id/mute', async (request) => {
+    const { id } = idParamsSchema.parse(request.params);
+    const { minutes } = muteSchema.parse(request.body ?? {});
+    return { monitor: publicMonitor(alerting.mute(id, minutes)) };
+  });
+
+  app.delete('/api/alerting/monitors/:id/mute', async (request) => {
+    const { id } = idParamsSchema.parse(request.params);
+    return { monitor: publicMonitor(await alerting.unmute(id)) };
   });
 
   app.get('/api/alerting/summary', async () => alerting.summary());
