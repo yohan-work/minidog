@@ -964,3 +964,72 @@ export interface LogTailResponse {
   /** Server clock at query time, epoch ms. */
   now: number;
 }
+
+// ---------------------------------------------------------------------------
+// Dashboards
+// ---------------------------------------------------------------------------
+
+export const DASHBOARD_WIDGET_KINDS = ['metric', 'service', 'synthetic'] as const;
+export type DashboardWidgetKind = (typeof DASHBOARD_WIDGET_KINDS)[number];
+export const DASHBOARD_WIDGET_SIZES = ['half', 'full'] as const;
+export type DashboardWidgetSize = (typeof DASHBOARD_WIDGET_SIZES)[number];
+export const SERVICE_WIDGET_CHARTS = ['requests', 'latency'] as const;
+export type ServiceWidgetChart = (typeof SERVICE_WIDGET_CHARTS)[number];
+export const DASHBOARD_MAX_WIDGETS = 24;
+
+interface DashboardWidgetBase {
+  id: string;
+  title: string;
+  /** Half the grid width, or all of it. */
+  size: DashboardWidgetSize;
+}
+
+/** A Metrics explorer query; '' leaves a filter out. */
+export interface MetricWidget extends DashboardWidgetBase {
+  kind: 'metric';
+  metric: string;
+  aggregation: MetricAggregation;
+  service: string;
+  host: string;
+  groupBy: string;
+}
+
+export interface ServiceWidget extends DashboardWidgetBase {
+  kind: 'service';
+  service: string;
+  chart: ServiceWidgetChart;
+}
+
+export interface SyntheticWidget extends DashboardWidgetBase {
+  kind: 'synthetic';
+  monitorId: string;
+}
+
+export type DashboardWidget = MetricWidget | ServiceWidget | SyntheticWidget;
+
+/** A widget before it is saved; the server gives it an id. */
+export type NewDashboardWidget = DashboardWidget extends infer W ? (W extends DashboardWidget ? Omit<W, 'id'> : never) : never;
+
+export interface Dashboard {
+  id: string;
+  name: string;
+  /** In display order. */
+  widgets: DashboardWidget[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DashboardSummary {
+  id: string;
+  name: string;
+  widgetCount: number;
+  updatedAt: string;
+}
+
+export interface DashboardListResponse {
+  dashboards: DashboardSummary[];
+}
+
+export interface DashboardResponse {
+  dashboard: Dashboard;
+}

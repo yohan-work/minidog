@@ -42,6 +42,7 @@ The goal is to reach the root cause in three screens or fewer, without first lea
 - **Projects**: projects, environments and ingest API keys.
 - **Themes**: dark (default), light, or follow the system; the switch is at the bottom of the sidebar.
 - **Search**: ⌘K / Ctrl+K from anywhere finds pages, services, endpoints, hosts and monitors, opens a pasted trace id, or searches logs and traces for the typed text.
+- **Dashboards**: your own screens of synthetic monitors, service request/latency charts and any metric, arranged in a two-column grid; charts follow the time range, and Metrics has an Add to dashboard button.
 - **Storage**: Settings shows how much disk each signal uses and how long it is kept; retention can be changed per signal (3 days to 1 year).
 
 ## Quick start
