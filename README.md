@@ -14,7 +14,7 @@ Uptime checks, traces, logs, metrics and phone alerts in one Docker Compose file
 
 </div>
 
-<img width="1899" height="917" alt="minidog overview: service health, request and latency charts, and a needs-attention list" src="https://github.com/user-attachments/assets/343b2aac-52bf-49f3-8d49-dee3c58d9c0d" />
+<img width="960" height="540" alt="minidog demo: a degraded service on the overview, a drag across its latency spike, the slowest trace in that window, and the trace's logs" src="docs/assets/demo.gif" />
 
 ## Why
 
