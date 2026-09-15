@@ -1,0 +1,68 @@
+@use '../../styles/mixins' as *;
+
+.figure {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.bars {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: var(--space-1);
+  height: var(--chart-height);
+}
+
+.column {
+  display: grid;
+  grid-template-rows: var(--space-4) minmax(0, 1fr) auto;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.marks {
+  display: flex;
+  justify-content: center;
+  gap: 2px;
+}
+
+.mark {
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+  color: var(--status-info);
+}
+
+.track {
+  display: flex;
+  align-items: flex-end;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.bar {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 1px;
+  border-radius: 2px 2px 0 0;
+  background: var(--chart-primary);
+  overflow: hidden;
+}
+
+.errors {
+  width: 100%;
+  margin-top: auto;
+  background: var(--status-error);
+}
+
+.label {
+  text-align: center;
+  @include mono-numeric;
+  font-size: var(--text-meta);
+  color: var(--foreground-muted);
+  @include truncate;
+}
+
+.caption {
+  font-size: var(--text-meta);
+  color: var(--foreground-muted);
+}
