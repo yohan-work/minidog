@@ -23,7 +23,7 @@ ClickHouse (spans · logs · metrics · synthetic_results)     SQLite (projects 
 ```
 
 - 백그라운드 작업(합성 체크 스케줄러, 알림 평가기)은 API 프로세스 안에서 실행된다.
-- 텔레메트리 보관 기간: spans·logs 14일, metrics 30일, synthetic results 90일.
+- 텔레메트리 보관 기간: 기본 spans·logs 14일, metrics 30일, synthetic results 90일. Settings → Storage에서 신호별 디스크 사용량을 보고 보관 기간을 바꿀 수 있다(모든 프로젝트에 적용, 줄이면 오래된 기록이 바로 지워짐).
 
 ## 준비
 
@@ -160,6 +160,7 @@ Settings                 프로젝트 · 환경 · API key · 연결 정보
 | K. 리다이렉트 · 본문 확인 | Synthetics → New monitor → `http://example.com`(Follow redirects 기본 켜짐, Response must contain `Example Domain`) → 최근 체크에 ↪ 표시, 문구를 바꾸면 Down과 이유 |
 | L. 로그 실시간 보기 | Logs → 오른쪽 위 **Live tail** → 새 로그가 2초마다 위에 쌓임(Level·Service·검색 필터 적용, Pause로 멈춤) → **Stop live tail**로 원래 목록 |
 | M. 휴대폰 알림 | 휴대폰에 ntfy 앱 → 토픽 구독 → Monitors → 모니터 Settings의 Webhook URL에 `https://ntfy.sh/<토픽>` → **Send test** → 휴대폰에 푸시 |
+| N. 디스크 관리 | Settings → Storage → 신호별 용량·가장 오래된 기록 확인 → Logs 보관 기간을 7 days로 → 확인 창 → 오래된 로그가 지워지고 용량이 줄어듦 |
 
 ## 개발
 

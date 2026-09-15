@@ -7,6 +7,10 @@ import {
   type CreateApiKeyResponse,
   type ProjectInfo,
   type ProjectListResponse,
+  RETENTION_DAYS,
+  type RetentionSignal,
+  type StorageResponse,
+  type StorageSignal,
 } from '@minidog/types';
 import { useState, type FormEvent } from 'react';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -21,7 +25,7 @@ import { Select } from '@/components/ui/Select';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Table, TableHead, Td, Tr, type ColumnSpec } from '@/components/ui/Table';
 import { apiFetch, toApiClientError } from '@/lib/api-client';
-import { formatDate, formatRelative } from '@/lib/format';
+import { formatBytes, formatCount, formatDate, formatRelative } from '@/lib/format';
 import { useApi } from '@/lib/use-api';
 import styles from './Settings.module.scss';
 
@@ -30,6 +34,21 @@ const PROJECT_COLUMNS = [
   { label: 'Environments' },
   { label: 'Created', align: 'end', hideBelow: 'tablet' },
 ] as const satisfies readonly ColumnSpec[];
+
+const STORAGE_COLUMNS = [
+  { label: 'Signal' },
+  { label: 'Keep for' },
+  { label: 'Records', align: 'end' },
+  { label: 'On disk', align: 'end' },
+  { label: 'Oldest', align: 'end', hideBelow: 'tablet' },
+] as const satisfies readonly ColumnSpec[];
+
+const SIGNAL_LABELS: Record<RetentionSignal, string> = {
+  traces: 'Traces',
+  logs: 'Logs',
+  metrics: 'Metrics',
+  synthetics: 'Synthetic results',
+};
 
 const KEY_COLUMNS = [
   { label: 'Name' },
@@ -126,6 +145,8 @@ export function SettingsView() {
       <Section title="Connection">
         {context.data ? <ConnectionInfo context={context.data} /> : <Skeleton height="calc(var(--row-height) * 4)" />}
       </Section>
+
+      <StorageSection />
     </>
   );
 }
@@ -339,6 +360,92 @@ function ApiKeysSection({ project }: { project: ProjectInfo }) {
           <ErrorState title="Unable to load API keys." description={keys.error.message} onRetry={keys.refetch} />
         ) : (
           <Skeleton height="calc(var(--row-height) * 2)" />
+        )}
+      </div>
+    </Section>
+  );
+}
+
+/** Disk use per signal and how long each is kept (ClickHouse TTL, shared by every project). */
+function StorageSection() {
+  const storage = useApi<StorageResponse>('/storage', 60_000);
+  const [saving, setSaving] = useState<RetentionSignal | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const change = async (item: StorageSignal, days: number) => {
+    const label = SIGNAL_LABELS[item.signal].toLowerCase();
+    // An unknown current value may be longer, so it asks too.
+    const shorter = item.retentionDays === null || days < item.retentionDays;
+    if (shorter && !window.confirm(`Keep ${label} for ${days} days? Older ${label} are deleted now, in every project.`)) return;
+    setSaving(item.signal);
+    setError(null);
+    try {
+      await apiFetch<StorageResponse>('/storage/retention', { method: 'PUT', body: JSON.stringify({ signal: item.signal, days }) });
+      storage.refetch();
+    } catch (failure) {
+      setError(toApiClientError(failure).message);
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  const data = storage.data;
+  const total = data ? data.signals.reduce((sum, item) => sum + item.bytes, 0) + data.sqliteBytes : 0;
+
+  return (
+    <Section title="Storage">
+      <p className={styles.note}>
+        {data ? (
+          <>
+            minidog uses <strong>{formatBytes(total)}</strong> on this machine, including {formatBytes(data.sqliteBytes)} of settings.{' '}
+          </>
+        ) : null}
+        Retention applies to every project; shortening it deletes older records right away.
+        {error && <span className={styles.error}> {error}</span>}
+      </p>
+      <div className={styles.flushTable}>
+        {data ? (
+          <Table aria-label="Storage">
+            <TableHead columns={STORAGE_COLUMNS} />
+            <tbody>
+              {data.signals.map((item) => (
+                <Tr key={item.signal}>
+                  <Td>{SIGNAL_LABELS[item.signal]}</Td>
+                  <Td>
+                    <Select
+                      aria-label={`Keep ${SIGNAL_LABELS[item.signal].toLowerCase()} for`}
+                      value={item.retentionDays === null ? '' : String(item.retentionDays)}
+                      disabled={saving !== null}
+                      onChange={(event) => void change(item, Number(event.target.value))}
+                    >
+                      {item.retentionDays === null && <option value="">Not set</option>}
+                      {item.retentionDays !== null && !(RETENTION_DAYS as readonly number[]).includes(item.retentionDays) && (
+                        <option value={item.retentionDays}>{item.retentionDays} days</option>
+                      )}
+                      {RETENTION_DAYS.map((days) => (
+                        <option key={days} value={days}>
+                          {days === 365 ? '1 year' : `${days} days`}
+                        </option>
+                      ))}
+                    </Select>
+                  </Td>
+                  <Td align="end" mono>
+                    {formatCount(item.rows)}
+                  </Td>
+                  <Td align="end" mono>
+                    {formatBytes(item.bytes)}
+                  </Td>
+                  <Td align="end" mono muted hideBelow="tablet">
+                    {item.oldest === null ? '—' : formatDate(item.oldest)}
+                  </Td>
+                </Tr>
+              ))}
+            </tbody>
+          </Table>
+        ) : storage.error ? (
+          <ErrorState title="Unable to read storage." description={storage.error.message} onRetry={storage.refetch} />
+        ) : (
+          <Skeleton height="calc(var(--row-height) * 4)" />
         )}
       </div>
     </Section>

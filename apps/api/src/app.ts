@@ -14,6 +14,7 @@ import { MetricRepository } from './repositories/metric-repository';
 import { MonitorRepository } from './repositories/monitor-repository';
 import { ProjectRepository, type Scope } from './repositories/project-repository';
 import { SpanRepository } from './repositories/span-repository';
+import { StorageRepository } from './repositories/storage-repository';
 import { SyntheticResultRepository } from './repositories/synthetic-result-repository';
 import { registerAlertingRoutes } from './routes/alerting';
 import { registerApmRoutes } from './routes/apm';
@@ -23,6 +24,7 @@ import { registerLogRoutes } from './routes/logs';
 import { registerMetricRoutes } from './routes/metrics';
 import { registerMonitorRoutes } from './routes/monitors';
 import { registerSettingsRoutes } from './routes/settings';
+import { registerStorageRoutes } from './routes/storage';
 import { registerSystemRoutes } from './routes/system';
 import { AlertingService } from './services/alerting-service';
 import { ApmService } from './services/apm-service';
@@ -30,6 +32,7 @@ import { HostService } from './services/host-service';
 import { LogService } from './services/log-service';
 import { MetricsExplorerService } from './services/metrics-explorer-service';
 import { MonitorService } from './services/monitor-service';
+import { StorageService } from './services/storage-service';
 import { AlertEvaluator } from './worker/alert-evaluator';
 import { ResultWriter } from './worker/result-writer';
 import { SyntheticScheduler } from './worker/synthetic-scheduler';
@@ -53,6 +56,7 @@ export interface AppContext {
   logSearch: LogService;
   metricsExplorer: MetricsExplorerService;
   alerting: AlertingService;
+  storage: StorageService;
   /** Null when WORKER_ENABLED=false. */
   scheduler: SyntheticScheduler | null;
 }
@@ -114,6 +118,7 @@ export async function buildApp(config: Config, options: BuildAppOptions = {}): P
     logSearch: new LogService(logs, scope),
     metricsExplorer: new MetricsExplorerService(metrics, scope),
     alerting: new AlertingService(alertMonitors, evaluator, scope, config.ALERTS_ENABLED, monitors),
+    storage: new StorageService(new StorageRepository(clickhouse), config.SQLITE_PATH),
     scheduler,
   };
 
@@ -165,6 +170,7 @@ export async function buildApp(config: Config, options: BuildAppOptions = {}): P
   await app.register(
     async (routes) => {
       registerSystemRoutes(routes, ctx);
+      registerStorageRoutes(routes, ctx);
       registerMonitorRoutes(routes, ctx);
       registerHostRoutes(routes, ctx);
       registerApmRoutes(routes, ctx);

@@ -1,4 +1,4 @@
-import {
+import { RETENTION_MAX_DAYS,
   SERVICE_CURRENT_WINDOW_SECONDS,
   TIME_RANGES,
   type EndpointListResponse,
@@ -28,8 +28,8 @@ import { deriveDeployments, summarizeVersions } from './deployments';
 import { fillHistogram } from './histogram';
 import { deriveServiceHealth } from './service-health';
 
-/** Span retention; a service page opens for any service seen within it. */
-const LOOKBACK_MS = 14 * 24 * 60 * 60 * 1000;
+/** As far back as spans can be kept; a service page opens for any service seen within it. */
+const LOOKBACK_MS = RETENTION_MAX_DAYS * 24 * 60 * 60 * 1000;
 
 /** `from`/`to` (epoch ms) is an absolute window selected on a chart; it overrides `range`. */
 export type TraceQuery = Omit<TraceFilters, 'fromMs' | 'toMs'> & { range: TimeRange; from?: number; to?: number };
