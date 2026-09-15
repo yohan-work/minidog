@@ -544,6 +544,22 @@ export interface EndpointListResponse {
   endpoints: EndpointSummary[];
 }
 
+/** Requests whose duration falls in [fromMs, toMs). */
+export interface LatencyBucket {
+  fromMs: number;
+  toMs: number;
+  requests: number;
+  errors: number;
+}
+
+export interface EndpointResponse {
+  range: TimeRange;
+  endpoint: EndpointSummary;
+  series: RequestSeries;
+  /** Power-of-two duration buckets (…, 4–8, 8–16 ms, …), fastest first. */
+  histogram: LatencyBucket[];
+}
+
 // ---------------------------------------------------------------------------
 // Service map
 // ---------------------------------------------------------------------------

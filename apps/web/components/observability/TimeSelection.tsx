@@ -45,11 +45,13 @@ export interface DrilldownLink {
  * Where to look next for a window: its slowest and failed requests, error logs,
  * exceptions and database queries. The range is kept so clearing the window returns to it.
  */
-export function drilldownLinks(selection: TimeWindowSelection, range: TimeRange, service?: string): DrilldownLink[] {
+export function drilldownLinks(selection: TimeWindowSelection, range: TimeRange, service?: string, endpoint?: string): DrilldownLink[] {
   const scope = { ...(service ? { service } : {}), ...windowParams(selection) };
+  // Traces can be narrowed to the endpoint; logs, exceptions and queries are per service.
+  const traceScope = { ...scope, ...(endpoint ? { endpoint } : {}) };
   return [
-    { label: 'Slowest traces', href: withRange(`/traces${toQuery({ ...scope, sort: 'slowest' })}`, range) },
-    { label: 'Error traces', href: withRange(`/traces${toQuery({ ...scope, status: 'error' })}`, range) },
+    { label: 'Slowest traces', href: withRange(`/traces${toQuery({ ...traceScope, sort: 'slowest' })}`, range) },
+    { label: 'Error traces', href: withRange(`/traces${toQuery({ ...traceScope, status: 'error' })}`, range) },
     { label: 'Error logs', href: withRange(`/logs${toQuery({ ...scope, level: 'error' })}`, range) },
     { label: 'Exceptions', href: withRange(`/errors${toQuery(scope)}`, range) },
     { label: 'Slow queries', href: withRange(`/queries${toQuery(scope)}`, range) },

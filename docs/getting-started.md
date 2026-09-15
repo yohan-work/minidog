@@ -100,7 +100,7 @@ Docker Desktop에서는 Docker VM의 지표가 보인다. 실제 서버를 보�
 ```text
 Overview                 상태 요약 · 주의가 필요한 항목 · 처리량/지연 · 서비스/호스트/합성 체크
 Observe
- ├ Services              서비스 목록 · 상세(P50/P95/P99, 엔드포인트, 최근 트레이스) · Service map · 배포 표시선(service.version) · 버전별 비교
+ ├ Services              서비스 목록 · 상세(P50/P95/P99, 엔드포인트, 최근 트레이스) · Service map · 배포 표시선(service.version) · 버전별 비교 · 엔드포인트 상세(응답시간 분포)
  ├ Infrastructure        호스트 목록 · 상세(CPU/Memory/Disk/Network)
  ├ Metrics               지표 · 집계 · 서비스/호스트 필터 · 그룹
  ├ Traces                Trace Explorer · Trace 상세(Waterfall, 느린 span, 관련 로그) · 느린 순 정렬
@@ -128,6 +128,7 @@ Settings                 프로젝트 · 환경 · API key · 연결 정보
 | F. 구간 드릴다운 · Errors | `pnpm demo` 후 `curl -X POST localhost:5100/__demo/scenario -d '{"paymentErrorRate":0.5,"dbDelayMs":300}'` → Services 요청 차트를 드래그 → Slowest traces / Exceptions. Errors에 `card declined by issuer`가 묶여 보인다 |
 | G. 배포 표시선 | `pnpm demo`를 끄고 `DEMO_VERSION=1.1.0 pnpm demo`로 다시 실행 → 서비스 차트에 `1.1.0` 세로선, 서비스 상세 Versions에 1.0.0 / 1.1.0 비교 |
 | H. 느린 DB 쿼리 | `pnpm demo` 후 `curl -X POST localhost:5100/__demo/scenario -d '{"dbDelayMs":300}'` → Queries에서 `INSERT INTO orders …`가 총 소요 시간 1위, 행을 누르면 가장 느린 호출의 트레이스 |
+| I. 엔드포인트 상세 | Services → `api` → Endpoints에서 `POST /checkout` → 응답시간 분포(2배 간격 막대, 빨강 = 실패), P50/P95/P99 표시, 가장 느린 요청 |
 
 ## 개발
 

@@ -60,6 +60,13 @@ export interface RawEndpoint extends LatencyRow {
   errors: number;
 }
 
+/** Entry spans in duration bin `bin`: [2^bin, 2^(bin+1)) ms; bin -1 is under 1 ms. */
+export interface RawLatencyBin {
+  bin: number;
+  requests: number;
+  errors: number;
+}
+
 export interface RawEdge {
   source: string;
   target: string;
@@ -234,7 +241,7 @@ export class SpanRepository extends ClickHouseRepository {
   }
 
   /** Requests, errors and latency per bucket, for one service or all. */
-  async requestSeries(scope: Scope, fromMs: number, stepSeconds: number, service?: string): Promise<RawRequestPoint[]> {
+  async requestSeries(scope: Scope, fromMs: number, stepSeconds: number, service?: string, endpoint?: string): Promise<RawRequestPoint[]> {
     const rows = await this.query<{ t: Num; requests: Num; errors: Num; p50: NullableNum; p95: NullableNum; p99: NullableNum }>(
       `SELECT
          intDiv(toUnixTimestamp(timestamp), {step:UInt32}) * {step:UInt32} AS t,
@@ -245,10 +252,11 @@ export class SpanRepository extends ClickHouseRepository {
        WHERE ${SCOPE_FILTER}
          AND is_entry = 1
          ${optional(service, 'service = {service:String}')}
+         ${optional(endpoint, 'endpoint = {endpoint:String}')}
          AND ${since('fromMs')}
        GROUP BY t
        ORDER BY t`,
-      { ...scope, fromMs, step: stepSeconds, service },
+      { ...scope, fromMs, step: stepSeconds, service, endpoint },
     );
     return rows.map((row) => ({ t: Number(row.t), requests: Number(row.requests), errors: Number(row.errors), ...latency(row) }));
   }
@@ -332,7 +340,7 @@ export class SpanRepository extends ClickHouseRepository {
   }
 
   /** Endpoint statistics, slowest first. */
-  async endpoints(scope: Scope, fromMs: number, service?: string): Promise<RawEndpoint[]> {
+  async endpoints(scope: Scope, fromMs: number, service?: string, endpoint?: string): Promise<RawEndpoint[]> {
     const rows = await this.query<{
       service: string;
       endpoint: string;
@@ -348,11 +356,12 @@ export class SpanRepository extends ClickHouseRepository {
          AND is_entry = 1
          AND endpoint != ''
          ${optional(service, 'service = {service:String}')}
+         ${optional(endpoint, 'endpoint = {endpoint:String}')}
          AND ${since('fromMs')}
        GROUP BY service, endpoint
        ORDER BY p95 DESC
        LIMIT 200`,
-      { ...scope, fromMs, service },
+      { ...scope, fromMs, service, endpoint },
     );
     return rows.map((row) => ({
       service: row.service,
@@ -593,6 +602,26 @@ export class SpanRepository extends ClickHouseRepository {
         slowestSpanId: row.slowest_span_id,
       };
     });
+  }
+
+  /** Entry spans of one endpoint counted in power-of-two duration bins. */
+  async latencyHistogram(scope: Scope, filters: { fromMs: number; service: string; endpoint: string }): Promise<RawLatencyBin[]> {
+    const rows = await this.query<{ bin: Num; requests: Num; errors: Num }>(
+      `SELECT
+         if(duration_ms < 1, -1, toInt32(floor(log2(duration_ms)))) AS bin,
+         count() AS requests,
+         sum(is_error) AS errors
+       FROM spans
+       WHERE ${SCOPE_FILTER}
+         AND is_entry = 1
+         AND service = {service:String}
+         AND endpoint = {endpoint:String}
+         AND ${since('fromMs')}
+       GROUP BY bin
+       ORDER BY bin`,
+      { ...scope, ...filters },
+    );
+    return rows.map((row) => ({ bin: Number(row.bin), requests: Number(row.requests), errors: Number(row.errors) }));
   }
 
   async trace(scope: Scope, traceId: string): Promise<RawSpan[]> {

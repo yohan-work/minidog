@@ -35,6 +35,10 @@ const queryListSchema = rangeQuerySchema
   })
   .superRefine(checkWindow);
 
+const endpointQuerySchema = rangeQuerySchema.extend({
+  endpoint: z.string().trim().min(1, 'Choose an endpoint.').max(500),
+});
+
 const errorQuerySchema = rangeQuerySchema
   .extend({
     ...windowFields,
@@ -53,6 +57,12 @@ export function registerApmRoutes(app: FastifyInstance, ctx: AppContext): void {
     const { service } = serviceParamsSchema.parse(request.params);
     const { range } = rangeQuerySchema.parse(request.query);
     return ctx.apm.detail(service, range);
+  });
+
+  app.get('/api/services/:service/endpoint', async (request) => {
+    const { service } = serviceParamsSchema.parse(request.params);
+    const { range, endpoint } = endpointQuerySchema.parse(request.query);
+    return ctx.apm.endpoint(service, endpoint, range);
   });
 
   app.get('/api/endpoints', async (request) => {

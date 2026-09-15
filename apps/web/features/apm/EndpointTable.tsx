@@ -1,7 +1,7 @@
 import type { EndpointSummary, TimeRange } from '@minidog/types';
 import { RowLink, Table, TableHead, Td, Tr, type ColumnSpec } from '@/components/ui/Table';
 import { formatCount, formatLatency, formatPercent } from '@/lib/format';
-import { tracesHref } from '@/lib/links';
+import { endpointHref } from '@/lib/links';
 import { errorRateTone, latencyTone, toneClass } from './ServiceTable';
 import styles from './Apm.module.scss';
 
@@ -14,7 +14,7 @@ const COLUMNS = [
   { label: 'P99', align: 'end', hideBelow: 'desktop' },
 ] as const satisfies readonly ColumnSpec[];
 
-/** Slowest endpoints first; a row opens its traces. */
+/** Slowest endpoints first; a row opens the endpoint page. */
 export function EndpointTable({ endpoints, range }: { endpoints: readonly EndpointSummary[]; range: TimeRange }) {
   return (
     <Table aria-label="Endpoints">
@@ -23,7 +23,7 @@ export function EndpointTable({ endpoints, range }: { endpoints: readonly Endpoi
         {endpoints.map((endpoint) => (
           <Tr key={endpoint.endpoint} interactive>
             <Td>
-              <RowLink href={tracesHref({ service: endpoint.service, endpoint: endpoint.endpoint }, range)} className={styles.endpoint}>
+              <RowLink href={endpointHref(endpoint.service, endpoint.endpoint, range)} className={styles.endpoint}>
                 {endpoint.endpoint}
               </RowLink>
             </Td>

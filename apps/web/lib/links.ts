@@ -28,3 +28,6 @@ export const logsHref = (filters: { service?: string; traceId?: string; level?: 
 
 export const metricsHref = (filters: { metric?: string; service?: string; host?: string }, range: TimeRange) =>
   withRange(`/metrics${query(filters)}`, range);
+
+export const endpointHref = (service: string, endpoint: string, range: TimeRange) =>
+  withRange(`/services/${encodeURIComponent(service)}/endpoint${query({ e: endpoint })}`, range);

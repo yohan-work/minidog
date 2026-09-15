@@ -2,6 +2,7 @@ import {
   SERVICE_CURRENT_WINDOW_SECONDS,
   TIME_RANGES,
   type EndpointListResponse,
+  type EndpointResponse,
   type EndpointSummary,
   type RequestSeries,
   type RequestSeriesPoint,
@@ -24,6 +25,7 @@ import type { LogRepository } from '../repositories/log-repository';
 import type { Scope } from '../repositories/project-repository';
 import type { RawEndpoint, RawRequestPoint, RawServiceStats, SpanRepository, TraceFilters } from '../repositories/span-repository';
 import { deriveDeployments, summarizeVersions } from './deployments';
+import { fillHistogram } from './histogram';
 import { deriveServiceHealth } from './service-health';
 
 /** Span retention; a service page opens for any service seen within it. */
@@ -103,6 +105,24 @@ export class ApmService {
   }
 
   /** Endpoints of every service, slowest first — used to point at a likely cause. */
+  /** One endpoint of a service: summary, trend and response-time distribution. */
+  async endpoint(service: string, endpoint: string, range: TimeRange): Promise<EndpointResponse> {
+    const now = Date.now();
+    const window = timeWindow(range, now);
+    const [[raw], points, bins] = await Promise.all([
+      this.spans.endpoints(this.scope, window.fromMs, service, endpoint),
+      this.spans.requestSeries(this.scope, window.fromMs, window.stepSeconds, service, endpoint),
+      this.spans.latencyHistogram(this.scope, { fromMs: window.fromMs, service, endpoint }),
+    ]);
+    if (!raw) throw new NotFoundError('Endpoint');
+    return {
+      range,
+      endpoint: toEndpointSummary(raw),
+      series: fillRequestSeries(window, points),
+      histogram: fillHistogram(bins),
+    };
+  }
+
   async endpoints(range: TimeRange): Promise<EndpointListResponse> {
     const window = timeWindow(range);
     return { range, endpoints: (await this.spans.endpoints(this.scope, window.fromMs)).map(toEndpointSummary) };
