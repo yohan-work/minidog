@@ -58,6 +58,18 @@ pnpm dev        # API on :4000, dashboard on :3000
 
 Open **http://localhost:3000**. Host metrics start arriving within about 15 seconds.
 
+### Always-on mode
+
+To keep minidog running without a terminal, run the API and dashboard in Docker instead of `pnpm dev`:
+
+```bash
+pnpm local:up     # builds and starts everything; restarts whenever Docker starts
+pnpm local:logs   # follow API / dashboard logs
+pnpm local:down   # stop it (e.g. to go back to pnpm dev)
+```
+
+It uses the same data as `pnpm dev` (`apps/api/data` and the ClickHouse volume), so run one or the other; the API refuses to start while the port is taken. After pulling new code, run `pnpm local:up` again to rebuild. Turn on Docker Desktop's *Start Docker Desktop when you sign in* to have it come back after a reboot. Checks pause while the Mac sleeps.
+
 ### Try it with demo data
 
 ```bash
