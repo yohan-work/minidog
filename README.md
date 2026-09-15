@@ -36,7 +36,7 @@ The goal is to reach the root cause in three screens or fewer, without first lea
 - **Database queries**: statements from database client spans ranked by time spent, P95 or calls, with literals replaced by `?`; each opens its slowest call.
 - **Infrastructure**: host CPU, memory, disk and network through the OTel `hostmetrics` receiver.
 - **Metrics Explorer**: query any ingested metric with aggregation and filters.
-- **Synthetics**: HTTP checks with status, latency, availability and SSL expiry.
+- **Synthetics**: HTTP checks with status, latency, availability and SSL expiry; they can follow redirects and require text in the response body.
 - **Monitors**: alerts for service down, error rate, latency, host resources and synthetic checks (failed checks, response time, SSL expiry), with Warning and Critical levels, state history and webhooks (Slack-compatible). Noise control: alert only after a condition lasts N minutes, delay recovery, and mute notifications during maintenance.
 - **Service Map**: a dependency graph built from span relationships.
 - **Projects**: projects, environments and ingest API keys.

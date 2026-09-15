@@ -107,6 +107,10 @@ const MIGRATIONS: readonly string[] = [
   ALTER TABLE alert_monitors ADD COLUMN pending_state TEXT;
   ALTER TABLE alert_monitors ADD COLUMN pending_since TEXT;
   `,
+  /* 5 — synthetic checks: follow redirects, required response text */ `
+  ALTER TABLE synthetic_monitors ADD COLUMN follow_redirects INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE synthetic_monitors ADD COLUMN body_contains TEXT NOT NULL DEFAULT '';
+  `,
 ];
 
 export function openDatabase(path: string): DatabaseSync {

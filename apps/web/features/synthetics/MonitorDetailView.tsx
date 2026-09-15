@@ -27,6 +27,7 @@ import { useTimeRange, withRange } from '@/lib/time-range';
 import { useApi } from '@/lib/use-api';
 import { LatencyChart, LatencyLegend } from './LatencyChart';
 import { SSL_WARNING_DAYS } from './MonitorTable';
+import { CheckSettings } from './CheckSettings';
 import { RecentChecksSkeleton, RecentChecksTable } from './RecentChecksTable';
 import { ResultsNotice } from './ResultsNotice';
 import styles from './Synthetics.module.scss';
@@ -205,6 +206,8 @@ export function MonitorDetailView({ id }: { id: string }) {
               <RecentChecksSkeleton />
             )}
           </Section>
+
+          {monitor && <CheckSettings key={monitor.id} monitor={monitor} onSaved={refreshAll} />}
         </>
       )}
     </>
@@ -232,6 +235,20 @@ function MonitorMeta({ monitor }: { monitor: MonitorWithSummary }) {
       </span>
       {separator}
       <span>timeout {formatLatency(monitor.timeoutMs)}</span>
+      {monitor.followRedirects && (
+        <>
+          {separator}
+          <span>follows redirects</span>
+        </>
+      )}
+      {monitor.bodyContains && (
+        <>
+          {separator}
+          <span>
+            body contains <span className={styles.mono}>“{monitor.bodyContains}”</span>
+          </span>
+        </>
+      )}
     </>
   );
 }
@@ -283,10 +300,11 @@ function SummaryMetrics({
         value={formatDaysUntil(summary?.sslExpiresAt, now)}
         tone={sslDays !== null && sslDays <= SSL_WARNING_DAYS ? 'warning' : undefined}
         meta={
-          !isHttps
-            ? 'Not an HTTPS URL'
-            : summary?.sslExpiresAt != null
-              ? formatDate(summary.sslExpiresAt)
+          // An http:// URL can still report a certificate when it redirects to https.
+          summary?.sslExpiresAt != null
+            ? formatDate(summary.sslExpiresAt)
+            : !isHttps
+              ? 'Not an HTTPS URL'
               : (unavailable ?? 'Not checked yet')
         }
       />

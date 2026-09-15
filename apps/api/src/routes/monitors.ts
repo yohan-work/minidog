@@ -9,6 +9,8 @@ import {
   idParamsSchema,
   rangeQuerySchema,
   timeoutIssue,
+  bodyCheckAllowed,
+  bodyCheckIssue,
   timeoutWithinInterval,
   updateMonitorSchema,
 } from './schemas';
@@ -40,7 +42,10 @@ export function registerMonitorRoutes(app: FastifyInstance, ctx: AppContext): vo
     const current = service.get(id);
     const merged = { ...current, ...patch };
     if (!timeoutWithinInterval(merged)) {
-      throw new z.ZodError([{ code: 'custom', input: patch, ...timeoutIssue }]);
+      throw new z.ZodError([{ code: 'custom', input: patch, ...timeoutIssue() }]);
+    }
+    if (!bodyCheckAllowed(merged)) {
+      throw new z.ZodError([{ code: 'custom', input: patch, ...bodyCheckIssue() }]);
     }
     const monitor = monitors.update(id, patch)!;
     scheduler?.sync(id);
@@ -71,6 +76,8 @@ export function registerMonitorRoutes(app: FastifyInstance, ctx: AppContext): vo
       ttfbMs: result.ttfbMs,
       sslExpiresAt: result.sslExpiresAt?.getTime() ?? null,
       error: result.error,
+      redirects: result.redirects,
+      finalUrl: result.finalUrl,
     };
     return { check, persisted };
   });

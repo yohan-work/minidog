@@ -13,6 +13,8 @@ interface MonitorRow {
   interval_seconds: number;
   timeout_ms: number;
   expected_status: string;
+  follow_redirects: number;
+  body_contains: string;
   enabled: number;
   created_at: string;
   updated_at: string;
@@ -25,6 +27,8 @@ export interface NewMonitor {
   intervalSeconds: number;
   timeoutMs: number;
   expectedStatus: string;
+  followRedirects?: boolean;
+  bodyContains?: string;
 }
 
 export type MonitorPatch = Partial<NewMonitor & { enabled: boolean }>;
@@ -36,6 +40,8 @@ const COLUMNS: Record<keyof MonitorPatch, string> = {
   intervalSeconds: 'interval_seconds',
   timeoutMs: 'timeout_ms',
   expectedStatus: 'expected_status',
+  followRedirects: 'follow_redirects',
+  bodyContains: 'body_contains',
   enabled: 'enabled',
 };
 
@@ -50,6 +56,8 @@ function toMonitor(row: MonitorRow): SyntheticMonitor {
     intervalSeconds: row.interval_seconds,
     timeoutMs: row.timeout_ms,
     expectedStatus: row.expected_status,
+    followRedirects: row.follow_redirects === 1,
+    bodyContains: row.body_contains,
     enabled: row.enabled === 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -96,8 +104,9 @@ export class MonitorRepository {
     this.db
       .prepare(
         `INSERT INTO synthetic_monitors
-           (id, project_id, environment, name, url, method, interval_seconds, timeout_ms, expected_status, enabled, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+           (id, project_id, environment, name, url, method, interval_seconds, timeout_ms, expected_status,
+            follow_redirects, body_contains, enabled, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
       )
       .run(
         id,
@@ -109,6 +118,8 @@ export class MonitorRepository {
         input.intervalSeconds,
         input.timeoutMs,
         input.expectedStatus,
+        input.followRedirects ? 1 : 0,
+        input.bodyContains ?? '',
         now,
         now,
       );

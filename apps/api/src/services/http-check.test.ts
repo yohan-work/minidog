@@ -11,6 +11,19 @@ let baseUrl: string;
 before(async () => {
   server = createServer((req, res) => {
     if (req.url === '/ok') return res.end('ok');
+    if (req.url === '/text') return res.end('Hello from minidog');
+    if (req.url === '/redirect') {
+      res.writeHead(302, { location: '/ok' });
+      return res.end();
+    }
+    if (req.url === '/redirect-absolute') {
+      res.writeHead(301, { location: `http://${req.headers.host}/text` });
+      return res.end();
+    }
+    if (req.url === '/loop') {
+      res.writeHead(302, { location: '/loop' });
+      return res.end();
+    }
     if (req.url === '/error') {
       res.statusCode = 500;
       return res.end('boom');
@@ -84,4 +97,44 @@ test('fails when the connection is refused', async () => {
   assert.equal(result.statusCode, 0);
   assert.equal(result.error, 'Connection refused (ECONNREFUSED)');
   assert.equal(result.dnsMs, null);
+});
+
+test('without following, a redirect is judged as it is', async () => {
+  const lenient = await performHttpCheck(target('/redirect'));
+  assert.equal(lenient.status, 'up');
+  assert.equal(lenient.statusCode, 302);
+  assert.equal(lenient.redirects, 0);
+
+  const strict = await performHttpCheck(target('/redirect', { expectedStatus: parseExpectedStatus('200')! }));
+  assert.equal(strict.status, 'down');
+});
+
+test('following redirects judges the final response', async () => {
+  const relative = await performHttpCheck(target('/redirect', { followRedirects: true, expectedStatus: parseExpectedStatus('200')! }));
+  assert.equal(relative.status, 'up');
+  assert.equal(relative.statusCode, 200);
+  assert.equal(relative.redirects, 1);
+  assert.equal(relative.finalUrl, `${baseUrl}/ok`);
+
+  const absolute = await performHttpCheck(target('/redirect-absolute', { followRedirects: true }));
+  assert.equal(absolute.finalUrl, `${baseUrl}/text`);
+});
+
+test('a redirect loop fails after five hops', async () => {
+  const result = await performHttpCheck(target('/loop', { followRedirects: true }));
+  assert.equal(result.status, 'down');
+  assert.equal(result.redirects, 5);
+  assert.equal(result.error, 'Too many redirects (more than 5)');
+});
+
+test('the body must contain the expected text', async () => {
+  assert.equal((await performHttpCheck(target('/text', { bodyContains: 'from minidog' }))).status, 'up');
+
+  const missing = await performHttpCheck(target('/text', { bodyContains: 'Welcome' }));
+  assert.equal(missing.status, 'down');
+  assert.equal(missing.statusCode, 200);
+  assert.equal(missing.error, 'Response body does not contain "Welcome"');
+
+  const afterRedirect = await performHttpCheck(target('/redirect', { followRedirects: true, bodyContains: 'ok' }));
+  assert.equal(afterRedirect.status, 'up');
 });

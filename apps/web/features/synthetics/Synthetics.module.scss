@@ -73,3 +73,35 @@
   grid-column: 1 / -1;
   padding-top: var(--space-2);
 }
+
+// Check options
+.checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-secondary);
+  cursor: pointer;
+
+  input {
+    width: var(--space-4);
+    height: var(--space-4);
+    accent-color: var(--foreground-primary);
+  }
+}
+
+.checkboxHint {
+  font-size: var(--text-meta);
+  color: var(--foreground-muted);
+}
+
+.result {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.redirects {
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+  color: var(--foreground-muted);
+}

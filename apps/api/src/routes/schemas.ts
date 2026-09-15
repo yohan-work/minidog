@@ -1,5 +1,6 @@
 import {
   DEFAULT_TIME_RANGE,
+  MONITOR_BODY_CONTAINS_MAX,
   MONITOR_DEFAULTS,
   MONITOR_INTERVALS_SECONDS,
   MONITOR_TIMEOUT_MS,
@@ -35,11 +36,18 @@ const fields = {
     .trim()
     .refine((value) => parseExpectedStatus(value) !== null, 'Use status codes or ranges, e.g. 200-299,301.')
     .transform((value) => formatExpectedStatus(parseExpectedStatus(value)!)),
+  followRedirects: z.boolean(),
+  bodyContains: z.string().trim().max(MONITOR_BODY_CONTAINS_MAX, `Use at most ${MONITOR_BODY_CONTAINS_MAX} characters.`),
 };
+
+/** HEAD responses have no body to search. */
+const bodyCheckAllowed = (value: { method: string; bodyContains?: string }) => !(value.method === 'HEAD' && value.bodyContains);
+// Issues are built per use: zod's refine() deletes `message` from the object it is given.
+const bodyCheckIssue = () => ({ message: 'A body check needs GET; HEAD responses have no body.', path: ['bodyContains'] });
 
 const timeoutWithinInterval = (value: { timeoutMs: number; intervalSeconds: number }) =>
   value.timeoutMs < value.intervalSeconds * 1000;
-const timeoutIssue = { message: 'Timeout must be shorter than the interval.', path: ['timeoutMs'] };
+const timeoutIssue = () => ({ message: 'Timeout must be shorter than the interval.', path: ['timeoutMs'] });
 
 export const createMonitorSchema = z
   .object({
@@ -49,8 +57,11 @@ export const createMonitorSchema = z
     intervalSeconds: fields.intervalSeconds.default(MONITOR_DEFAULTS.intervalSeconds),
     timeoutMs: fields.timeoutMs.default(MONITOR_DEFAULTS.timeoutMs),
     expectedStatus: fields.expectedStatus.default(MONITOR_DEFAULTS.expectedStatus),
+    followRedirects: fields.followRedirects.default(MONITOR_DEFAULTS.followRedirects),
+    bodyContains: fields.bodyContains.default(MONITOR_DEFAULTS.bodyContains),
   })
-  .refine(timeoutWithinInterval, timeoutIssue)
+  .refine(timeoutWithinInterval, timeoutIssue())
+  .refine(bodyCheckAllowed, bodyCheckIssue())
   .transform(({ name, ...rest }) => ({ ...rest, name: name || new URL(rest.url).host }));
 
 export const updateMonitorSchema = z
@@ -61,12 +72,14 @@ export const updateMonitorSchema = z
     intervalSeconds: fields.intervalSeconds,
     timeoutMs: fields.timeoutMs,
     expectedStatus: fields.expectedStatus,
+    followRedirects: fields.followRedirects,
+    bodyContains: fields.bodyContains,
     enabled: z.boolean(),
   })
   .partial()
   .strict();
 
-export { timeoutWithinInterval, timeoutIssue };
+export { bodyCheckAllowed, bodyCheckIssue, timeoutIssue, timeoutWithinInterval };
 
 export const idParamsSchema = z.object({ id: z.string().min(1).max(64) });
 
