@@ -58,7 +58,7 @@ pnpm local:down   # stop, e.g. to go back to pnpm dev
 |---|---|
 | An SDK, through the bundled Collector | `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318` |
 | An SDK, straight to the API | `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4000`, `OTEL_EXPORTER_OTLP_PROTOCOL=http/json` |
-| Your own Collector | an `otlphttp` exporter with `endpoint: http://<api>:4000` and `encoding: json` |
+| Your own Collector | an `otlp_http` exporter with `endpoint: http://<api>:4000` and `encoding: json` |
 
 - The API accepts OTLP/HTTP **JSON** only (gzip is fine). Protobuf requests get a 415; the bundled Collector converts for you.
 - The service comes from the `service.name` resource attribute, the host from `host.name` and the environment from `deployment.environment.name`. A new `service.version` is shown as a deploy marker.
