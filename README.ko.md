@@ -156,11 +156,10 @@ pnpm infra:down
 
 ## 로드맵
 
-이미 있는 것: Synthetics(리다이렉트·본문 문구·SSL), 호스트 지표, APM(서비스·엔드포인트·트레이스·에러·느린 쿼리·서비스 맵), 로그와 실시간 보기, Slack·Discord·Telegram·ntfy 알림, 하루 요약, 대시보드, 측정 공백 표시, ⌘K 검색.
+이미 있는 것: 로그인, Synthetics(리다이렉트·본문 문구·SSL), 호스트 지표, APM(서비스·엔드포인트·트레이스·에러·느린 쿼리·서비스 맵), 로그와 실시간 보기, Slack·Discord·Telegram·ntfy 알림, 하루 요약, 대시보드, 측정 공백 표시, ⌘K 검색.
 
 다음:
 
-- [ ] 대시보드 로그인 (첫 실행 때 비밀번호 설정)
 - [ ] 공개 Docker 이미지로 한 줄 설치
 - [ ] 메모리를 적게 쓰는 ClickHouse 설정과 실측값
 - [ ] Heartbeat / cron 모니터
@@ -168,7 +167,12 @@ pnpm infra:down
 
 ## 보안
 
-아직 로그인 기능이 없습니다. 대시보드·Query API·ClickHouse는 127.0.0.1에서만 열리니 그대로 두고, 로그인이 추가되기 전까지 3000·4000 포트를 믿을 수 없는 네트워크에 열지 마세요.
+- **로그인:** 처음 접속하면 비밀번호를 정합니다. 그다음부터는 모든 화면과 Query API에 로그인이 필요합니다. 세션은 30일간 유지되고, 해시로만 저장됩니다.
+- **데이터 수신:** OTLP 수신은 별도입니다. Settings → API keys에서 키를 만들고, 이 컴퓨터 밖에서 데이터를 보낸다면 `INGEST_REQUIRE_API_KEY=true`를 켜세요.
+- **네트워크:** 기본적으로 모든 서비스가 127.0.0.1에서만 열립니다.
+- **비밀번호를 잊었다면:** `pnpm auth:reset`를 실행하세요. 항상 켜두기 모드에서는 `docker compose -f infra/docker/compose.yaml exec api node --import tsx src/cli/reset-password.ts`를 실행하세요. 다음 접속 때 새로 정합니다.
+- **로그인 끄기:** `AUTH_DISABLED=true`로 끌 수 있지만, 아무도 접근할 수 없는 컴퓨터에서만 쓰세요.
+- **취약점 제보:** GitHub의 비공개 보안 권고(Security advisory)로 알려주세요.
 
 ## 라이선스
 
