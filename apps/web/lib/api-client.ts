@@ -46,7 +46,7 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
     const error = (body as Partial<ApiErrorResponse> | null)?.error;
     if (response.status === 401 && error?.code === 'unauthenticated') redirectToLogin();
     if (error?.code) throw new ApiClientError(response.status, error.code, error.message, error.details);
-    // The Next.js rewrite answers with a non-JSON 500 when the Query API is down.
+    // Anything without our JSON error body (a proxy or gateway page, say) gets a generic message.
     throw new ApiClientError(
       response.status,
       'api_unavailable',

@@ -1,0 +1,323 @@
+# minidog: self-hosted observability for solo developers.
+#
+#   curl -fsSLO https://raw.githubusercontent.com/yohan-work/minidog/main/deploy/compose.yaml
+#   docker compose up -d                  # then open http://localhost:3000 and set a password
+#   docker compose --profile demo up -d   # optional: a demo shop that sends sample traffic
+#
+# Everything is published on 127.0.0.1 only. Data lives in the named volumes
+# at the bottom. Update with `docker compose pull && docker compose up -d`;
+# pin a release with MINIDOG_VERSION (e.g. MINIDOG_VERSION=0.1.0).
+#
+# The configs at the bottom are generated from infra/ in the repository
+# (scripts/check-deploy-compose.mjs keeps them in sync).
+name: minidog
+
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:26.3
+    environment:
+      CLICKHOUSE_DB: minidog
+      CLICKHOUSE_USER: minidog
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-minidog}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    configs:
+      - source: clickhouse-minidog
+        target: /etc/clickhouse-server/config.d/minidog.xml
+      - source: clickhouse-low-memory
+        target: /etc/clickhouse-server/config.d/low-memory.xml
+      - source: clickhouse-low-memory-users
+        target: /etc/clickhouse-server/users.d/low-memory.xml
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://127.0.0.1:8123/ping || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  api:
+    image: ghcr.io/yohan-work/minidog-api:${MINIDOG_VERSION:-latest}
+    init: true
+    environment:
+      CLICKHOUSE_URL: http://clickhouse:8123
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-minidog}
+      INGEST_REQUIRE_API_KEY: ${INGEST_REQUIRE_API_KEY:-false}
+      BLOCK_PRIVATE_TARGETS: ${BLOCK_PRIVATE_TARGETS:-false}
+      PUBLIC_API_URL: http://localhost:${MINIDOG_API_PORT:-4000}
+      PUBLIC_COLLECTOR_URL: http://localhost:4318
+    volumes:
+      - minidog-data:/data
+    ports:
+      # For SDKs that send OTLP straight to the Ingestion API.
+      - "127.0.0.1:${MINIDOG_API_PORT:-4000}:4000"
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/api/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  web:
+    image: ghcr.io/yohan-work/minidog-web:${MINIDOG_VERSION:-latest}
+    init: true
+    environment:
+      API_URL: http://api:4000
+    ports:
+      - "127.0.0.1:${MINIDOG_PORT:-3000}:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.160.0
+    command: ["--config=/etc/otelcol/config.yaml"]
+    # Reported as host.name for the host metrics this collector scrapes.
+    hostname: ${MINIDOG_HOST_NAME:-docker-host}
+    environment:
+      MINIDOG_INGEST_ENDPOINT: http://api:4000
+      # Optional; without a key data goes to the default project.
+      MINIDOG_API_KEY: ${MINIDOG_API_KEY:-}
+    configs:
+      - source: collector
+        target: /etc/otelcol/config.yaml
+    ports:
+      - "127.0.0.1:4317:4317"
+      - "127.0.0.1:4318:4318"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  demo:
+    profiles: [demo]
+    image: ghcr.io/yohan-work/minidog-demo:${MINIDOG_VERSION:-latest}
+    init: true
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+    depends_on:
+      - otel-collector
+    restart: unless-stopped
+
+volumes:
+  clickhouse-data:
+  minidog-data:
+
+configs:
+  clickhouse-minidog:
+    content: |
+      <!--
+        Single-node settings for a personal deployment: quieter logs and no
+        high-volume system log tables that would otherwise dominate disk usage.
+      -->
+      <clickhouse>
+        <logger>
+          <level>warning</level>
+          <console>1</console>
+        </logger>
+
+        <query_thread_log remove="1" />
+        <part_log remove="1" />
+        <trace_log remove="1" />
+        <metric_log remove="1" />
+        <asynchronous_metric_log remove="1" />
+        <text_log remove="1" />
+        <processors_profile_log remove="1" />
+      </clickhouse>
+  clickhouse-low-memory:
+    content: |
+      <!--
+        Sized for a laptop or a small server: smaller caches, fewer background
+        threads and a 1 GiB ceiling. Measured on ClickHouse 26.3 with 3 million rows
+        and aggregate queries: about 130 MB instead of 260 MB, and a long-running
+        instance no longer grows past the ceiling (see README "Resource use").
+      -->
+      <clickhouse>
+        <max_server_memory_usage>1073741824</max_server_memory_usage>
+        <mark_cache_size>268435456</mark_cache_size>
+        <index_mark_cache_size>67108864</index_mark_cache_size>
+        <uncompressed_cache_size>0</uncompressed_cache_size>
+        <mmap_cache_size>64</mmap_cache_size>
+        <mlock_executable>false</mlock_executable>
+
+        <background_pool_size>4</background_pool_size>
+        <background_merges_mutations_concurrency_ratio>2</background_merges_mutations_concurrency_ratio>
+        <background_schedule_pool_size>8</background_schedule_pool_size>
+        <background_common_pool_size>2</background_common_pool_size>
+        <background_move_pool_size>1</background_move_pool_size>
+        <background_fetches_pool_size>1</background_fetches_pool_size>
+        <background_buffer_flush_schedule_pool_size>1</background_buffer_flush_schedule_pool_size>
+        <background_message_broker_schedule_pool_size>1</background_message_broker_schedule_pool_size>
+        <background_distributed_schedule_pool_size>1</background_distributed_schedule_pool_size>
+        <tables_loader_foreground_pool_size>2</tables_loader_foreground_pool_size>
+        <tables_loader_background_pool_size>2</tables_loader_background_pool_size>
+        <max_thread_pool_size>256</max_thread_pool_size>
+
+        <!-- Must fit the smaller merge pool (4 x 2), or the server refuses to start. -->
+        <merge_tree>
+          <number_of_free_entries_in_pool_to_execute_mutation>4</number_of_free_entries_in_pool_to_execute_mutation>
+          <number_of_free_entries_in_pool_to_lower_max_size_of_merge>4</number_of_free_entries_in_pool_to_lower_max_size_of_merge>
+          <number_of_free_entries_in_pool_to_execute_optimize_entire_partition>4</number_of_free_entries_in_pool_to_execute_optimize_entire_partition>
+        </merge_tree>
+      </clickhouse>
+  clickhouse-low-memory-users:
+    content: |
+      <!-- Query defaults to match config.d/low-memory.xml: two threads per query. -->
+      <clickhouse>
+        <profiles>
+          <default>
+            <max_threads>2</max_threads>
+            <max_insert_threads>1</max_insert_threads>
+          </default>
+        </profiles>
+      </clickhouse>
+  collector:
+    content: |
+      # OpenTelemetry Collector
+      #
+      # - Receives OTLP over gRPC (4317) and HTTP (4318).
+      # - Scrapes host metrics (CPU, memory, disk, network) every 15s.
+      # - Sends metrics, traces and logs to the minidog Ingestion API
+      #   (POST /v1/{metrics,traces,logs}, OTLP/HTTP JSON). Set MINIDOG_API_KEY to
+      #   ingest into a specific project and environment.
+      #
+      # Under Docker Desktop the host metrics describe the Docker VM. On a Linux
+      # server, mount the host root read-only (`/:/hostfs:ro`), set
+      # `host_metrics.root_path: /hostfs` and use `network_mode: host` to report the
+      # machine itself.
+
+      receivers:
+        otlp:
+          protocols:
+            grpc:
+              endpoint: 0.0.0.0:4317
+            http:
+              endpoint: 0.0.0.0:4318
+
+        host_metrics:
+          collection_interval: 15s
+          scrapers:
+            cpu:
+              metrics:
+                system.cpu.time:
+                  enabled: false
+                system.cpu.utilization:
+                  enabled: true
+            memory:
+              metrics:
+                system.memory.utilization:
+                  enabled: true
+            filesystem:
+              metrics:
+                system.filesystem.inodes.usage:
+                  enabled: false
+                system.filesystem.utilization:
+                  enabled: true
+              # overlay is a "nodev" filesystem; a container's root reports the
+              # Docker host disk. Truly virtual filesystems are excluded below.
+              include_virtual_filesystems: true
+              exclude_fs_types:
+                match_type: strict
+                fs_types:
+                  - autofs
+                  - binfmt_misc
+                  - bpf
+                  - cgroup
+                  - cgroup2
+                  - configfs
+                  - debugfs
+                  - devpts
+                  - devtmpfs
+                  - fakeowner
+                  - fuse.grpcfuse
+                  - fusectl
+                  - grpcfuse
+                  - hugetlbfs
+                  - mqueue
+                  - nsfs
+                  - proc
+                  - procfs
+                  - pstore
+                  - rpc_pipefs
+                  - securityfs
+                  - selinuxfs
+                  - squashfs
+                  - sysfs
+                  - tmpfs
+                  - tracefs
+                  - virtiofs
+              # Container layers, runtime mounts and files Docker bind-mounts into
+              # the container (/etc/hosts and friends report the same disk as /).
+              exclude_mount_points:
+                match_type: regexp
+                mount_points: ['/dev/.*', '/proc/.*', '/sys/.*', '/run/.*', '/etc/.*', '/var/lib/docker/.*', '/snap/.*']
+            network:
+              exclude:
+                match_type: strict
+                interfaces: [lo]
+              metrics:
+                system.network.connections:
+                  enabled: false
+                system.network.dropped:
+                  enabled: false
+                system.network.errors:
+                  enabled: false
+                system.network.packets:
+                  enabled: false
+
+      processors:
+        memory_limiter:
+          check_interval: 1s
+          limit_mib: 256
+        # host.name comes from the container hostname (see compose.yaml);
+        # OTEL_RESOURCE_ATTRIBUTES can override it.
+        resource_detection:
+          detectors: [env, system]
+          system:
+            hostname_sources: [os]
+        # Byte counters become per-scrape deltas so throughput is a plain sum.
+        cumulative_to_delta:
+          include:
+            match_type: strict
+            metrics: [system.network.io]
+        batch: {}
+
+      exporters:
+        otlp_http/minidog:
+          endpoint: $${env:MINIDOG_INGEST_ENDPOINT}
+          encoding: json
+          compression: gzip
+          headers:
+            x-minidog-api-key: $${env:MINIDOG_API_KEY}
+
+      extensions:
+        health_check:
+          endpoint: 0.0.0.0:13133
+
+      service:
+        extensions: [health_check]
+        pipelines:
+          traces:
+            receivers: [otlp]
+            processors: [memory_limiter, batch]
+            exporters: [otlp_http/minidog]
+          metrics:
+            receivers: [otlp]
+            processors: [memory_limiter, cumulative_to_delta, batch]
+            exporters: [otlp_http/minidog]
+          metrics/host:
+            receivers: [host_metrics]
+            processors: [memory_limiter, resource_detection, cumulative_to_delta, batch]
+            exporters: [otlp_http/minidog]
+          logs:
+            receivers: [otlp]
+            processors: [memory_limiter, batch]
+            exporters: [otlp_http/minidog]

@@ -7,6 +7,7 @@
   "description": "Three instrumented Node.js services that send traces, logs and metrics to minidog.",
   "scripts": {
     "start": "tsx --disable-warning=ExperimentalWarning src/main.ts",
+    "build": "esbuild src/main.ts --bundle --platform=node --target=node24 --format=esm --outfile=dist/main.mjs --banner:js=\"import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\" --log-level=warning",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -23,6 +24,7 @@
   "devDependencies": {
     "@minidog/config": "workspace:*",
     "@types/node": "^24.0.0",
+    "esbuild": "0.28.2",
     "tsx": "^4.23.13",
     "typescript": "~5.9.3"
   }
