@@ -1,6 +1,7 @@
 'use client';
 
 import type { ServiceListResponse } from '@minidog/types';
+import { useMemo } from 'react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Section } from '@/components/layout/Section';
 import { Metric, MetricGrid } from '@/components/observability/Metric';
@@ -12,6 +13,7 @@ import { formatCount, formatLatency, formatPercent, formatRate } from '@/lib/for
 import { tracesHref } from '@/lib/links';
 import { useTimeRange, withRange } from '@/lib/time-range';
 import { useApi } from '@/lib/use-api';
+import { deploymentMarkers } from './deployments';
 import { LatencyTrendChart, LatencyTrendLegend, RequestsChart, RequestsLegend } from './RequestCharts';
 import { errorRateTone, ServiceTable, ServiceTableSkeleton } from './ServiceTable';
 import { TelemetrySetup } from './TelemetrySetup';
@@ -19,11 +21,12 @@ import styles from './Apm.module.scss';
 
 export function ServicesView() {
   const range = useTimeRange();
-  const { data, error, isLoading, updatedAt, refetch } = useApi<ServiceListResponse>(`/services?range=${range}`);
+  const { data, error, isLoading, updatedAt, refetch } = useApi<ServiceListResponse>(`/services?range=${range}&deployments=1`);
   const loading = !data;
   const seconds = data ? data.series.points.length * data.series.stepSeconds : 1;
   const tracesLink = <ButtonLink href={tracesHref({}, range)}>View traces</ButtonLink>;
   const chart = useChartSelection<'latency' | 'requests'>();
+  const markers = useMemo(() => deploymentMarkers(data?.deployments, true), [data]);
 
   return (
     <>
@@ -80,7 +83,7 @@ export function ServicesView() {
               <SelectionBar selection={chart.selectionFor('requests')!} links={drilldownLinks(chart.selectionFor('requests')!, range)} onClear={chart.clear} />
             )}
             {data ? (
-              <RequestsChart series={data.series} subject="all services" emptyAction={tracesLink} onSelectRange={chart.select('requests')} />
+              <RequestsChart series={data.series} subject="all services" emptyAction={tracesLink} onSelectRange={chart.select('requests')} markers={markers} />
             ) : (
               <Skeleton height="var(--chart-height)" />
             )}
@@ -91,7 +94,7 @@ export function ServicesView() {
               <SelectionBar selection={chart.selectionFor('latency')!} links={drilldownLinks(chart.selectionFor('latency')!, range)} onClear={chart.clear} />
             )}
             {data ? (
-              <LatencyTrendChart series={data.series} subject="all services" emptyAction={tracesLink} onSelectRange={chart.select('latency')} />
+              <LatencyTrendChart series={data.series} subject="all services" emptyAction={tracesLink} onSelectRange={chart.select('latency')} markers={markers} />
             ) : (
               <Skeleton height="var(--chart-height)" />
             )}

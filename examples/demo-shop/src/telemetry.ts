@@ -19,7 +19,8 @@ export function startTelemetry(service: string): NodeSDK {
   const sdk = new NodeSDK({
     resource: resourceFromAttributes({
       'service.name': service,
-      'service.version': '1.0.0',
+      // Restart with DEMO_VERSION=1.1.0 to simulate a deployment.
+      'service.version': process.env.DEMO_VERSION ?? '1.0.0',
       'host.name': process.env.DEMO_HOST_NAME ?? hostname(),
       'deployment.environment.name': process.env.DEMO_ENVIRONMENT ?? 'production',
     }),

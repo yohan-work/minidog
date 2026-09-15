@@ -21,6 +21,11 @@ const traceQuerySchema = rangeQuerySchema
   })
   .superRefine(checkWindow);
 
+/** `?deployments=1` adds the range's deployments (a 14-day version scan); dropdowns leave it off. */
+const serviceListQuerySchema = rangeQuerySchema.extend({
+  deployments: emptyAsUndefined(z.enum(['1', 'true']).optional()),
+});
+
 const errorQuerySchema = rangeQuerySchema
   .extend({
     ...windowFields,
@@ -31,8 +36,8 @@ const errorQuerySchema = rangeQuerySchema
 
 export function registerApmRoutes(app: FastifyInstance, ctx: AppContext): void {
   app.get('/api/services', async (request) => {
-    const { range } = rangeQuerySchema.parse(request.query);
-    return ctx.apm.list(range);
+    const { range, deployments } = serviceListQuerySchema.parse(request.query);
+    return ctx.apm.list(range, { deployments: deployments !== undefined });
   });
 
   app.get('/api/services/:service', async (request) => {

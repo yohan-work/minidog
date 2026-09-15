@@ -100,7 +100,7 @@ Docker Desktop에서는 Docker VM의 지표가 보인다. 실제 서버를 보�
 ```text
 Overview                 상태 요약 · 주의가 필요한 항목 · 처리량/지연 · 서비스/호스트/합성 체크
 Observe
- ├ Services              서비스 목록 · 상세(P50/P95/P99, 엔드포인트, 최근 트레이스) · Service map
+ ├ Services              서비스 목록 · 상세(P50/P95/P99, 엔드포인트, 최근 트레이스) · Service map · 배포 표시선(service.version) · 버전별 비교
  ├ Infrastructure        호스트 목록 · 상세(CPU/Memory/Disk/Network)
  ├ Metrics               지표 · 집계 · 서비스/호스트 필터 · 그룹
  ├ Traces                Trace Explorer · Trace 상세(Waterfall, 느린 span, 관련 로그) · 느린 순 정렬
@@ -125,6 +125,7 @@ Settings                 프로젝트 · 환경 · API key · 연결 정보
 | D. Latency 모니터 | Monitors → New monitor(Latency, `api`, warning 250 ms, critical 500 ms, 1 min) → `dbDelayMs` 200 → 600. 이력에 Healthy → Warning → Critical |
 | E. URL 다운 알림 | Synthetics → 모니터 상세 → Create alert(Synthetic check · Failed checks, Webhook URL). 다운되면 Critical로 바뀌고 Webhook이 간다. Alert after를 고르면 그 시간 동안 계속될 때만, Mute 중에는 기록만 하고 해제 후 한 번 보낸다 |
 | F. 구간 드릴다운 · Errors | `pnpm demo` 후 `curl -X POST localhost:5100/__demo/scenario -d '{"paymentErrorRate":0.5,"dbDelayMs":300}'` → Services 요청 차트를 드래그 → Slowest traces / Exceptions. Errors에 `card declined by issuer`가 묶여 보인다 |
+| G. 배포 표시선 | `pnpm demo`를 끄고 `DEMO_VERSION=1.1.0 pnpm demo`로 다시 실행 → 서비스 차트에 `1.1.0` 세로선, 서비스 상세 Versions에 1.0.0 / 1.1.0 비교 |
 
 ## 개발
 

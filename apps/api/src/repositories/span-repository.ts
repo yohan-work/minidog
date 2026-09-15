@@ -82,6 +82,19 @@ export interface TraceFilters {
   limit: number;
 }
 
+/** Entry-span statistics of one version of one service. */
+export interface RawVersionRow {
+  service: string;
+  version: string;
+  /** First and last span with this version since `lookbackFromMs`, epoch ms. */
+  firstSeenAt: number;
+  lastSeenAt: number;
+  /** Since `fromMs`. */
+  requests: number;
+  errors: number;
+  p95Ms: number | null;
+}
+
 export interface ErrorGroupFilters {
   fromMs: number;
   toMs?: number;
@@ -436,6 +449,47 @@ export class SpanRepository extends ClickHouseRepository {
       lastSeenAt: Number(row.last_ms),
       endpoints: [...row.endpoints].sort(),
       latestTraceId: row.latest_trace_id,
+    }));
+  }
+
+  /** Versions (`service.version` resource attribute) per service, from entry spans. */
+  async versionStats(scope: Scope, window: { fromMs: number; lookbackFromMs: number; service?: string }): Promise<RawVersionRow[]> {
+    const rows = await this.query<{
+      service: string;
+      version: string;
+      first_ms: Num;
+      last_ms: Num;
+      requests: Num;
+      errors: Num;
+      p95: NullableNum;
+    }>(
+      `SELECT
+         service,
+         resource_attributes['service.version'] AS version,
+         toUnixTimestamp64Milli(min(timestamp)) AS first_ms,
+         toUnixTimestamp64Milli(max(timestamp)) AS last_ms,
+         countIf(${since('fromMs')}) AS requests,
+         countIf(${since('fromMs')} AND is_error = 1) AS errors,
+         quantileIf(0.95)(duration_ms, ${since('fromMs')}) AS p95
+       FROM spans
+       WHERE ${SCOPE_FILTER}
+         AND is_entry = 1
+         AND service != ''
+         ${optional(window.service, 'service = {service:String}')}
+         AND ${since('lookbackFromMs')}
+         AND resource_attributes['service.version'] != ''
+       GROUP BY service, version
+       ORDER BY service, first_ms`,
+      { ...scope, ...window },
+    );
+    return rows.map((row) => ({
+      service: row.service,
+      version: row.version,
+      firstSeenAt: Number(row.first_ms),
+      lastSeenAt: Number(row.last_ms),
+      requests: Number(row.requests),
+      errors: Number(row.errors),
+      p95Ms: toMs(row.p95),
     }));
   }
 

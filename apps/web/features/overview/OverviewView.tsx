@@ -11,7 +11,7 @@ import type {
   TimeRange,
 } from '@minidog/types';
 import Link from 'next/link';
-import type { ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Section } from '@/components/layout/Section';
 import { Metric, MetricGrid } from '@/components/observability/Metric';
@@ -25,6 +25,7 @@ import { formatChange, formatCount, formatLatency, formatPercent, formatRate, fo
 import { serviceHref, tracesHref } from '@/lib/links';
 import { useTimeRange, withRange } from '@/lib/time-range';
 import { useApi } from '@/lib/use-api';
+import { deploymentMarkers } from '../apm/deployments';
 import { LatencyTrendChart, LatencyTrendLegend, RequestsChart, RequestsLegend } from '../apm/RequestCharts';
 import { errorRateTone, latencyTone, ServiceTable, ServiceTableSkeleton } from '../apm/ServiceTable';
 import { TelemetrySetup } from '../apm/TelemetrySetup';
@@ -52,12 +53,13 @@ interface AttentionItem {
  */
 export function OverviewView() {
   const range = useTimeRange();
-  const services = useApi<ServiceListResponse>(`/services?range=${range}`);
+  const services = useApi<ServiceListResponse>(`/services?range=${range}&deployments=1`);
   const endpoints = useApi<EndpointListResponse>(`/endpoints?range=${range}`);
   const alerts = useApi<AlertSummaryResponse>('/alerting/summary');
   const hosts = useApi<HostListResponse>(`/hosts?range=${range}`);
   const synthetics = useApi<OverviewResponse>(`/overview?range=${range}`);
   const chart = useChartSelection<'latency' | 'requests'>();
+  const markers = useMemo(() => deploymentMarkers(services.data?.deployments, true), [services.data]);
 
   const loading = !services.data;
   const serviceList = services.data?.services ?? [];
@@ -167,6 +169,7 @@ export function OverviewView() {
               <RequestsChart
                 series={services.data.series}
                 onSelectRange={chart.select('requests')}
+                markers={markers}
                 subject="all services"
                 emptyAction={<ButtonLink href={withRange('/services', range)}>View services</ButtonLink>}
               />
@@ -183,6 +186,7 @@ export function OverviewView() {
               <LatencyTrendChart
                 series={services.data.series}
                 onSelectRange={chart.select('latency')}
+                markers={markers}
                 subject="all services"
                 emptyAction={<ButtonLink href={withRange('/services', range)}>View services</ButtonLink>}
               />
