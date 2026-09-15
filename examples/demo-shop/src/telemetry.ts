@@ -17,6 +17,8 @@ import { NodeSDK } from '@opentelemetry/sdk-node';
  */
 export function startTelemetry(service: string): NodeSDK {
   const sdk = new NodeSDK({
+    // Detected attributes would replace these (host.name became the container id in Docker).
+    autoDetectResources: false,
     resource: resourceFromAttributes({
       'service.name': service,
       // Restart with DEMO_VERSION=1.1.0 to simulate a deployment.
