@@ -13,15 +13,11 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   colorScheme: 'dark light',
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
-    { media: '(prefers-color-scheme: dark)', color: '#0a0a0a' },
-  ],
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    // The inline script sets data-theme from the saved choice before hydration.
+    // The inline script sets data-theme (and the theme-color tag) from the saved choice before hydration.
     <html lang="en" data-theme="dark" suppressHydrationWarning className={`${GeistSans.variable} ${GeistMono.variable}`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
