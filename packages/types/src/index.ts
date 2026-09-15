@@ -379,11 +379,35 @@ export interface RequestTotals extends LatencyStats {
   errorRate: number | null;
 }
 
+/** A new `service.version` replacing an earlier one, i.e. a deployment. */
+export interface Deployment {
+  service: string;
+  version: string;
+  previousVersion: string;
+  /** First span with the new version, epoch ms. */
+  at: number;
+}
+
+/** Entry-span statistics of one version of a service. */
+export interface VersionSummary {
+  version: string;
+  /** Epoch ms, within the 14-day lookback. */
+  firstSeenAt: number;
+  lastSeenAt: number;
+  /** In the selected range. */
+  requests: number;
+  errors: number;
+  errorRate: number | null;
+  p95Ms: number | null;
+}
+
 export interface ServiceListResponse {
   range: TimeRange;
   services: ServiceSummary[];
   totals: RequestTotals;
   series: RequestSeries;
+  /** Deployments of any service in the range, oldest first. */
+  deployments: Deployment[];
 }
 
 export interface ServiceResponse {
@@ -391,6 +415,10 @@ export interface ServiceResponse {
   service: ServiceSummary;
   series: RequestSeries;
   endpoints: EndpointSummary[];
+  /** Deployments of this service in the range, oldest first. */
+  deployments: Deployment[];
+  /** Versions active or deployed in the range, newest first. */
+  versions: VersionSummary[];
 }
 
 export interface TraceSummary {

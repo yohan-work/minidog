@@ -21,6 +21,7 @@ import { queryBounds, timeWindow, type TimeWindow } from '../lib/time-window';
 import type { LogRepository } from '../repositories/log-repository';
 import type { Scope } from '../repositories/project-repository';
 import type { RawEndpoint, RawRequestPoint, RawServiceStats, SpanRepository, TraceFilters } from '../repositories/span-repository';
+import { deriveDeployments, summarizeVersions } from './deployments';
 import { deriveServiceHealth } from './service-health';
 
 /** Span retention; a service page opens for any service seen within it. */
@@ -49,10 +50,11 @@ export class ApmService {
     const now = Date.now();
     const window = timeWindow(range, now);
     const statsWindow = this.statsWindow(window, now);
-    const [stats, totals, points] = await Promise.all([
+    const [stats, totals, points, versions] = await Promise.all([
       this.spans.serviceStats(this.scope, { ...statsWindow, lookbackFromMs: statsWindow.previousFromMs }),
       this.spans.totals(this.scope, window.fromMs),
       this.spans.requestSeries(this.scope, window.fromMs, window.stepSeconds),
+      this.spans.versionStats(this.scope, { fromMs: window.fromMs, lookbackFromMs: now - LOOKBACK_MS }),
     ]);
 
     return {
@@ -62,16 +64,18 @@ export class ApmService {
         .map((raw) => toServiceSummary(raw, range)),
       totals: { ...totals, errorRate: totals.requests > 0 ? totals.errors / totals.requests : null },
       series: fillRequestSeries(window, points),
+      deployments: deriveDeployments(versions, window.fromMs),
     };
   }
 
   async detail(service: string, range: TimeRange): Promise<ServiceResponse> {
     const now = Date.now();
     const window = timeWindow(range, now);
-    const [[stats], points, endpoints] = await Promise.all([
+    const [[stats], points, endpoints, versions] = await Promise.all([
       this.spans.serviceStats(this.scope, { ...this.statsWindow(window, now), lookbackFromMs: now - LOOKBACK_MS }, service),
       this.spans.requestSeries(this.scope, window.fromMs, window.stepSeconds, service),
       this.spans.endpoints(this.scope, window.fromMs, service),
+      this.spans.versionStats(this.scope, { fromMs: window.fromMs, lookbackFromMs: now - LOOKBACK_MS, service }),
     ]);
     if (!stats) throw new NotFoundError('Service');
 
@@ -80,6 +84,8 @@ export class ApmService {
       service: toServiceSummary(stats, range),
       series: fillRequestSeries(window, points),
       endpoints: endpoints.map(toEndpointSummary),
+      deployments: deriveDeployments(versions, window.fromMs),
+      versions: summarizeVersions(versions, window.fromMs),
     };
   }
 

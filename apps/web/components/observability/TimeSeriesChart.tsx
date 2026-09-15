@@ -14,6 +14,13 @@ export interface ChartSeries {
   dashed?: boolean;
 }
 
+/** A labelled point in time drawn as a vertical line, e.g. a deployment. */
+export interface ChartMarker {
+  /** Epoch seconds. */
+  t: number;
+  label: string;
+}
+
 interface TimeSeriesChartProps {
   /** Epoch seconds. */
   timestamps: readonly number[];
@@ -29,6 +36,8 @@ interface TimeSeriesChartProps {
   yMax?: number;
   /** Makes the chart selectable: dragging across it reports the window in epoch ms. */
   onSelectRange?: (fromMs: number, toMs: number) => void;
+  /** Vertical lines with a label, e.g. deployments. */
+  markers?: readonly ChartMarker[];
 }
 
 const DEFAULT_HEIGHT = 200;
@@ -72,6 +81,7 @@ export function TimeSeriesChart({
   height = DEFAULT_HEIGHT,
   yMax,
   onSelectRange,
+  markers,
 }: TimeSeriesChartProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const plotHostRef = useRef<HTMLDivElement>(null);
@@ -83,6 +93,12 @@ export function TimeSeriesChart({
     selectRef.current = onSelectRange;
   });
   const selectable = onSelectRange !== undefined;
+  // Markers are drawn from a ref, so new markers only need a redraw.
+  const markersRef = useRef(markers);
+  useEffect(() => {
+    markersRef.current = markers;
+    plotRef.current?.redraw(false);
+  }, [markers]);
 
   const data = useMemo<uPlot.AlignedData>(
     () => [Array.from(timestamps), ...series.map((item) => Array.from(item.values))],
@@ -100,6 +116,8 @@ export function TimeSeriesChart({
     const token = (name: string) => css.getPropertyValue(name).trim();
     const font = `12px ${token('--font-mono')}`;
     const axisColor = token('--chart-axis');
+    const markerColor = token('--status-info');
+    const monoFamily = token('--font-mono');
 
     const options: uPlot.Options = {
       width: Math.max(host.clientWidth, 1),
@@ -157,6 +175,34 @@ export function TimeSeriesChart({
         })),
       ],
       hooks: {
+        draw: [
+          (plot) => {
+            const list = markersRef.current;
+            if (!list || list.length === 0) return;
+            const { ctx, bbox } = plot;
+            const ratio = uPlot.pxRatio;
+            ctx.save();
+            ctx.strokeStyle = markerColor;
+            ctx.fillStyle = markerColor;
+            ctx.lineWidth = ratio;
+            ctx.setLineDash([3 * ratio, 3 * ratio]);
+            ctx.font = `${11 * ratio}px ${monoFamily}`;
+            ctx.textBaseline = 'top';
+            for (const marker of list) {
+              const x = Math.round(plot.valToPos(marker.t, 'x', true));
+              if (x < bbox.left || x > bbox.left + bbox.width) continue;
+              ctx.beginPath();
+              ctx.moveTo(x, bbox.top);
+              ctx.lineTo(x, bbox.top + bbox.height);
+              ctx.stroke();
+              // Labels near the right edge go on the left of their line.
+              const flip = x > bbox.left + bbox.width * 0.8;
+              ctx.textAlign = flip ? 'right' : 'left';
+              ctx.fillText(marker.label, x + (flip ? -4 : 4) * ratio, bbox.top + 2 * ratio);
+            }
+            ctx.restore();
+          },
+        ],
         setSelect: [
           (plot) => {
             const { left, width } = plot.select;
@@ -203,9 +249,11 @@ export function TimeSeriesChart({
   }, [data]);
 
   const hoveredTime = hover ? timestamps[hover.index] : undefined;
+  const chartLabel =
+    markers && markers.length > 0 ? `${ariaLabel} Deployments: ${markers.map((marker) => marker.label).join(', ')}.` : ariaLabel;
 
   return (
-    <div ref={rootRef} className={styles.chart} role="img" aria-label={ariaLabel} data-selectable={selectable || undefined}>
+    <div ref={rootRef} className={styles.chart} role="img" aria-label={chartLabel} data-selectable={selectable || undefined}>
       <div ref={plotHostRef} className={styles.plot} style={{ height }} />
       {hover && hoveredTime !== undefined && (
         <div className={styles.tooltip} style={{ left: hover.left }} data-flip={hover.flip || undefined} aria-hidden>

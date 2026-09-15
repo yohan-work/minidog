@@ -3,7 +3,7 @@
 import type { RequestSeries } from '@minidog/types';
 import { useMemo, type ReactNode } from 'react';
 import { EmptyState } from '@/components/observability/States';
-import { ChartLegend, TimeSeriesChart, type ChartSeries } from '@/components/observability/TimeSeriesChart';
+import { ChartLegend, TimeSeriesChart, type ChartMarker, type ChartSeries } from '@/components/observability/TimeSeriesChart';
 import { formatCount, formatLatency, formatLatencyAxis } from '@/lib/format';
 
 export const LATENCY_SERIES = [
@@ -31,10 +31,12 @@ interface ChartProps {
   emptyAction: ReactNode;
   /** Makes the chart selectable; receives the dragged window in epoch ms. */
   onSelectRange?: (fromMs: number, toMs: number) => void;
+  /** Deployments drawn as vertical lines. */
+  markers?: readonly ChartMarker[];
 }
 
 /** P50/P95/P99 of entry spans per bucket. */
-export function LatencyTrendChart({ series, subject, emptyAction, onSelectRange }: ChartProps) {
+export function LatencyTrendChart({ series, subject, emptyAction, onSelectRange, markers }: ChartProps) {
   const { timestamps, lines, peak } = useMemo(() => {
     const points = series.points;
     const p95 = points.map((point) => point.p95Ms);
@@ -58,12 +60,13 @@ export function LatencyTrendChart({ series, subject, emptyAction, onSelectRange 
       formatAxis={formatLatencyAxis}
       ariaLabel={`Latency of ${subject}. Peak P95 ${formatLatency(peak)}.`}
       onSelectRange={onSelectRange}
+      markers={markers}
     />
   );
 }
 
 /** Requests and errors per bucket. */
-export function RequestsChart({ series, subject, emptyAction, onSelectRange }: ChartProps) {
+export function RequestsChart({ series, subject, emptyAction, onSelectRange, markers }: ChartProps) {
   const { timestamps, lines, total, errors } = useMemo(() => {
     const points = series.points;
     const result: ChartSeries[] = [
@@ -89,6 +92,7 @@ export function RequestsChart({ series, subject, emptyAction, onSelectRange }: C
       formatAxis={formatCount}
       ariaLabel={`Requests of ${subject}: ${formatCount(total)} requests, ${formatCount(errors)} errors.`}
       onSelectRange={onSelectRange}
+      markers={markers}
     />
   );
 }

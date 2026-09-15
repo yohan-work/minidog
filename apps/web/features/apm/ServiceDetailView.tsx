@@ -2,6 +2,7 @@
 
 import type { ServiceResponse, ServiceSummary, TimeRange, TraceListResponse } from '@minidog/types';
 import Link from 'next/link';
+import { useMemo } from 'react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Section } from '@/components/layout/Section';
 import { Metric, MetricGrid } from '@/components/observability/Metric';
@@ -15,10 +16,12 @@ import { logsHref, metricsHref, tracesHref } from '@/lib/links';
 import { useTimeRange, withRange } from '@/lib/time-range';
 import { useApi } from '@/lib/use-api';
 import { hostHref } from '../infrastructure/host';
+import { deploymentMarkers } from './deployments';
 import { EndpointTable } from './EndpointTable';
 import { LatencyTrendChart, LatencyTrendLegend, RequestsChart, RequestsLegend } from './RequestCharts';
 import { errorRateTone, latencyTone } from './ServiceTable';
 import { TraceTable, TraceTableSkeleton } from './TraceTable';
+import { VersionTable } from './VersionTable';
 import styles from './Apm.module.scss';
 
 export function ServiceDetailView({ service }: { service: string }) {
@@ -30,6 +33,7 @@ export function ServiceDetailView({ service }: { service: string }) {
   const back = { href: backHref, label: 'Services' };
   const summary = detail.data?.service;
   const chart = useChartSelection<'latency' | 'requests'>();
+  const markers = useMemo(() => deploymentMarkers(detail.data?.deployments, false), [detail.data]);
 
   if (detail.error?.status === 404) {
     return (
@@ -87,7 +91,7 @@ export function ServiceDetailView({ service }: { service: string }) {
               <SelectionBar selection={chart.selectionFor('latency')!} links={drilldownLinks(chart.selectionFor('latency')!, range, service)} onClear={chart.clear} />
             )}
             {detail.data ? (
-              <LatencyTrendChart series={detail.data.series} subject={service} emptyAction={tracesLink} onSelectRange={chart.select('latency')} />
+              <LatencyTrendChart series={detail.data.series} subject={service} emptyAction={tracesLink} onSelectRange={chart.select('latency')} markers={markers} />
             ) : (
               <Skeleton height="var(--chart-height)" />
             )}
@@ -98,9 +102,31 @@ export function ServiceDetailView({ service }: { service: string }) {
               <SelectionBar selection={chart.selectionFor('requests')!} links={drilldownLinks(chart.selectionFor('requests')!, range, service)} onClear={chart.clear} />
             )}
             {detail.data ? (
-              <RequestsChart series={detail.data.series} subject={service} emptyAction={tracesLink} onSelectRange={chart.select('requests')} />
+              <RequestsChart series={detail.data.series} subject={service} emptyAction={tracesLink} onSelectRange={chart.select('requests')} markers={markers} />
             ) : (
               <Skeleton height="var(--chart-height)" />
+            )}
+          </Section>
+
+          <Section
+            title={
+              <>
+                Versions {detail.data && <span className={styles.count}>{detail.data.versions.length}</span>}
+              </>
+            }
+            actions={<span className={styles.note}>From the service.version resource attribute · newest first</span>}
+            flush
+          >
+            {!detail.data ? (
+              <TraceTableSkeleton rows={2} />
+            ) : detail.data.versions.length > 0 ? (
+              <VersionTable versions={detail.data.versions} />
+            ) : (
+              <EmptyState
+                title="No versions reported"
+                description="Set the service.version resource attribute in the OpenTelemetry SDK to mark deployments on the charts."
+                action={tracesLink}
+              />
             )}
           </Section>
 
