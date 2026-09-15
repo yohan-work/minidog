@@ -230,6 +230,10 @@ export function NewAlertMonitorView() {
               {isSynthetic ? (
                 <Select {...control('target')} required>
                   <option value="">Choose a monitor</option>
+                  {/* A target passed in the URL ("Create alert") stays selected while the list loads. */}
+                  {values.target && !checks.some((check) => check.id === values.target) && (
+                    <option value={values.target}>{synthetics.data ? 'Unknown monitor' : 'Loading…'}</option>
+                  )}
                   {checks.map((check) => (
                     <option key={check.id} value={check.id}>
                       {check.name}
