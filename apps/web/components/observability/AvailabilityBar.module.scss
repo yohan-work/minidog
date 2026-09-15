@@ -23,6 +23,12 @@
     background: var(--chart-empty);
   }
 
+  // Not measured: hatched at full height, so it reads as neither healthy nor failed.
+  &[data-state='gap'] {
+    background: repeating-linear-gradient(135deg, var(--chart-empty) 0 2px, transparent 2px 4px);
+    opacity: 0.8;
+  }
+
   &[data-state='up'] {
     background: var(--status-success);
   }

@@ -131,10 +131,23 @@ export interface SeriesPoint {
   p95LatencyMs: number | null;
 }
 
+/** Why nothing was measured: minidog was not running, or the machine was asleep. */
+export type MeasurementGapReason = 'stopped' | 'asleep';
+
+/** A stretch without measurements, clipped to the requested window. */
+export interface MeasurementGap {
+  /** Epoch milliseconds. */
+  from: number;
+  to: number;
+  reason: MeasurementGapReason;
+}
+
 export interface Series {
   range: TimeRange;
   stepSeconds: number;
   points: SeriesPoint[];
+  /** When no checks could run; empty buckets inside them are "not measured", not failures. */
+  gaps: MeasurementGap[];
 }
 
 export interface CreateMonitorInput {

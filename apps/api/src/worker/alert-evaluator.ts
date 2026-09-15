@@ -21,6 +21,8 @@ export interface AlertEvaluatorDeps {
   syntheticResults: SyntheticResultRepository;
   log: FastifyBaseLogger;
   intervalMs: number;
+  /** Right after the machine wakes, checks have not resumed yet; passes wait. */
+  gaps?: { settling(now?: number): boolean };
 }
 
 /**
@@ -74,6 +76,7 @@ export class AlertEvaluator {
   }
 
   private async evaluateEnabled(): Promise<void> {
+    if (this.deps.gaps?.settling()) return;
     for (const monitor of this.deps.monitors.listEnabled()) await this.evaluateQuietly(monitor);
   }
 

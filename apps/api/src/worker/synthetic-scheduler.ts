@@ -4,6 +4,8 @@ import type { MonitorRepository } from '../repositories/monitor-repository';
 import { toDateTime, toDateTime64, type SyntheticResultRow } from '../repositories/synthetic-result-repository';
 import { parseExpectedStatus } from '../services/expected-status';
 import { performHttpCheck, type HttpCheckResult } from '../services/http-check';
+import type { GapTracker } from './gap-tracker';
+import { SLEEP_THRESHOLD_MS } from './gap-tracker';
 import type { ResultWriter } from './result-writer';
 
 export interface SchedulerDeps {
@@ -11,6 +13,8 @@ export interface SchedulerDeps {
   writer: ResultWriter;
   log: FastifyBaseLogger;
   concurrency: number;
+  /** Notices sleep and holds checks right after waking, while the network comes back. */
+  gaps?: Pick<GapTracker, 'noteSleep' | 'settling' | 'settledAt'>;
 }
 
 /** Spreads the first run of each monitor so a restart does not fire every check at once. */
@@ -22,6 +26,8 @@ const MAX_STARTUP_JITTER_MS = 10_000;
  */
 export class SyntheticScheduler {
   private readonly timers = new Map<string, NodeJS.Timeout>();
+  /** When each timer was meant to fire; a timer far behind it slept with the machine. */
+  private readonly dueAt = new Map<string, number>();
   /** Queued or running monitor ids — a monitor never runs twice concurrently. */
   private readonly pending = new Set<string>();
   private readonly queue: string[] = [];
@@ -58,6 +64,7 @@ export class SyntheticScheduler {
   cancel(id: string): void {
     clearTimeout(this.timers.get(id));
     this.timers.delete(id);
+    this.dueAt.delete(id);
   }
 
   /**
@@ -78,13 +85,27 @@ export class SyntheticScheduler {
   private schedule(id: string, delayMs: number): void {
     if (!this.started) return;
     clearTimeout(this.timers.get(id));
+    this.dueAt.set(id, Date.now() + delayMs);
     this.timers.set(
       id,
       setTimeout(() => {
         this.timers.delete(id);
-        this.enqueue(id);
+        this.fire(id);
       }, delayMs),
     );
+  }
+
+  private fire(id: string): void {
+    const now = Date.now();
+    const due = this.dueAt.get(id) ?? now;
+    const gaps = this.deps.gaps;
+    if (gaps && now - due > SLEEP_THRESHOLD_MS) gaps.noteSleep(due, now);
+    // Right after waking, a check would mostly measure the network reconnecting.
+    if (gaps?.settling(now)) {
+      this.schedule(id, gaps.settledAt() - now + Math.random() * MAX_STARTUP_JITTER_MS);
+      return;
+    }
+    this.enqueue(id);
   }
 
   private enqueue(id: string): void {
@@ -122,6 +143,7 @@ export class SyntheticScheduler {
   }
 
   private async check(monitor: SyntheticMonitor): Promise<HttpCheckResult> {
+    const startedMs = Date.now();
     const expectedStatus =
       parseExpectedStatus(monitor.expectedStatus) ?? parseExpectedStatus(MONITOR_DEFAULTS.expectedStatus)!;
     const result = await performHttpCheck({
@@ -132,6 +154,13 @@ export class SyntheticScheduler {
       followRedirects: monitor.followRedirects,
       bodyContains: monitor.bodyContains,
     });
+    // Far past its timeout, the check was suspended with the machine: its result says nothing about the site.
+    const endedMs = Date.now();
+    if (endedMs - startedMs > monitor.timeoutMs + SLEEP_THRESHOLD_MS) {
+      this.deps.log.info({ monitorId: monitor.id }, 'Discarded a check interrupted by sleep');
+      this.deps.gaps?.noteSleep(startedMs, endedMs);
+      return result;
+    }
     this.deps.writer.push(toRow(monitor, result));
     return result;
   }

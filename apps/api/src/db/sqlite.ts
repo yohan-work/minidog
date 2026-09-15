@@ -111,6 +111,16 @@ const MIGRATIONS: readonly string[] = [
   ALTER TABLE synthetic_monitors ADD COLUMN follow_redirects INTEGER NOT NULL DEFAULT 0;
   ALTER TABLE synthetic_monitors ADD COLUMN body_contains TEXT NOT NULL DEFAULT '';
   `,
+  /* 6 — measurement gaps: minidog not running or the machine asleep */ `
+  CREATE TABLE measurement_gaps (
+    id          INTEGER PRIMARY KEY,
+    started_at  INTEGER NOT NULL,
+    ended_at    INTEGER NOT NULL,
+    reason      TEXT NOT NULL
+  );
+
+  CREATE INDEX measurement_gaps_ended ON measurement_gaps (ended_at);
+  `,
 ];
 
 export function openDatabase(path: string): DatabaseSync {
