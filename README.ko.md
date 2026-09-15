@@ -14,7 +14,7 @@
 
 </div>
 
-<img width="1899" height="917" alt="minidog 개요 화면: 서비스 상태, 요청·지연 차트, 주의가 필요한 항목" src="https://github.com/user-attachments/assets/343b2aac-52bf-49f3-8d49-dee3c58d9c0d" />
+<img width="960" height="540" alt="minidog 데모: 개요에서 상태가 나빠진 서비스로 가서 지연 급등 구간을 드래그하고, 그 구간의 가장 느린 트레이스와 로그를 여는 모습" src="docs/assets/demo.gif" />
 
 ## 왜 만들었나
 

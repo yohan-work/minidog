@@ -7,3 +7,5 @@
 **/.env.*
 !**/.env.example
 apps/api/data
+# Documentation and its images are not part of any image.
+docs
