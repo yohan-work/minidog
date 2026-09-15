@@ -1,0 +1,34 @@
+<!--
+  Sized for a laptop or a small server: smaller caches, fewer background
+  threads and a 1 GiB ceiling. Measured on ClickHouse 26.3 with 3 million rows
+  and aggregate queries: about 130 MB instead of 260 MB, and a long-running
+  instance no longer grows past the ceiling (see README "Resource use").
+-->
+<clickhouse>
+  <max_server_memory_usage>1073741824</max_server_memory_usage>
+  <mark_cache_size>268435456</mark_cache_size>
+  <index_mark_cache_size>67108864</index_mark_cache_size>
+  <uncompressed_cache_size>0</uncompressed_cache_size>
+  <mmap_cache_size>64</mmap_cache_size>
+  <mlock_executable>false</mlock_executable>
+
+  <background_pool_size>4</background_pool_size>
+  <background_merges_mutations_concurrency_ratio>2</background_merges_mutations_concurrency_ratio>
+  <background_schedule_pool_size>8</background_schedule_pool_size>
+  <background_common_pool_size>2</background_common_pool_size>
+  <background_move_pool_size>1</background_move_pool_size>
+  <background_fetches_pool_size>1</background_fetches_pool_size>
+  <background_buffer_flush_schedule_pool_size>1</background_buffer_flush_schedule_pool_size>
+  <background_message_broker_schedule_pool_size>1</background_message_broker_schedule_pool_size>
+  <background_distributed_schedule_pool_size>1</background_distributed_schedule_pool_size>
+  <tables_loader_foreground_pool_size>2</tables_loader_foreground_pool_size>
+  <tables_loader_background_pool_size>2</tables_loader_background_pool_size>
+  <max_thread_pool_size>256</max_thread_pool_size>
+
+  <!-- Must fit the smaller merge pool (4 x 2), or the server refuses to start. -->
+  <merge_tree>
+    <number_of_free_entries_in_pool_to_execute_mutation>4</number_of_free_entries_in_pool_to_execute_mutation>
+    <number_of_free_entries_in_pool_to_lower_max_size_of_merge>4</number_of_free_entries_in_pool_to_lower_max_size_of_merge>
+    <number_of_free_entries_in_pool_to_execute_optimize_entire_partition>4</number_of_free_entries_in_pool_to_execute_optimize_entire_partition>
+  </merge_tree>
+</clickhouse>

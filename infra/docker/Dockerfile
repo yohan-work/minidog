@@ -1,16 +1,44 @@
-# One image for always-on mode: the api and web services run it with different
-# commands (see compose.yaml). Build context is the repository root.
-FROM node:24-slim
-
+# Two small runtime images from one build (context: repository root):
+#   --target api   the Query/Ingestion API, bundled into a single file
+#   --target web   the dashboard, as Next's standalone server
+FROM node:24-alpine AS build
 ENV CI=true \
     COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
     NEXT_TELEMETRY_DISABLED=1
 RUN corepack enable
-
-WORKDIR /app
-COPY . .
+WORKDIR /src
+# Manifests first, so dependency installs are cached until they change.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/api/package.json apps/api/
+COPY apps/web/package.json apps/web/
+COPY packages/types/package.json packages/types/
+COPY packages/config/package.json packages/config/
+COPY examples/demo-shop/package.json examples/demo-shop/
 RUN pnpm install --frozen-lockfile
+COPY . .
+RUN pnpm --filter @minidog/api build && pnpm --filter @minidog/web build
 
-# The dashboard bakes the API address into its /api rewrite at build time.
-ARG API_URL=http://api:4000
-RUN API_URL=$API_URL pnpm --filter @minidog/web build
+FROM node:24-alpine AS api
+ENV NODE_ENV=production \
+    HOST=0.0.0.0 \
+    PORT=4000 \
+    SQLITE_PATH=/data/minidog.sqlite
+WORKDIR /app
+COPY --from=build /src/apps/api/dist ./
+RUN mkdir -p /data && chown node:node /data
+USER node
+EXPOSE 4000
+CMD ["node", "--disable-warning=ExperimentalWarning", "index.mjs"]
+
+FROM node:24-alpine AS web
+ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1 \
+    HOSTNAME=0.0.0.0 \
+    PORT=3000 \
+    API_URL=http://api:4000
+WORKDIR /app
+COPY --from=build /src/apps/web/.next/standalone ./
+COPY --from=build /src/apps/web/.next/static ./apps/web/.next/static
+USER node
+EXPOSE 3000
+CMD ["node", "apps/web/server.js"]

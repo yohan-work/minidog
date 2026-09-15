@@ -1,0 +1,9 @@
+<!-- Query defaults to match config.d/low-memory.xml: two threads per query. -->
+<clickhouse>
+  <profiles>
+    <default>
+      <max_threads>2</max_threads>
+      <max_insert_threads>1</max_insert_threads>
+    </default>
+  </profiles>
+</clickhouse>
