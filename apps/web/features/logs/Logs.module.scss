@@ -9,3 +9,49 @@
   font-size: var(--text-secondary);
   color: var(--foreground-secondary);
 }
+
+// Live tail
+.liveStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-meta);
+  color: var(--foreground-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.liveDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--status-success);
+  animation: pulse 2s ease-in-out infinite;
+
+  &[data-state='paused'] {
+    background: var(--status-neutral);
+    animation: none;
+  }
+
+  &[data-state='error'] {
+    background: var(--status-error);
+  }
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .liveDot {
+    animation: none;
+  }
+}
+
+.notice {
+  padding: var(--space-2) var(--content-padding);
+  border-bottom: 1px solid var(--border-default);
+  font-size: var(--text-meta);
+  color: var(--foreground-secondary);
+}
