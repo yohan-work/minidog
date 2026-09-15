@@ -6,6 +6,7 @@ const PATHS = {
   'arrow-right': 'M3 8h10M9 4l4 4-4 4',
   plus: 'M8 3v10M3 8h10',
   x: 'M4 4l8 8M12 4l-8 8',
+  search: 'M7 12A5 5 0 1 0 7 2a5 5 0 0 0 0 10zM10.5 10.5 14 14',
 } as const;
 
 export type IconName = keyof typeof PATHS;

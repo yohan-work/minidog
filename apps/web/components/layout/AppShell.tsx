@@ -1,5 +1,6 @@
 import { DEFAULT_TIME_RANGE } from '@minidog/types';
 import { Suspense, type ReactNode } from 'react';
+import { CommandMenu } from './CommandMenu';
 import { Sidebar } from './Sidebar';
 import { SidebarFrame, SidebarNav } from './SidebarNav';
 import { TopBar, TopBarFallback } from './TopBar';
@@ -27,6 +28,10 @@ export function AppShell({ children }: { children: ReactNode }) {
       <main id="main" className={styles.main} tabIndex={-1}>
         {children}
       </main>
+      {/* ⌘K / Ctrl+K anywhere */}
+      <Suspense>
+        <CommandMenu />
+      </Suspense>
     </div>
   );
 }
