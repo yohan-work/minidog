@@ -1,11 +1,12 @@
-import type { AlertEvent, AlertMonitor } from '@minidog/types';
+import type { AlertEvent, AlertMonitor, WebhookFormat } from '@minidog/types';
 
 const TIMEOUT_MS = 5_000;
 
 export interface WebhookPayload {
   /** Plain summary; Slack-compatible incoming webhooks display it. */
   text: string;
-  monitor: Pick<AlertMonitor, 'id' | 'name' | 'type' | 'target' | 'targetLabel'>;
+  /** Null for a test notification. */
+  monitor: Pick<AlertMonitor, 'id' | 'name' | 'type' | 'target' | 'targetLabel'> | null;
   state: AlertEvent['toState'];
   previousState: AlertEvent['fromState'];
   value: number | null;
@@ -13,6 +14,8 @@ export interface WebhookPayload {
   timestamp: string;
   /** Set when a notification held during a mute is delivered afterwards. */
   note?: string;
+  /** Set on notifications sent with "Send test". */
+  test?: true;
 }
 
 export function webhookPayload(monitor: AlertMonitor, event: AlertEvent, note?: string): WebhookPayload {
@@ -29,15 +32,83 @@ export function webhookPayload(monitor: AlertMonitor, event: AlertEvent, note?: 
   };
 }
 
+export function testWebhookPayload(): WebhookPayload {
+  return {
+    text: '[TEST] minidog: notifications from your monitors will arrive here.',
+    monitor: null,
+    state: 'ok',
+    previousState: 'ok',
+    value: null,
+    message: 'Test notification',
+    timestamp: new Date().toISOString(),
+    test: true,
+  };
+}
+
+/** Recognises services whose webhooks expect their own body; anything else gets the JSON payload. */
+export function webhookFormat(url: string): WebhookFormat {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return 'json';
+  }
+  const host = parsed.hostname.toLowerCase();
+  const within = (domain: string) => host === domain || host.endsWith(`.${domain}`);
+  if (host === 'hooks.slack.com') return 'slack';
+  if ((within('discord.com') || within('discordapp.com')) && parsed.pathname.startsWith('/api/webhooks/')) return 'discord';
+  if (host === 'api.telegram.org' && /^\/bot[^/]+\/sendMessage$/.test(parsed.pathname)) return 'telegram';
+  if (host === 'ntfy.sh') return 'ntfy';
+  return 'json';
+}
+
+/** ntfy push priority (1–5) and emoji tags per state. */
+const NTFY_STYLES: Record<string, { priority: string; tags: string }> = {
+  critical: { priority: '5', tags: 'rotating_light' },
+  warning: { priority: '4', tags: 'warning' },
+  ok: { priority: '3', tags: 'white_check_mark' },
+};
+const NTFY_DEFAULT = { priority: '3', tags: 'bell' };
+
+export function webhookRequest(url: string, payload: WebhookPayload): { headers: Record<string, string>; body: string } {
+  const json = (body: unknown) => ({
+    headers: { 'content-type': 'application/json', 'user-agent': 'minidog-alerts' },
+    body: JSON.stringify(body),
+  });
+  switch (webhookFormat(url)) {
+    case 'discord':
+      // Discord rejects a body without `content`; mentions in monitor names stay inert.
+      return json({ content: payload.text.slice(0, 2000), username: 'minidog', allowed_mentions: { parse: [] } });
+    case 'telegram':
+      return json({
+        chat_id: new URL(url).searchParams.get('chat_id') ?? undefined,
+        text: payload.text.slice(0, 4096),
+        disable_web_page_preview: true,
+      });
+    case 'ntfy': {
+      const style = payload.test ? NTFY_DEFAULT : (NTFY_STYLES[payload.state] ?? NTFY_DEFAULT);
+      return {
+        // Header values must be ASCII, so monitor names (which may not be) stay in the body.
+        headers: {
+          'content-type': 'text/plain; charset=utf-8',
+          'user-agent': 'minidog-alerts',
+          title: payload.test ? 'minidog test' : `minidog ${payload.state}`,
+          priority: style.priority,
+          tags: style.tags,
+        },
+        body: payload.text,
+      };
+    }
+    default:
+      return json(payload);
+  }
+}
+
 /** POSTs the payload; resolves to a short status such as `sent 200` or `failed: timeout`. Never throws. */
 export async function sendWebhook(url: string, payload: WebhookPayload): Promise<string> {
   try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'user-agent': 'minidog-alerts' },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
+    const { headers, body } = webhookRequest(url, payload);
+    const response = await fetch(url, { method: 'POST', headers, body, signal: AbortSignal.timeout(TIMEOUT_MS) });
     await response.body?.cancel();
     return response.ok ? `sent ${response.status}` : `failed ${response.status}`;
   } catch (error) {

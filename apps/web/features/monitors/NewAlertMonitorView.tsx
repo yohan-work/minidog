@@ -39,6 +39,7 @@ import {
   WindowOptions,
 } from './alerting';
 import styles from './Monitors.module.scss';
+import { WebhookTestButton } from './WebhookTestButton';
 
 interface FormValues {
   type: AlertMonitorType;
@@ -149,7 +150,7 @@ export function NewAlertMonitorView() {
           : `In ${unit}.`,
     alertAfterMinutes: 'Enter Warning or Critical only when the condition lasts this long.',
     recoverAfterMinutes: 'Report recovery only after it holds this long.',
-    webhookUrl: 'Optional. State changes are POSTed as JSON (Slack-compatible "text").',
+    webhookUrl: 'Optional. Slack, Discord, Telegram and ntfy.sh URLs get their own format; any other URL receives JSON.',
     name: 'Defaults to the signal and target.',
   };
 
@@ -298,7 +299,8 @@ export function NewAlertMonitorView() {
             </Field>
             <div className={styles.full}>
               <Field id="webhookUrl" label="Webhook URL" hint={hints.webhookUrl} error={errors.webhookUrl}>
-                <Input {...control('webhookUrl')} type="url" mono placeholder="https://hooks.slack.com/services/…" />
+                <Input {...control('webhookUrl')} type="url" mono placeholder="https://ntfy.sh/your-topic" />
+                <WebhookTestButton url={values.webhookUrl} />
               </Field>
             </div>
             <div className={styles.full}>

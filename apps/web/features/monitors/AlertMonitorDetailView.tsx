@@ -46,6 +46,7 @@ import {
   WindowOptions,
 } from './alerting';
 import styles from './Monitors.module.scss';
+import { WebhookTestButton } from './WebhookTestButton';
 
 type Pending = 'evaluate' | 'toggle' | 'delete' | 'save' | 'mute';
 
@@ -448,9 +449,12 @@ function SettingsSection({ monitor, onSaved }: { monitor: AlertMonitor; onSaved:
             </Select>
           </Field>
         )}
-        <Field id="edit-webhook" label="Webhook URL" hint="Optional." error={errors.webhookUrl}>
-          <Input id="edit-webhook" value={values.webhookUrl} onChange={update('webhookUrl')} type="url" mono invalid={Boolean(errors.webhookUrl)} />
-        </Field>
+        <div className={styles.full}>
+          <Field id="edit-webhook" label="Webhook URL" hint="Optional. Slack, Discord, Telegram and ntfy.sh URLs get their own format; any other URL receives JSON." error={errors.webhookUrl}>
+            <Input id="edit-webhook" value={values.webhookUrl} onChange={update('webhookUrl')} type="url" mono invalid={Boolean(errors.webhookUrl)} />
+            <WebhookTestButton url={values.webhookUrl} />
+          </Field>
+        </div>
         <div className={styles.formActions}>
           <Button type="submit" loading={saving}>
             Save changes

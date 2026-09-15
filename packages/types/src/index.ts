@@ -657,6 +657,16 @@ export const ALERT_DELAYS_MINUTES = [0, 1, 2, 5, 10, 15, 30] as const;
 /** Mute durations offered in the dashboard. */
 export const ALERT_MUTE_MINUTES = [30, 60, 240, 1440] as const;
 
+/** How a webhook URL is addressed: known services get their own body, others the JSON payload. */
+export type WebhookFormat = 'slack' | 'discord' | 'telegram' | 'ntfy' | 'json';
+
+/** `POST /api/alerting/webhook-test`. */
+export interface WebhookTestResponse {
+  format: WebhookFormat;
+  /** e.g. `sent 204` or `failed 404`. */
+  status: string;
+}
+
 export interface AlertDefaults {
   warning: number | null;
   critical: number;
