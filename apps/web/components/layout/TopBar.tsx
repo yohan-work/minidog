@@ -35,6 +35,9 @@ export function TopBar() {
   const onRangeChange = (event: ChangeEvent<HTMLSelectElement>) => {
     const next = event.target.value as TimeRange;
     const params = new URLSearchParams(searchParams);
+    // A window selected on a chart gives way to the preset range.
+    params.delete('from');
+    params.delete('to');
     if (next === DEFAULT_TIME_RANGE) params.delete('range');
     else params.set('range', next);
     const search = params.toString();

@@ -8,6 +8,7 @@ import { FilterBar, FilterChip, FilterSelect, SearchField } from '@/components/l
 import { LogList } from '@/components/observability/LogList';
 import { EmptyState, ErrorState, StaleNotice } from '@/components/observability/States';
 import { ChartLegend, TimeSeriesChart, type ChartSeries } from '@/components/observability/TimeSeriesChart';
+import { formatWindow, parseWindow, SelectHint, windowParams } from '@/components/observability/TimeSelection';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { formatCount } from '@/lib/format';
@@ -37,10 +38,13 @@ export function LogsView() {
   const range = useTimeRange();
   const { get, set } = useQueryParams();
   const filters = { service: get('service'), level: get('level'), q: get('q'), traceId: get('traceId') };
+  const window = parseWindow(get('from'), get('to'));
   const limit = Math.min(Number(get('limit')) || PAGE, MAX);
-  const hasFilters = Object.values(filters).some(Boolean);
+  const hasFilters = Object.values(filters).some(Boolean) || window !== null;
 
-  const { data, error, isLoading, updatedAt, refetch } = useApi<LogListResponse>(`/logs${toQuery({ range, limit, ...filters })}`);
+  const { data, error, isLoading, updatedAt, refetch } = useApi<LogListResponse>(
+    `/logs${toQuery({ range, limit, ...filters, ...(window ? windowParams(window) : {}) })}`,
+  );
 
   const serviceOptions = [
     { value: '', label: 'All services' },
@@ -48,7 +52,9 @@ export function LogsView() {
     ...(filters.service && !data?.services.includes(filters.service) ? [{ value: filters.service, label: filters.service }] : []),
   ];
 
-  const clear = () => set({ service: null, level: null, q: null, traceId: null, limit: null });
+  const clear = () => set({ service: null, level: null, q: null, traceId: null, limit: null, from: null, to: null });
+  // Dragging on the volume chart narrows the records to that window.
+  const selectWindow = (fromMs: number, toMs: number) => set({ ...windowParams({ fromMs, toMs }), limit: null });
 
   return (
     <>
@@ -56,14 +62,23 @@ export function LogsView() {
       <FilterBar trailing={data && (data.truncated ? `Latest ${formatCount(limit)}` : `${formatCount(data.logs.length)} records`)}>
         <FilterSelect label="Service" value={filters.service} options={serviceOptions} onChange={(service) => set({ service })} />
         <FilterSelect label="Level" value={filters.level} options={LEVEL_OPTIONS} onChange={(level) => set({ level })} />
+        {window && !filters.traceId && <FilterChip label="Window" value={formatWindow(window)} onClear={() => set({ from: null, to: null })} />}
         {filters.traceId && <FilterChip label="Trace" value={filters.traceId} onClear={() => set({ traceId: null })} />}
         <SearchField label="Search logs" value={filters.q} placeholder="Search logs…" onChange={(q) => set({ q })} />
       </FilterBar>
       <StaleNotice error={data ? error : undefined} updatedAt={updatedAt} onRetry={refetch} />
 
       {!filters.traceId && (
-        <Section title="Volume" actions={<ChartLegend series={VOLUME_SERIES} />}>
-          {data ? <VolumeChart data={data} /> : <Skeleton height="var(--chart-height)" />}
+        <Section
+          title="Volume"
+          actions={
+            <>
+              <SelectHint />
+              <ChartLegend series={VOLUME_SERIES} />
+            </>
+          }
+        >
+          {data ? <VolumeChart data={data} onSelectRange={selectWindow} /> : <Skeleton height="var(--chart-height)" />}
         </Section>
       )}
 
@@ -105,7 +120,7 @@ export function LogsView() {
   );
 }
 
-function VolumeChart({ data }: { data: LogListResponse }) {
+function VolumeChart({ data, onSelectRange }: { data: LogListResponse; onSelectRange: (fromMs: number, toMs: number) => void }) {
   const { timestamps, lines, total } = useMemo(() => {
     const points = data.series.points;
     const result: ChartSeries[] = [
@@ -126,6 +141,7 @@ function VolumeChart({ data }: { data: LogListResponse }) {
       formatAxis={formatCount}
       height={120}
       ariaLabel={`Log volume: ${formatCount(total)} records in this range.`}
+      onSelectRange={onSelectRange}
     />
   );
 }

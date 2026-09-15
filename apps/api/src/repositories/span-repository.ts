@@ -1,4 +1,4 @@
-import type { SpanEvent, SpanKind, SpanStatus } from '@minidog/types';
+import type { ErrorGroup, SpanEvent, SpanKind, SpanStatus, TraceSort } from '@minidog/types';
 import { ClickHouseRepository } from '../db/clickhouse-repository';
 import type { SpanRow } from '../ingest/otlp-traces';
 import type { Scope } from './project-repository';
@@ -15,6 +15,7 @@ const toMs = (value: NullableNum): number | null => {
 
 const SCOPE_FILTER = `project_id = {projectId:String} AND environment = {environment:String}`;
 const since = (param: string) => `timestamp >= fromUnixTimestamp64Milli({${param}:Int64})`;
+const before = (param: string) => `timestamp < fromUnixTimestamp64Milli({${param}:Int64})`;
 const optional = <T>(value: T | undefined, clause: string) => (value === undefined ? '' : `AND ${clause}`);
 
 export interface LatencyRow {
@@ -69,12 +70,22 @@ export interface RawEdge {
 
 export interface TraceFilters {
   fromMs: number;
+  /** Exclusive upper bound; open-ended when absent. */
+  toMs?: number;
+  sort?: TraceSort;
   service?: string;
   endpoint?: string;
   status?: 'error' | 'ok';
   minDurationMs?: number;
   /** Trace id, or text matched against the endpoint and span name. */
   query?: string;
+  limit: number;
+}
+
+export interface ErrorGroupFilters {
+  fromMs: number;
+  toMs?: number;
+  service?: string;
   limit: number;
 }
 
@@ -346,7 +357,8 @@ export class SpanRepository extends ClickHouseRepository {
              OR positionCaseInsensitive(name, {query:String}) > 0)`,
          )}
          AND ${since('fromMs')}
-       ORDER BY timestamp DESC
+         ${optional(filters.toMs, before('toMs'))}
+       ORDER BY ${filters.sort === 'slowest' ? 'duration_ms DESC' : 'timestamp DESC'}
        LIMIT {limit:UInt32}`,
       { ...scope, ...filters },
     );
@@ -360,6 +372,70 @@ export class SpanRepository extends ClickHouseRepository {
       error: row.is_error === 1,
       httpStatus: row.http_status || null,
       statusMessage: row.status_message,
+    }));
+  }
+
+  /**
+   * Exception events (`span.recordException`) grouped by type and message,
+   * the ones affecting most traces first (one request often records the
+   * same exception on several nested spans). Endpoints come from the entry span of the same
+   * service in the same trace, i.e. the request that raised the exception.
+   */
+  async errorGroups(scope: Scope, filters: ErrorGroupFilters): Promise<ErrorGroup[]> {
+    const rows = await this.query<{
+      type: string;
+      message: string;
+      services: string[];
+      occurrences: Num;
+      traces: Num;
+      first_ms: Num;
+      last_ms: Num;
+      endpoints: string[];
+      latest_trace_id: string;
+    }>(
+      `SELECT
+         x.type AS type,
+         x.message AS message,
+         groupUniqArray(10)(x.service) AS services,
+         count() AS occurrences,
+         uniqExact(x.trace_id) AS traces,
+         toUnixTimestamp64Milli(min(x.timestamp)) AS first_ms,
+         toUnixTimestamp64Milli(max(x.timestamp)) AS last_ms,
+         groupUniqArrayIf(10)(e.endpoint, e.endpoint != '') AS endpoints,
+         argMax(x.trace_id, x.timestamp) AS latest_trace_id
+       FROM (
+         SELECT timestamp, trace_id, service,
+                JSONExtractString(ev, 'attributes', 'exception.type') AS type,
+                JSONExtractString(ev, 'attributes', 'exception.message') AS message
+         FROM spans
+         ARRAY JOIN arrayFilter(e -> JSONExtractString(e, 'name') = 'exception', JSONExtractArrayRaw(events)) AS ev
+         WHERE ${SCOPE_FILTER}
+           AND position(events, '"exception"') > 0
+           ${optional(filters.service, 'service = {service:String}')}
+           AND ${since('fromMs')}
+           ${optional(filters.toMs, before('toMs'))}
+       ) AS x
+       LEFT JOIN (
+         SELECT trace_id, service, any(endpoint) AS endpoint
+         FROM spans
+         WHERE ${SCOPE_FILTER} AND is_entry = 1 AND ${since('entryFromMs')}
+         GROUP BY trace_id, service
+       ) AS e ON e.trace_id = x.trace_id AND e.service = x.service
+       GROUP BY type, message
+       ORDER BY traces DESC, occurrences DESC, last_ms DESC
+       LIMIT {limit:UInt32}`,
+      { ...scope, ...filters, entryFromMs: filters.fromMs - 60_000 },
+    );
+    return rows.map((row) => ({
+      type: row.type,
+      message: row.message,
+      services: [...row.services].sort(),
+      count: Number(row.occurrences),
+      traces: Number(row.traces),
+      firstSeenAt: Number(row.first_ms),
+      lastSeenAt: Number(row.last_ms),
+      endpoints: [...row.endpoints].sort(),
+      latestTraceId: row.latest_trace_id,
     }));
   }
 

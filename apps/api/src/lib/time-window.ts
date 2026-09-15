@@ -23,6 +23,36 @@ export function timeWindow(range: TimeRange, nowMs: number = Date.now()): TimeWi
   return { range, stepSeconds, startSeconds, endSeconds, fromMs: startSeconds * 1000 };
 }
 
+/** Bucket sizes for a window chosen on a chart, smallest first. */
+const CUSTOM_STEPS_SECONDS = [10, 30, 60, 300, 900, 3600, 7200] as const;
+const MAX_CUSTOM_BUCKETS = 120;
+
+export interface CustomWindow {
+  stepSeconds: number;
+  startSeconds: number;
+  endSeconds: number;
+  fromMs: number;
+  toMs: number;
+}
+
+/** An absolute window (`?from=&to=`), bucketed so it holds at most 120 buckets. */
+export function customWindow(fromMs: number, toMs: number): CustomWindow {
+  const seconds = Math.max(1, (toMs - fromMs) / 1000);
+  const stepSeconds = CUSTOM_STEPS_SECONDS.find((step) => seconds / step <= MAX_CUSTOM_BUCKETS) ?? 7200;
+  return {
+    stepSeconds,
+    startSeconds: Math.floor(fromMs / 1000 / stepSeconds) * stepSeconds,
+    endSeconds: Math.floor((toMs - 1) / 1000 / stepSeconds) * stepSeconds,
+    fromMs,
+    toMs,
+  };
+}
+
+/** Query bounds: an absolute window when given, otherwise the preset range up to now. */
+export function queryBounds(range: TimeRange, from?: number, to?: number): { fromMs: number; toMs?: number } {
+  return from !== undefined && to !== undefined ? { fromMs: from, toMs: to } : { fromMs: timeWindow(range).fromMs };
+}
+
 /** Returns one point per bucket; buckets without checks carry null latency. */
 export function fillSeries(window: TimeWindow, rows: readonly SeriesPoint[]): SeriesPoint[] {
   const byBucket = new Map(rows.map((row) => [row.t, row]));

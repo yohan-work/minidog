@@ -17,6 +17,7 @@ import { Section } from '@/components/layout/Section';
 import { Metric, MetricGrid } from '@/components/observability/Metric';
 import { EmptyState, ErrorState, StaleNotice } from '@/components/observability/States';
 import { StatusIndicator, type IndicatorStatus } from '@/components/observability/StatusIndicator';
+import { drilldownLinks, SelectHint, SelectionBar, useChartSelection } from '@/components/observability/TimeSelection';
 import { ButtonLink } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -56,6 +57,7 @@ export function OverviewView() {
   const alerts = useApi<AlertSummaryResponse>('/alerting/summary');
   const hosts = useApi<HostListResponse>(`/hosts?range=${range}`);
   const synthetics = useApi<OverviewResponse>(`/overview?range=${range}`);
+  const chart = useChartSelection<'latency' | 'requests'>();
 
   const loading = !services.data;
   const serviceList = services.data?.services ?? [];
@@ -157,10 +159,14 @@ export function OverviewView() {
             </Section>
           )}
 
-          <Section title="Request throughput" actions={<RequestsLegend />}>
+          <Section title="Request throughput" actions={<><SelectHint /><RequestsLegend /></>}>
+            {chart.selectionFor('requests') && (
+              <SelectionBar selection={chart.selectionFor('requests')!} links={drilldownLinks(chart.selectionFor('requests')!, range)} onClear={chart.clear} />
+            )}
             {services.data ? (
               <RequestsChart
                 series={services.data.series}
+                onSelectRange={chart.select('requests')}
                 subject="all services"
                 emptyAction={<ButtonLink href={withRange('/services', range)}>View services</ButtonLink>}
               />
@@ -169,10 +175,14 @@ export function OverviewView() {
             )}
           </Section>
 
-          <Section title="Latency" actions={<LatencyTrendLegend />}>
+          <Section title="Latency" actions={<><SelectHint /><LatencyTrendLegend /></>}>
+            {chart.selectionFor('latency') && (
+              <SelectionBar selection={chart.selectionFor('latency')!} links={drilldownLinks(chart.selectionFor('latency')!, range)} onClear={chart.clear} />
+            )}
             {services.data ? (
               <LatencyTrendChart
                 series={services.data.series}
+                onSelectRange={chart.select('latency')}
                 subject="all services"
                 emptyAction={<ButtonLink href={withRange('/services', range)}>View services</ButtonLink>}
               />

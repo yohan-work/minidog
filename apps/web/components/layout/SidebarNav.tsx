@@ -25,6 +25,7 @@ const NAV: NavGroup[] = [
       { label: 'Infrastructure', href: '/infrastructure' },
       { label: 'Metrics', href: '/metrics' },
       { label: 'Traces', href: '/traces' },
+      { label: 'Errors', href: '/errors' },
       { label: 'Logs', href: '/logs' },
     ],
   },

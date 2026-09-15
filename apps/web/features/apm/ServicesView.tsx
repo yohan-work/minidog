@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { Section } from '@/components/layout/Section';
 import { Metric, MetricGrid } from '@/components/observability/Metric';
 import { EmptyState, ErrorState, StaleNotice } from '@/components/observability/States';
+import { drilldownLinks, SelectHint, SelectionBar, useChartSelection } from '@/components/observability/TimeSelection';
 import { ButtonLink } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { formatCount, formatLatency, formatPercent, formatRate } from '@/lib/format';
@@ -22,6 +23,7 @@ export function ServicesView() {
   const loading = !data;
   const seconds = data ? data.series.points.length * data.series.stepSeconds : 1;
   const tracesLink = <ButtonLink href={tracesHref({}, range)}>View traces</ButtonLink>;
+  const chart = useChartSelection<'latency' | 'requests'>();
 
   return (
     <>
@@ -73,17 +75,23 @@ export function ServicesView() {
             />
           </MetricGrid>
 
-          <Section title="Requests" actions={<RequestsLegend />}>
+          <Section title="Requests" actions={<><SelectHint /><RequestsLegend /></>}>
+            {chart.selectionFor('requests') && (
+              <SelectionBar selection={chart.selectionFor('requests')!} links={drilldownLinks(chart.selectionFor('requests')!, range)} onClear={chart.clear} />
+            )}
             {data ? (
-              <RequestsChart series={data.series} subject="all services" emptyAction={tracesLink} />
+              <RequestsChart series={data.series} subject="all services" emptyAction={tracesLink} onSelectRange={chart.select('requests')} />
             ) : (
               <Skeleton height="var(--chart-height)" />
             )}
           </Section>
 
-          <Section title="Latency" actions={<LatencyTrendLegend />}>
+          <Section title="Latency" actions={<><SelectHint /><LatencyTrendLegend /></>}>
+            {chart.selectionFor('latency') && (
+              <SelectionBar selection={chart.selectionFor('latency')!} links={drilldownLinks(chart.selectionFor('latency')!, range)} onClear={chart.clear} />
+            )}
             {data ? (
-              <LatencyTrendChart series={data.series} subject="all services" emptyAction={tracesLink} />
+              <LatencyTrendChart series={data.series} subject="all services" emptyAction={tracesLink} onSelectRange={chart.select('latency')} />
             ) : (
               <Skeleton height="var(--chart-height)" />
             )}
