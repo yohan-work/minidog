@@ -68,7 +68,7 @@ pnpm local:logs   # follow API / dashboard logs
 pnpm local:down   # stop it (e.g. to go back to pnpm dev)
 ```
 
-It uses the same data as `pnpm dev` (`apps/api/data` and the ClickHouse volume), so run one or the other; the API refuses to start while the port is taken. After pulling new code, run `pnpm local:up` again to rebuild. Turn on Docker Desktop's *Start Docker Desktop when you sign in* to have it come back after a reboot. Checks pause while the Mac sleeps.
+It uses the same data as `pnpm dev` (`apps/api/data` and the ClickHouse volume), so run one or the other: the API holds a lock on the data (`minidog.sqlite.lock`) and refuses to start while the other one holds it. Settings in `apps/api/.env` apply to both. After pulling new code, run `pnpm local:up` again to rebuild. Turn on Docker Desktop's *Start Docker Desktop when you sign in* to have it come back after a reboot. Checks pause while the Mac sleeps.
 
 ### Try it with demo data
 

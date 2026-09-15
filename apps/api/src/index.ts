@@ -1,6 +1,6 @@
-import { createServer } from 'node:net';
 import { buildApp } from './app';
 import { loadConfig } from './config';
+import { acquireDataLock, DataLockedError } from './db/data-lock';
 
 try {
   process.loadEnvFile();
@@ -10,23 +10,19 @@ try {
 
 const config = loadConfig();
 
-// Checked before the SQLite file is opened: a second API on the same data (pnpm dev
+// Claimed before the SQLite file is opened: a second API on the same data (pnpm dev
 // while the always-on containers run, or the other way round) could corrupt it.
+let lock: ReturnType<typeof acquireDataLock>;
 try {
-  await new Promise<void>((resolve, reject) => {
-    const probe = createServer();
-    probe.once('error', reject);
-    probe.listen({ host: config.HOST, port: config.PORT }, () => probe.close(() => resolve()));
-  });
+  lock = acquireDataLock(config.SQLITE_PATH);
 } catch (error) {
-  if ((error as NodeJS.ErrnoException).code !== 'EADDRINUSE') throw error;
-  console.error(
-    `Port ${config.PORT} is already in use. If minidog is running in always-on mode, stop it first with \`pnpm local:down\`.`,
-  );
+  if (!(error instanceof DataLockedError)) throw error;
+  console.error(error.message);
   process.exit(1);
 }
 
 const app = await buildApp(config);
+app.addHook('onClose', async () => lock.release());
 
 let closing = false;
 async function shutdown(signal: NodeJS.Signals): Promise<void> {

@@ -49,7 +49,7 @@ pnpm local:logs    # API·대시보드 로그
 pnpm local:down    # 중지 (다시 pnpm dev를 쓸 때)
 ```
 
-- `pnpm dev`와 같은 데이터(`apps/api/data`의 SQLite, ClickHouse 볼륨)를 쓴다. 둘 중 하나만 실행한다 — 포트가 이미 쓰이면 API가 시작하지 않는다.
+- `pnpm dev`와 같은 데이터(`apps/api/data`의 SQLite, ClickHouse 볼륨)와 같은 설정(`apps/api/.env`)을 쓴다. 둘 중 하나만 실행한다 — API가 데이터에 잠금(`minidog.sqlite.lock`)을 걸어서, 다른 쪽이 켜져 있으면 시작하지 않는다. 비정상 종료로 남은 잠금은 30초 뒤 풀린다.
 - 코드를 받은 뒤에는 `pnpm local:up`을 다시 실행해 새로 빌드한다.
 - 재부팅 후에도 켜지게 하려면 Docker Desktop 설정에서 *Start Docker Desktop when you sign in* 을 켠다. 맥이 잠자기 중이면 체크도 멈춘다.
 

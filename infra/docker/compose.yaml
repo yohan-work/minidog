@@ -31,7 +31,7 @@ services:
     # Reported as host.name for the host metrics this collector scrapes.
     hostname: ${MINIDOG_HOST_NAME:-docker-host}
     environment:
-      # The API runs on the host (pnpm dev), outside this compose project.
+      # pnpm dev runs the API on the host; `pnpm local:up` sets http://api:4000.
       MINIDOG_INGEST_ENDPOINT: ${MINIDOG_INGEST_ENDPOINT:-http://host.docker.internal:4000}
       # Optional; without a key data goes to the default project.
       MINIDOG_API_KEY: ${MINIDOG_API_KEY:-}
@@ -55,8 +55,15 @@ services:
       dockerfile: infra/docker/Dockerfile
     image: minidog-app
     init: true
+    # A regular user, so files it writes in the shared data directory stay
+    # writable for `pnpm dev` (uid 1000, the usual first user on Linux).
+    user: node
     working_dir: /app/apps/api
     command: ["node", "--import", "tsx", "--disable-warning=ExperimentalWarning", "src/index.ts"]
+    # Same settings as pnpm dev; the values below adapt it to the container.
+    env_file:
+      - path: ../../apps/api/.env
+        required: false
     environment:
       HOST: 0.0.0.0
       PORT: 4000
@@ -81,6 +88,7 @@ services:
     build: *app-build
     image: minidog-app
     init: true
+    user: node
     working_dir: /app/apps/web
     command: ["node_modules/.bin/next", "start", "--port", "3000"]
     ports:
