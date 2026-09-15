@@ -42,12 +42,20 @@ export const MONITOR_DEFAULTS = {
   intervalSeconds: 60,
   timeoutMs: 10_000,
   expectedStatus: '200-399',
+  // New monitors follow redirects (http → https, trailing slashes); monitors
+  // created before this option keep judging the first response.
+  followRedirects: true,
+  bodyContains: '',
 } as const satisfies {
   method: HttpMethod;
   intervalSeconds: number;
   timeoutMs: number;
   expectedStatus: string;
+  followRedirects: boolean;
+  bodyContains: string;
 };
+
+export const MONITOR_BODY_CONTAINS_MAX = 200;
 
 export interface SyntheticMonitor {
   id: string;
@@ -60,6 +68,10 @@ export interface SyntheticMonitor {
   timeoutMs: number;
   /** Accepted status codes, e.g. `200-399` or `200,301-302`. */
   expectedStatus: string;
+  /** Follow 3xx responses (up to 5) and judge the final one. */
+  followRedirects: boolean;
+  /** Text the response body must contain; '' for no body check. */
+  bodyContains: string;
   enabled: boolean;
   createdAt: string;
   updatedAt: string;
@@ -104,6 +116,10 @@ export interface CheckResult {
   /** Epoch milliseconds. */
   sslExpiresAt: number | null;
   error: string;
+  /** Redirects followed before the final response. */
+  redirects: number;
+  /** URL of the final request. */
+  finalUrl: string;
 }
 
 export interface SeriesPoint {
@@ -128,6 +144,8 @@ export interface CreateMonitorInput {
   intervalSeconds?: number;
   timeoutMs?: number;
   expectedStatus?: string;
+  followRedirects?: boolean;
+  bodyContains?: string;
 }
 
 export type UpdateMonitorInput = Partial<Omit<CreateMonitorInput, 'name'>> & {

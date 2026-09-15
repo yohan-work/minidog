@@ -27,7 +27,14 @@ export function RecentChecksTable({ checks }: { checks: readonly CheckResult[] }
               {formatDateTime(check.timestamp)}
             </Td>
             <Td>
-              <StatusIndicator status={check.status} />
+              <span className={styles.result}>
+                <StatusIndicator status={check.status} />
+                {check.redirects > 0 && (
+                  <span className={styles.redirects} title={`Followed ${check.redirects} redirect${check.redirects === 1 ? '' : 's'} to ${check.finalUrl}`}>
+                    ↪ {check.redirects}
+                  </span>
+                )}
+              </span>
             </Td>
             <Td align="end" mono>
               {check.statusCode || EMPTY}

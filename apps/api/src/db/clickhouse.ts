@@ -27,6 +27,9 @@ const MIGRATIONS: readonly string[] = [
   ORDER BY (project_id, monitor_id, timestamp)
   TTL toDateTime(timestamp) + INTERVAL 90 DAY
   `,
+  // Redirect chains of synthetic checks (added later; existing rows read 0 / '').
+  `ALTER TABLE synthetic_results ADD COLUMN IF NOT EXISTS redirects UInt8 DEFAULT 0`,
+  `ALTER TABLE synthetic_results ADD COLUMN IF NOT EXISTS final_url String DEFAULT ''`,
   // OTLP gauge and sum data points, one row per point.
   `
   CREATE TABLE IF NOT EXISTS metrics

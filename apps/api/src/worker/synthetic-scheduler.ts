@@ -129,6 +129,8 @@ export class SyntheticScheduler {
       method: monitor.method,
       timeoutMs: monitor.timeoutMs,
       expectedStatus,
+      followRedirects: monitor.followRedirects,
+      bodyContains: monitor.bodyContains,
     });
     this.deps.writer.push(toRow(monitor, result));
     return result;
@@ -151,5 +153,7 @@ function toRow(monitor: SyntheticMonitor, result: HttpCheckResult): SyntheticRes
     ttfb_ms: result.ttfbMs,
     ssl_expiry: result.sslExpiresAt ? toDateTime(result.sslExpiresAt) : null,
     error: result.error,
+    redirects: result.redirects,
+    final_url: result.finalUrl,
   };
 }

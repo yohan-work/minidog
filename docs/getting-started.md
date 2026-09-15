@@ -108,7 +108,7 @@ Observe
  ├ Queries               DB 쿼리 순위(총 소요 시간 · P95 · 호출 수, 값은 ? 로 묶음) · 가장 느린 호출의 트레이스로 이동
  └ Logs                  Log Explorer(서비스/레벨/검색/trace id) → Trace
 Monitor
- ├ Synthetics            URL 체크(상태 코드, 지연, 가용성, SSL 만료)
+ ├ Synthetics            URL 체크(상태 코드, 지연, 가용성, SSL 만료) · 리다이렉트 추종 · 응답 본문 문구 확인
  └ Monitors              Service down · Error rate · Latency · CPU/Memory · Synthetic check(실패율 · 응답 시간 · SSL 만료),
                          상태 이력, Webhook(Slack 호환), N분 지속 시 알림 · 해제 지연 · 음소거
 Settings                 프로젝트 · 환경 · API key · 연결 정보
@@ -130,6 +130,7 @@ Settings                 프로젝트 · 환경 · API key · 연결 정보
 | H. 느린 DB 쿼리 | `pnpm demo` 후 `curl -X POST localhost:5100/__demo/scenario -d '{"dbDelayMs":300}'` → Queries에서 `INSERT INTO orders …`가 총 소요 시간 1위, 행을 누르면 가장 느린 호출의 트레이스 |
 | I. 엔드포인트 상세 | Services → `api` → Endpoints에서 `POST /checkout` → 응답시간 분포(2배마다 4칸인 로그 막대, 빨강 = 실패), P50/P95/P99 표시, 가장 느린 요청 |
 | J. 검색(⌘K) | 아무 화면에서 ⌘K → `checkout` 입력 → Enter로 `POST /checkout` 엔드포인트 상세. 32자리 trace id를 붙여 넣으면 그 트레이스, 그 밖의 글자는 Search logs / traces |
+| K. 리다이렉트 · 본문 확인 | Synthetics → New monitor → `http://example.com`(Follow redirects 기본 켜짐, Response must contain `Example Domain`) → 최근 체크에 ↪ 표시, 문구를 바꾸면 Down과 이유 |
 
 ## 개발
 

@@ -1,6 +1,12 @@
 'use client';
 
-import { MONITOR_DEFAULTS, MONITOR_INTERVALS_SECONDS, MONITOR_TIMEOUT_MS, type SyntheticMonitor } from '@minidog/types';
+import {
+  MONITOR_BODY_CONTAINS_MAX,
+  MONITOR_DEFAULTS,
+  MONITOR_INTERVALS_SECONDS,
+  MONITOR_TIMEOUT_MS,
+  type SyntheticMonitor,
+} from '@minidog/types';
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -22,6 +28,7 @@ interface FormValues {
   intervalSeconds: string;
   timeoutMs: string;
   expectedStatus: string;
+  bodyContains: string;
 }
 
 type FieldName = keyof FormValues;
@@ -33,13 +40,15 @@ const INITIAL: FormValues = {
   intervalSeconds: String(MONITOR_DEFAULTS.intervalSeconds),
   timeoutMs: String(MONITOR_DEFAULTS.timeoutMs),
   expectedStatus: MONITOR_DEFAULTS.expectedStatus,
+  bodyContains: MONITOR_DEFAULTS.bodyContains,
 };
 
 const HINTS: Partial<Record<FieldName, string>> = {
-  url: 'http:// or https://. Redirects are not followed.',
+  url: 'http:// or https://.',
   name: 'Defaults to the host name.',
   timeoutMs: `${MONITOR_TIMEOUT_MS.min}–${MONITOR_TIMEOUT_MS.max} ms, shorter than the interval.`,
-  expectedStatus: 'Codes or ranges, e.g. 200-299,301.',
+  expectedStatus: 'Codes or ranges, e.g. 200-299,301. With redirects followed, the final response is checked.',
+  bodyContains: 'Optional. The check fails unless the body contains this text (case-sensitive, first 1 MB).',
 };
 
 function hostOf(url: string): string | null {
@@ -57,6 +66,7 @@ export function NewMonitorView() {
   const [errors, setErrors] = useState<Partial<Record<FieldName, string>>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [followRedirects, setFollowRedirects] = useState<boolean>(MONITOR_DEFAULTS.followRedirects);
   const backHref = withRange('/synthetics', range);
 
   const update = (name: FieldName) => (event: { target: { value: string } }) => {
@@ -88,6 +98,8 @@ export function NewMonitorView() {
           intervalSeconds: Number(values.intervalSeconds),
           timeoutMs: Number(values.timeoutMs),
           expectedStatus: values.expectedStatus.trim(),
+          followRedirects,
+          bodyContains: values.bodyContains.trim(),
         }),
       });
       router.push(withRange(`/synthetics/${monitor.id}`, range));
@@ -146,6 +158,19 @@ export function NewMonitorView() {
           <div className={styles.full}>
             <Field id="expectedStatus" label="Expected status" hint={HINTS.expectedStatus} error={errors.expectedStatus}>
               <Input {...control('expectedStatus')} mono />
+            </Field>
+          </div>
+          <div className={styles.full}>
+            <label className={styles.checkbox}>
+              <input type="checkbox" checked={followRedirects} onChange={(event) => setFollowRedirects(event.target.checked)} />
+              <span>
+                Follow redirects <span className={styles.checkboxHint}>up to 5; the final response is checked</span>
+              </span>
+            </label>
+          </div>
+          <div className={styles.full}>
+            <Field id="bodyContains" label="Response must contain" hint={HINTS.bodyContains} error={errors.bodyContains}>
+              <Input {...control('bodyContains')} maxLength={MONITOR_BODY_CONTAINS_MAX} placeholder="e.g. Welcome" />
             </Field>
           </div>
           <div className={styles.formActions}>

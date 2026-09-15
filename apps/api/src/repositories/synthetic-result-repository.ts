@@ -18,6 +18,8 @@ export interface SyntheticResultRow {
   ttfb_ms: number | null;
   ssl_expiry: string | null;
   error: string;
+  redirects: number;
+  final_url: string;
 }
 
 export interface RawMonitorSummary {
@@ -206,12 +208,14 @@ export class SyntheticResultRepository extends ClickHouseRepository {
       ttfb_ms: NullableNum;
       ssl_expiry_ts: NullableNum;
       error: string;
+      redirects: number;
+      final_url: string;
     }>(
       `SELECT
          toUnixTimestamp64Milli(timestamp) AS ts,
          status, status_code, latency_ms, dns_ms, connect_ms, tls_ms, ttfb_ms,
          toUnixTimestamp(ssl_expiry) AS ssl_expiry_ts,
-         error
+         error, redirects, final_url
        FROM synthetic_results
        WHERE ${SCOPE_FILTER}
          AND timestamp >= now64(3) - INTERVAL 7 DAY
@@ -231,6 +235,8 @@ export class SyntheticResultRepository extends ClickHouseRepository {
       ttfbMs: toLatency(row.ttfb_ms),
       sslExpiresAt: row.ssl_expiry_ts === null ? null : toNumber(row.ssl_expiry_ts) * 1000,
       error: row.error,
+      redirects: Number(row.redirects),
+      finalUrl: row.final_url,
     }));
   }
 }
