@@ -77,10 +77,18 @@ export function MetricsView() {
   );
 
   const option = (value: string, label = value) => ({ value, label });
-  const metricOptions = entries.length > 0 ? entries.map((item) => option(item.name)) : [option(metric || '', metric || 'No metrics')];
-  const withCurrent = (values: readonly string[], current: string) => (current && !values.includes(current) ? [...values, current] : values);
-  const serviceOptions = [option('', 'All services'), ...withCurrent(entry?.services ?? [], filters.service).map((value) => option(value))];
-  const hostOptions = [option('', 'All hosts'), ...withCurrent(entry?.hosts ?? [], filters.host).map((value) => option(value))];
+  const metricOptions =
+    entries.length > 0 ? entries.map((item) => option(item.name)) : [option(metric || '', metric || 'No metrics')];
+  const withCurrent = (values: readonly string[], current: string) =>
+    current && !values.includes(current) ? [...values, current] : values;
+  const serviceOptions = [
+    option('', 'All services'),
+    ...withCurrent(entry?.services ?? [], filters.service).map((value) => option(value)),
+  ];
+  const hostOptions = [
+    option('', 'All hosts'),
+    ...withCurrent(entry?.hosts ?? [], filters.host).map((value) => option(value)),
+  ];
   const groupOptions = [
     option('', 'No grouping'),
     option('service', 'By service'),
@@ -121,12 +129,31 @@ export function MetricsView() {
         actions={
           metric ? (
             <AddToDashboard
-              widget={{ kind: 'metric', metric, aggregation, service: filters.service || '', host: filters.host || '', groupBy: filters.groupBy || '', size: 'half', title: '' }}
+              widget={{
+                kind: 'metric',
+                metric,
+                aggregation,
+                service: filters.service || '',
+                host: filters.host || '',
+                groupBy: filters.groupBy || '',
+                size: 'half',
+                title: '',
+              }}
             />
           ) : undefined
         }
       />
-      <FilterBar trailing={entry && <span className={styles.unit}>{entry.type}{entry.temporality && ` · ${entry.temporality}`}{entry.unit && ` · ${entry.unit}`}</span>}>
+      <FilterBar
+        trailing={
+          entry && (
+            <span className={styles.unit}>
+              {entry.type}
+              {entry.temporality && ` · ${entry.temporality}`}
+              {entry.unit && ` · ${entry.unit}`}
+            </span>
+          )
+        }
+      >
         <FilterSelect label="Metric" value={metric} options={metricOptions} onChange={choose} />
         <FilterSelect
           label="Aggregation"
@@ -134,11 +161,25 @@ export function MetricsView() {
           options={METRIC_AGGREGATIONS.map((value) => option(value, AGGREGATION_LABELS[value]))}
           onChange={(value) => set({ aggregation: value })}
         />
-        <FilterSelect label="Service" value={filters.service} options={serviceOptions} onChange={(service) => set({ service })} />
+        <FilterSelect
+          label="Service"
+          value={filters.service}
+          options={serviceOptions}
+          onChange={(service) => set({ service })}
+        />
         <FilterSelect label="Host" value={filters.host} options={hostOptions} onChange={(host) => set({ host })} />
-        <FilterSelect label="Group by" value={filters.groupBy} options={groupOptions} onChange={(groupBy) => set({ groupBy })} />
+        <FilterSelect
+          label="Group by"
+          value={filters.groupBy}
+          options={groupOptions}
+          onChange={(groupBy) => set({ groupBy })}
+        />
       </FilterBar>
-      <StaleNotice error={result.data ? result.error : undefined} updatedAt={result.updatedAt} onRetry={result.refetch} />
+      <StaleNotice
+        error={result.data ? result.error : undefined}
+        updatedAt={result.updatedAt}
+        onRetry={result.refetch}
+      />
 
       {!result.data && result.error ? (
         <ErrorState title="Unable to query metric." description={result.error.message} onRetry={result.refetch} />
@@ -151,12 +192,19 @@ export function MetricsView() {
 
 function MetricResult({ data, onRetry }: { data: MetricQueryResponse | undefined; onRetry: () => void }) {
   const perSecond = data?.aggregation === 'rate';
-  const format = useCallback((value: number) => formatMetricValue(value, data?.unit ?? '', perSecond), [data?.unit, perSecond]);
+  const format = useCallback(
+    (value: number) => formatMetricValue(value, data?.unit ?? '', perSecond),
+    [data?.unit, perSecond],
+  );
 
   const { series, hasData, rows } = useMemo(() => {
     const groups = data?.groups ?? [];
     return {
-      series: groups.map<ChartSeries>((group, index) => ({ label: group.key || data?.metric || 'value', color: seriesColor(index), values: group.values })),
+      series: groups.map<ChartSeries>((group, index) => ({
+        label: group.key || data?.metric || 'value',
+        color: seriesColor(index),
+        values: group.values,
+      })),
       hasData: groups.some((group) => group.values.some((value) => value !== null)),
       rows: groups.map((group, index) => {
         const values = group.values.filter((value): value is number => value !== null);
@@ -208,7 +256,11 @@ function MetricResult({ data, onRetry }: { data: MetricQueryResponse | undefined
       {hasData && (
         <Section
           title="Series"
-          actions={data.omittedGroups > 0 ? <span className={styles.unit}>{data.omittedGroups} smaller series not shown</span> : undefined}
+          actions={
+            data.omittedGroups > 0 ? (
+              <span className={styles.unit}>{data.omittedGroups} smaller series not shown</span>
+            ) : undefined
+          }
           flush
         >
           <Table aria-label="Series summary">

@@ -61,7 +61,9 @@ function register<Row>(app: FastifyInstance, ctx: AppContext, signal: Signal<Row
       const { rows, rejected } = signal.parse(request.body, ingestScope(ctx, request));
       await signal.store(rows);
       return reply.send(
-        rejected > 0 ? { partialSuccess: { [signal.rejectedField]: String(rejected), errorMessage: signal.rejectedMessage } } : {},
+        rejected > 0
+          ? { partialSuccess: { [signal.rejectedField]: String(rejected), errorMessage: signal.rejectedMessage } }
+          : {},
       );
     },
   );
@@ -91,7 +93,11 @@ function ingestScope(ctx: AppContext, request: FastifyRequest): Scope {
 function decode(encoding: string | undefined, payload: Readable): Readable {
   if (!encoding || encoding === 'identity') return payload;
   if (encoding !== 'gzip') {
-    throw new HttpError(415, 'unsupported_encoding', `Content-Encoding "${encoding}" is not supported. Use gzip or none.`);
+    throw new HttpError(
+      415,
+      'unsupported_encoding',
+      `Content-Encoding "${encoding}" is not supported. Use gzip or none.`,
+    );
   }
   // Fastify compares Content-Length with the bytes received on the wire.
   const gunzip = Object.assign(createGunzip(), { receivedEncodedLength: 0 });

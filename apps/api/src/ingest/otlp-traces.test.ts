@@ -24,8 +24,14 @@ const request = {
               kind: 2,
               startTimeUnixNano: nanos(start),
               endTimeUnixNano: String(BigInt(start) * 1_000_000n + 757_250_000n),
-              attributes: [str('http.request.method', 'POST'), str('http.route', '/checkout'), int('http.response.status_code', 500)],
-              events: [{ timeUnixNano: nanos(start + 700), name: 'exception', attributes: [str('exception.message', 'boom')] }],
+              attributes: [
+                str('http.request.method', 'POST'),
+                str('http.route', '/checkout'),
+                int('http.response.status_code', 500),
+              ],
+              events: [
+                { timeUnixNano: nanos(start + 700), name: 'exception', attributes: [str('exception.message', 'boom')] },
+              ],
               status: { code: 2, message: 'payment failed' },
             },
             {
@@ -94,7 +100,11 @@ test('accepts base64 ids and legacy HTTP attribute names', () => {
                   name: 'GET',
                   kind: 1,
                   startTimeUnixNano: nanos(start),
-                  attributes: [str('http.method', 'GET'), str('http.route', '/items/:id'), int('http.status_code', 200)],
+                  attributes: [
+                    str('http.method', 'GET'),
+                    str('http.route', '/items/:id'),
+                    int('http.status_code', 200),
+                  ],
                 },
               ],
             },

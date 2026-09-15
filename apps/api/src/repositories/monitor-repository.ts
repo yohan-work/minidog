@@ -80,9 +80,7 @@ export class MonitorRepository {
 
   /** All enabled monitors across projects — used by the scheduler. */
   listEnabled(): SyntheticMonitor[] {
-    const rows = this.db
-      .prepare('SELECT * FROM synthetic_monitors WHERE enabled = 1')
-      .all() as unknown as MonitorRow[];
+    const rows = this.db.prepare('SELECT * FROM synthetic_monitors WHERE enabled = 1').all() as unknown as MonitorRow[];
     return rows.map(toMonitor);
   }
 

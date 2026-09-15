@@ -3,7 +3,12 @@
 import type { RequestSeries } from '@minidog/types';
 import { useMemo, type ReactNode } from 'react';
 import { EmptyState } from '@/components/observability/States';
-import { ChartLegend, TimeSeriesChart, type ChartMarker, type ChartSeries } from '@/components/observability/TimeSeriesChart';
+import {
+  ChartLegend,
+  TimeSeriesChart,
+  type ChartMarker,
+  type ChartSeries,
+} from '@/components/observability/TimeSeriesChart';
 import { formatCount, formatLatency, formatLatencyAxis } from '@/lib/format';
 
 export const LATENCY_SERIES = [
@@ -46,11 +51,22 @@ export function LatencyTrendChart({ series, subject, emptyAction, onSelectRange,
       { ...LATENCY_SERIES[1], values: points.map((point) => point.p99Ms) },
       { ...LATENCY_SERIES[2], values: points.map((point) => point.p50Ms) },
     ];
-    return { timestamps: points.map((point) => point.t), lines: result, peak: values.length > 0 ? Math.max(...values) : null };
+    return {
+      timestamps: points.map((point) => point.t),
+      lines: result,
+      peak: values.length > 0 ? Math.max(...values) : null,
+    };
   }, [series]);
 
   if (peak === null) {
-    return <EmptyState fill="chart" title="No requests in this range" description="Latency is measured on server spans." action={emptyAction} />;
+    return (
+      <EmptyState
+        fill="chart"
+        title="No requests in this range"
+        description="Latency is measured on server spans."
+        action={emptyAction}
+      />
+    );
   }
   return (
     <TimeSeriesChart
@@ -82,7 +98,14 @@ export function RequestsChart({ series, subject, emptyAction, onSelectRange, mar
   }, [series]);
 
   if (total === 0) {
-    return <EmptyState fill="chart" title="No requests in this range" description="Throughput is counted from server spans." action={emptyAction} />;
+    return (
+      <EmptyState
+        fill="chart"
+        title="No requests in this range"
+        description="Throughput is counted from server spans."
+        action={emptyAction}
+      />
+    );
   }
   return (
     <TimeSeriesChart

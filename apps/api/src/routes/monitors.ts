@@ -63,7 +63,8 @@ export function registerMonitorRoutes(app: FastifyInstance, ctx: AppContext): vo
   app.post('/api/monitors/:id/run', async (request): Promise<RunCheckResponse> => {
     const { id } = idParamsSchema.parse(request.params);
     const monitor = service.get(id);
-    if (!scheduler) throw new HttpError(409, 'worker_disabled', 'The synthetic worker is disabled (WORKER_ENABLED=false).');
+    if (!scheduler)
+      throw new HttpError(409, 'worker_disabled', 'The synthetic worker is disabled (WORKER_ENABLED=false).');
     const { result, persisted } = await scheduler.runNow(monitor);
     const check: CheckResult = {
       timestamp: result.startedAt.getTime(),

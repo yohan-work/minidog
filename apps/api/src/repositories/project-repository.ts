@@ -53,7 +53,9 @@ export class ProjectRepository {
   }
 
   list(): ProjectInfo[] {
-    const projects = this.db.prepare('SELECT id, name, created_at FROM projects ORDER BY created_at').all() as unknown as ProjectRow[];
+    const projects = this.db
+      .prepare('SELECT id, name, created_at FROM projects ORDER BY created_at')
+      .all() as unknown as ProjectRow[];
     const environments = this.db
       .prepare('SELECT project_id, name, created_at FROM environments ORDER BY created_at')
       .all() as unknown as EnvironmentRow[];
@@ -96,12 +98,16 @@ export class ProjectRepository {
   }
 
   hasEnvironment(projectId: string, name: string): boolean {
-    return this.db.prepare('SELECT 1 FROM environments WHERE project_id = ? AND name = ?').get(projectId, name) !== undefined;
+    return (
+      this.db.prepare('SELECT 1 FROM environments WHERE project_id = ? AND name = ?').get(projectId, name) !== undefined
+    );
   }
 
   /** Project and environment the dashboard last showed; null if unset or gone. */
   activeScope(): Scope | null {
-    const row = this.db.prepare('SELECT value FROM settings WHERE key = ?').get(ACTIVE_SCOPE_KEY) as { value: string } | undefined;
+    const row = this.db.prepare('SELECT value FROM settings WHERE key = ?').get(ACTIVE_SCOPE_KEY) as
+      | { value: string }
+      | undefined;
     if (!row) return null;
     try {
       const scope = JSON.parse(row.value) as Scope;

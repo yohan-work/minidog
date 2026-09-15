@@ -49,7 +49,12 @@ export function ProjectSwitcher({ context }: { context: ContextResponse }) {
   return (
     <label className={styles.switcher}>
       <span className={styles.visuallyHidden}>Project and environment</span>
-      <Select controlSize="sm" value={`${context.project.id}|${context.environment}`} onChange={(event) => void onChange(event.target.value)} disabled={switching}>
+      <Select
+        controlSize="sm"
+        value={`${context.project.id}|${context.environment}`}
+        onChange={(event) => void onChange(event.target.value)}
+        disabled={switching}
+      >
         {choices.map((choice) => (
           <option key={choice.value} value={choice.value}>
             {choice.label}

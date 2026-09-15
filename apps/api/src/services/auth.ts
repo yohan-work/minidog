@@ -17,10 +17,18 @@ const SCRYPT = { N: 16_384, r: 8, p: 1, keyLength: 64 };
 const MAX_FAILURES = 10;
 const FAILURE_WINDOW_MS = 15 * 60_000;
 
-function derive(password: string, salt: Buffer, params: { N: number; r: number; p: number; keyLength: number }): Promise<Buffer> {
+function derive(
+  password: string,
+  salt: Buffer,
+  params: { N: number; r: number; p: number; keyLength: number },
+): Promise<Buffer> {
   return new Promise((resolve, reject) =>
-    scrypt(password, salt, params.keyLength, { N: params.N, r: params.r, p: params.p, maxmem: 64 * 1024 * 1024 }, (error, key) =>
-      error ? reject(error) : resolve(key),
+    scrypt(
+      password,
+      salt,
+      params.keyLength,
+      { N: params.N, r: params.r, p: params.p, maxmem: 64 * 1024 * 1024 },
+      (error, key) => (error ? reject(error) : resolve(key)),
     ),
   );
 }
@@ -36,7 +44,12 @@ export async function verifyPassword(stored: string, password: string): Promise<
   const [scheme, n, r, p, salt, hash] = stored.split('$');
   if (scheme !== 'scrypt' || !salt || !hash) return false;
   const expected = Buffer.from(hash, 'base64');
-  const actual = await derive(password, Buffer.from(salt, 'base64'), { N: Number(n), r: Number(r), p: Number(p), keyLength: expected.length });
+  const actual = await derive(password, Buffer.from(salt, 'base64'), {
+    N: Number(n),
+    r: Number(r),
+    p: Number(p),
+    keyLength: expected.length,
+  });
   return actual.length === expected.length && timingSafeEqual(actual, expected);
 }
 
@@ -75,7 +88,8 @@ export class AuthService {
   setup(password: string): Promise<string> {
     return this.serialized(async () => {
       if (this.disabled) throw new HttpError(409, 'auth_disabled', 'Sign-in is turned off (AUTH_DISABLED).');
-      if (this.store.passwordHash() !== null) throw new HttpError(409, 'already_set_up', 'A password is already set. Sign in instead.');
+      if (this.store.passwordHash() !== null)
+        throw new HttpError(409, 'already_set_up', 'A password is already set. Sign in instead.');
       if (!this.store.insertPasswordHash(await hashPassword(password))) {
         throw new HttpError(409, 'already_set_up', 'A password is already set. Sign in instead.');
       }
@@ -84,7 +98,8 @@ export class AuthService {
   }
 
   async signIn(password: string): Promise<string> {
-    if (!(await this.checkPassword(password))) throw new HttpError(401, 'invalid_password', 'That password is not right.');
+    if (!(await this.checkPassword(password)))
+      throw new HttpError(401, 'invalid_password', 'That password is not right.');
     return this.startSession();
   }
 
@@ -125,7 +140,8 @@ export class AuthService {
 
   /** Signs out every other session. */
   async changePassword(current: string, next: string, token: string | undefined): Promise<void> {
-    if (!(await this.checkPassword(current))) throw new HttpError(401, 'invalid_password', 'The current password is not right.');
+    if (!(await this.checkPassword(current)))
+      throw new HttpError(401, 'invalid_password', 'The current password is not right.');
     this.store.setPasswordHash(await hashPassword(next));
     this.store.deleteOtherSessions(token ? hashToken(token) : null);
   }

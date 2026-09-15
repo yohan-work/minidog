@@ -65,7 +65,11 @@ export function AlertMonitorDetailView({ id }: { id: string }) {
     return (
       <>
         <PageHeader title="Monitor not found" back={back} />
-        <EmptyState title="This monitor does not exist." description="It may have been deleted." action={<ButtonLink href={backHref}>Back to Monitors</ButtonLink>} />
+        <EmptyState
+          title="This monitor does not exist."
+          description="It may have been deleted."
+          action={<ButtonLink href={backHref}>Back to Monitors</ButtonLink>}
+        />
       </>
     );
   }
@@ -90,7 +94,10 @@ export function AlertMonitorDetailView({ id }: { id: string }) {
 
   const toggle = (current: AlertMonitor) =>
     perform('toggle', async () => {
-      await apiFetch(`/alerting/monitors/${id}`, { method: 'PATCH', body: JSON.stringify({ enabled: !current.enabled }) });
+      await apiFetch(`/alerting/monitors/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ enabled: !current.enabled }),
+      });
       refetch();
     });
 
@@ -143,7 +150,12 @@ export function AlertMonitorDetailView({ id }: { id: string }) {
             </>
           ) : (
             <>
-              <Button size="sm" loading={pending === 'evaluate'} disabled={pending !== null || !monitor.enabled} onClick={evaluate}>
+              <Button
+                size="sm"
+                loading={pending === 'evaluate'}
+                disabled={pending !== null || !monitor.enabled}
+                onClick={evaluate}
+              >
                 Evaluate now
               </Button>
               {muted ? (
@@ -169,7 +181,12 @@ export function AlertMonitorDetailView({ id }: { id: string }) {
                   ))}
                 </Select>
               )}
-              <Button size="sm" loading={pending === 'toggle'} disabled={pending !== null} onClick={() => toggle(monitor)}>
+              <Button
+                size="sm"
+                loading={pending === 'toggle'}
+                disabled={pending !== null}
+                onClick={() => toggle(monitor)}
+              >
                 {monitor.enabled ? 'Pause' : 'Resume'}
               </Button>
               <Button size="sm" variant="danger" disabled={pending !== null} onClick={() => setConfirmingDelete(true)}>
@@ -187,7 +204,8 @@ export function AlertMonitorDetailView({ id }: { id: string }) {
       <StaleNotice error={data ? error : undefined} updatedAt={updatedAt} onRetry={refetch} />
       {monitor && muted && monitor.mutedUntil && (
         <Notice tone="info" title={`Notifications muted until ${formatDateTime(Date.parse(monitor.mutedUntil))}.`}>
-          State changes are still recorded. If the monitor is still alerting when the mute ends, that notification is sent then.
+          State changes are still recorded. If the monitor is still alerting when the mute ends, that notification is
+          sent then.
         </Notice>
       )}
       {monitor?.enabled && <PendingNotice monitor={monitor} />}
@@ -202,7 +220,10 @@ export function AlertMonitorDetailView({ id }: { id: string }) {
               loading={!monitor}
               value={monitor && formatAlertValue(monitor, monitor.stateValue)}
               tone={tone}
-              meta={monitor && (usesWindow(monitor.type, monitor.metric) ? `last ${monitor.windowMinutes} min` : 'latest check')}
+              meta={
+                monitor &&
+                (usesWindow(monitor.type, monitor.metric) ? `last ${monitor.windowMinutes} min` : 'latest check')
+              }
             />
             <Metric
               label="Warning"
@@ -210,7 +231,12 @@ export function AlertMonitorDetailView({ id }: { id: string }) {
               value={monitor && formatAlertValue(monitor, monitor.warningThreshold)}
               meta={monitor?.warningThreshold === null ? 'not set' : 'threshold'}
             />
-            <Metric label="Critical" loading={!monitor} value={monitor && formatAlertValue(monitor, monitor.criticalThreshold)} meta="threshold" />
+            <Metric
+              label="Critical"
+              loading={!monitor}
+              value={monitor && formatAlertValue(monitor, monitor.criticalThreshold)}
+              meta="threshold"
+            />
             <Metric
               label="Alert after"
               loading={!monitor}
@@ -227,18 +253,16 @@ export function AlertMonitorDetailView({ id }: { id: string }) {
 
           {monitor && usesWindow(monitor.type, monitor.metric) && <SignalSection monitor={monitor} range={range} />}
 
-          <Section
-            title={
-              <>
-                History {data && <span className={styles.count}>{data.events.length}</span>}
-              </>
-            }
-            flush
-          >
+          <Section title={<>History {data && <span className={styles.count}>{data.events.length}</span>}</>} flush>
             {!data ? (
               <Skeleton height="calc(var(--row-height) * 3)" />
             ) : data.events.length > 0 ? (
-              <AlertEventTable events={data.events} range={range} types={new Map([[id, data.monitor]])} showMonitor={false} />
+              <AlertEventTable
+                events={data.events}
+                range={range}
+                types={new Map([[id, data.monitor]])}
+                showMonitor={false}
+              />
             ) : (
               <EmptyState
                 title="No state changes yet"
@@ -267,7 +291,8 @@ function PendingNotice({ monitor }: { monitor: AlertMonitor }) {
   const label = STATE_LABELS[monitor.pendingState];
   return (
     <Notice tone={escalating ? 'warning' : 'info'} title={`${label} pending.`}>
-      Changes to {label} and notifies if it lasts {delay} min — measured since {formatTime(Date.parse(monitor.pendingSince))}.
+      Changes to {label} and notifies if it lasts {delay} min — measured since{' '}
+      {formatTime(Date.parse(monitor.pendingSince))}.
     </Notice>
   );
 }
@@ -295,7 +320,10 @@ function SignalSection({ monitor, range }: { monitor: AlertMonitor; range: TimeR
   const isHost = monitor.type === 'host_resource';
   const isSynthetic = monitor.type === 'synthetic_check';
   const encoded = encodeURIComponent(monitor.target);
-  const service = useApi<ServiceResponse>(!isHost && !isSynthetic ? `/services/${encoded}?range=${range}` : null, 30_000);
+  const service = useApi<ServiceResponse>(
+    !isHost && !isSynthetic ? `/services/${encoded}?range=${range}` : null,
+    30_000,
+  );
   const host = useApi<HostResponse>(isHost ? `/hosts/${encoded}?range=${range}` : null, 30_000);
   const synthetic = useApi<Series>(isSynthetic ? `/monitors/${encoded}/series?range=${range}` : null, 30_000);
   const source = isHost ? host : isSynthetic ? synthetic : service;
@@ -311,7 +339,11 @@ function SignalSection({ monitor, range }: { monitor: AlertMonitor; range: TimeR
       const points = synthetic.data.points;
       timestamps = points.map((point) => point.t);
       values = points.map((point) =>
-        monitor.metric === 'response_time' ? point.p95LatencyMs : point.checks > 0 ? (point.failures / point.checks) * 100 : null,
+        monitor.metric === 'response_time'
+          ? point.p95LatencyMs
+          : point.checks > 0
+            ? (point.failures / point.checks) * 100
+            : null,
       );
     } else if (!isHost && !isSynthetic && service.data) {
       const points = service.data.series.points;
@@ -331,18 +363,34 @@ function SignalSection({ monitor, range }: { monitor: AlertMonitor; range: TimeR
     // Service Down thresholds apply to the whole window, not to one bucket.
     if (monitor.type !== 'service_down') {
       if (monitor.warningThreshold !== null) {
-        series.push({ label: 'Warning', color: '--status-warning', dashed: true, values: constant(monitor.warningThreshold) });
+        series.push({
+          label: 'Warning',
+          color: '--status-warning',
+          dashed: true,
+          values: constant(monitor.warningThreshold),
+        });
       }
-      series.push({ label: 'Critical', color: '--status-error', dashed: true, values: constant(monitor.criticalThreshold) });
+      series.push({
+        label: 'Critical',
+        color: '--status-error',
+        dashed: true,
+        values: constant(monitor.criticalThreshold),
+      });
     }
     return { timestamps, series, hasData: values.some((value) => value !== null) };
   }, [host.data, isHost, isSynthetic, monitor, service.data, synthetic.data]);
 
   const format = useMemo(() => (value: number) => formatAlertValue(monitor, value), [monitor]);
-  const formatAxis = useMemo(() => (value: number) => (value === 0 ? '0' : formatAlertValue(monitor, value)), [monitor]);
+  const formatAxis = useMemo(
+    () => (value: number) => (value === 0 ? '0' : formatAlertValue(monitor, value)),
+    [monitor],
+  );
 
   return (
-    <Section title={`${signalLabel(monitor)} · ${monitor.targetLabel}`} actions={chart.hasData ? <ChartLegend series={chart.series} /> : undefined}>
+    <Section
+      title={`${signalLabel(monitor)} · ${monitor.targetLabel}`}
+      actions={chart.hasData ? <ChartLegend series={chart.series} /> : undefined}
+    >
       {chart.hasData ? (
         <TimeSeriesChart
           key={`${monitor.type}|${monitor.metric}|${monitor.warningThreshold}|${monitor.criticalThreshold}`}
@@ -353,13 +401,20 @@ function SignalSection({ monitor, range }: { monitor: AlertMonitor; range: TimeR
           ariaLabel={`${signalLabel(monitor)} of ${monitor.targetLabel} with alert thresholds.`}
         />
       ) : source.error && source.error.status !== 404 ? (
-        <ErrorState fill="chart" title="Unable to load the signal." description={source.error.message} onRetry={source.refetch} />
+        <ErrorState
+          fill="chart"
+          title="Unable to load the signal."
+          description={source.error.message}
+          onRetry={source.refetch}
+        />
       ) : source.data || source.error ? (
         <EmptyState
           fill="chart"
           title={`No data from ${monitor.targetLabel} in this range`}
           description={
-            isSynthetic ? 'The monitor reports No data while the synthetic check is paused or has no results.' : 'The monitor reports No data until the target sends telemetry.'
+            isSynthetic
+              ? 'The monitor reports No data while the synthetic check is paused or has no results.'
+              : 'The monitor reports No data until the target sends telemetry.'
           }
           action={
             <Button size="sm" onClick={source.refetch}>
@@ -426,18 +481,51 @@ function SettingsSection({ monitor, onSaved }: { monitor: AlertMonitor; onSaved:
   return (
     <Section title="Settings">
       <form className={styles.form} onSubmit={onSubmit} noValidate>
-        <Field id="edit-warning" label={`Warning (${unit})`} hint="Leave empty for no warning." error={errors.warningThreshold}>
-          <Input id="edit-warning" value={values.warningThreshold} onChange={update('warningThreshold')} type="number" inputMode="decimal" mono min={0} invalid={Boolean(errors.warningThreshold)} />
+        <Field
+          id="edit-warning"
+          label={`Warning (${unit})`}
+          hint="Leave empty for no warning."
+          error={errors.warningThreshold}
+        >
+          <Input
+            id="edit-warning"
+            value={values.warningThreshold}
+            onChange={update('warningThreshold')}
+            type="number"
+            inputMode="decimal"
+            mono
+            min={0}
+            invalid={Boolean(errors.warningThreshold)}
+          />
         </Field>
         <Field id="edit-critical" label={`Critical (${unit})`} error={errors.criticalThreshold}>
-          <Input id="edit-critical" value={values.criticalThreshold} onChange={update('criticalThreshold')} type="number" inputMode="decimal" mono min={0} invalid={Boolean(errors.criticalThreshold)} />
+          <Input
+            id="edit-critical"
+            value={values.criticalThreshold}
+            onChange={update('criticalThreshold')}
+            type="number"
+            inputMode="decimal"
+            mono
+            min={0}
+            invalid={Boolean(errors.criticalThreshold)}
+          />
         </Field>
-        <Field id="edit-alert-after" label="Alert after" hint="How long a breach must last." error={errors.alertAfterMinutes}>
+        <Field
+          id="edit-alert-after"
+          label="Alert after"
+          hint="How long a breach must last."
+          error={errors.alertAfterMinutes}
+        >
           <Select id="edit-alert-after" value={values.alertAfterMinutes} onChange={update('alertAfterMinutes')}>
             <DelayOptions />
           </Select>
         </Field>
-        <Field id="edit-recover-after" label="Recover after" hint="How long recovery must hold." error={errors.recoverAfterMinutes}>
+        <Field
+          id="edit-recover-after"
+          label="Recover after"
+          hint="How long recovery must hold."
+          error={errors.recoverAfterMinutes}
+        >
           <Select id="edit-recover-after" value={values.recoverAfterMinutes} onChange={update('recoverAfterMinutes')}>
             <DelayOptions />
           </Select>
@@ -450,8 +538,20 @@ function SettingsSection({ monitor, onSaved }: { monitor: AlertMonitor; onSaved:
           </Field>
         )}
         <div className={styles.full}>
-          <Field id="edit-webhook" label="Webhook URL" hint="Optional. Slack, Discord, Telegram and ntfy.sh URLs get their own format; any other URL receives JSON." error={errors.webhookUrl}>
-            <Input id="edit-webhook" value={values.webhookUrl} onChange={update('webhookUrl')} type="url" mono invalid={Boolean(errors.webhookUrl)} />
+          <Field
+            id="edit-webhook"
+            label="Webhook URL"
+            hint="Optional. Slack, Discord, Telegram and ntfy.sh URLs get their own format; any other URL receives JSON."
+            error={errors.webhookUrl}
+          >
+            <Input
+              id="edit-webhook"
+              value={values.webhookUrl}
+              onChange={update('webhookUrl')}
+              type="url"
+              mono
+              invalid={Boolean(errors.webhookUrl)}
+            />
             <WebhookTestButton url={values.webhookUrl} />
           </Field>
         </div>

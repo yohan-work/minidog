@@ -30,7 +30,10 @@ export const widgetSchema = z.discriminatedUnion('kind', [
       service: optionalText(255),
       host: optionalText(255),
       // The values the metrics query accepts.
-      groupBy: optionalText(255).refine((value) => /^(|service|host|attr:\S+)$/.test(value), 'Group by service, host or attr:<key>.'),
+      groupBy: optionalText(255).refine(
+        (value) => /^(|service|host|attr:\S+)$/.test(value),
+        'Group by service, host or attr:<key>.',
+      ),
     })
     .strict(),
   z
@@ -55,7 +58,9 @@ const createSchema = z.object({ name: nameSchema }).strict();
 export const updateSchema = z
   .object({
     name: nameSchema,
-    widgets: z.array(widgetSchema).max(DASHBOARD_MAX_WIDGETS, `A dashboard holds at most ${DASHBOARD_MAX_WIDGETS} widgets.`),
+    widgets: z
+      .array(widgetSchema)
+      .max(DASHBOARD_MAX_WIDGETS, `A dashboard holds at most ${DASHBOARD_MAX_WIDGETS} widgets.`),
   })
   .strict();
 const addWidgetSchema = z.object({ widget: widgetSchema }).strict();

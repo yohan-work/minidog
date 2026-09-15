@@ -58,7 +58,15 @@ export function widgetHref(widget: DashboardWidget, range: TimeRange): string {
   }
 }
 
-export function WidgetFrame({ widget, range, controls }: { widget: DashboardWidget; range: TimeRange; controls?: ReactNode }) {
+export function WidgetFrame({
+  widget,
+  range,
+  controls,
+}: {
+  widget: DashboardWidget;
+  range: TimeRange;
+  controls?: ReactNode;
+}) {
   const title = widget.title || defaultTitle(widget);
   return (
     <article className={styles.widget} data-size={widget.size} aria-label={title}>
@@ -92,7 +100,10 @@ function MetricWidgetView({ widget, range }: { widget: MetricWidget; range: Time
     `/metrics/query${toQuery({ range, metric: widget.metric, aggregation: widget.aggregation, service: widget.service, host: widget.host, groupBy: widget.groupBy })}`,
   );
   const perSecond = widget.aggregation === 'rate';
-  const format = useCallback((value: number) => formatMetricValue(value, data?.unit ?? '', perSecond), [data?.unit, perSecond]);
+  const format = useCallback(
+    (value: number) => formatMetricValue(value, data?.unit ?? '', perSecond),
+    [data?.unit, perSecond],
+  );
   const series = useMemo(
     () =>
       (data?.groups ?? []).map<ChartSeries>((group, index) => ({
@@ -103,9 +114,21 @@ function MetricWidgetView({ widget, range }: { widget: MetricWidget; range: Time
     [data, widget.metric],
   );
 
-  if (!data) return error ? <ErrorState fill="chart" title="Unable to query metric." description={error.message} onRetry={refetch} /> : <Loading />;
+  if (!data)
+    return error ? (
+      <ErrorState fill="chart" title="Unable to query metric." description={error.message} onRetry={refetch} />
+    ) : (
+      <Loading />
+    );
   if (!series.some((item) => item.values.some((value) => value !== null))) {
-    return <EmptyState fill="chart" title="No data points in this range" description="Try a longer time range." action={<Refresh onClick={refetch} />} />;
+    return (
+      <EmptyState
+        fill="chart"
+        title="No data points in this range"
+        description="Try a longer time range."
+        action={<Refresh onClick={refetch} />}
+      />
+    );
   }
   return (
     <>
@@ -123,18 +146,34 @@ function MetricWidgetView({ widget, range }: { widget: MetricWidget; range: Time
 }
 
 function ServiceWidgetView({ widget, range }: { widget: ServiceWidget; range: TimeRange }) {
-  const { data, error, refetch } = useApi<ServiceResponse>(`/services/${encodeURIComponent(widget.service)}${toQuery({ range })}`);
-  if (!data) return error ? <ErrorState fill="chart" title="Unable to load service." description={error.message} onRetry={refetch} /> : <Loading />;
+  const { data, error, refetch } = useApi<ServiceResponse>(
+    `/services/${encodeURIComponent(widget.service)}${toQuery({ range })}`,
+  );
+  if (!data)
+    return error ? (
+      <ErrorState fill="chart" title="Unable to load service." description={error.message} onRetry={refetch} />
+    ) : (
+      <Loading />
+    );
   const Chart = widget.chart === 'requests' ? RequestsChart : LatencyTrendChart;
   return <Chart series={data.series} subject={widget.service} emptyAction={<Refresh onClick={refetch} />} />;
 }
 
 function SyntheticWidgetView({ widget, range }: { widget: SyntheticWidget; range: TimeRange }) {
   const { data, error, refetch } = useApi<Series>(`/monitors/${widget.monitorId}/series${toQuery({ range })}`);
-  if (!data) return error ? <ErrorState fill="chart" title="Unable to load monitor." description={error.message} onRetry={refetch} /> : <Loading />;
+  if (!data)
+    return error ? (
+      <ErrorState fill="chart" title="Unable to load monitor." description={error.message} onRetry={refetch} />
+    ) : (
+      <Loading />
+    );
   return (
     <>
-      <LatencyChart series={data} subject={widget.title || 'this monitor'} emptyAction={<Refresh onClick={refetch} />} />
+      <LatencyChart
+        series={data}
+        subject={widget.title || 'this monitor'}
+        emptyAction={<Refresh onClick={refetch} />}
+      />
       <AvailabilityBar points={data.points} stepSeconds={data.stepSeconds} gaps={data.gaps} />
     </>
   );

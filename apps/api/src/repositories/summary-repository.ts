@@ -34,7 +34,9 @@ export class SummaryRepository {
   }
 
   private read<T>(key: string): T | undefined {
-    const row = this.db.prepare('SELECT value FROM settings WHERE key = ?').get(key) as unknown as { value: string } | undefined;
+    const row = this.db.prepare('SELECT value FROM settings WHERE key = ?').get(key) as unknown as
+      | { value: string }
+      | undefined;
     if (!row) return undefined;
     try {
       return JSON.parse(row.value) as T;

@@ -32,9 +32,11 @@ export function deriveServiceHealth(input: ServiceHealthInput): ServiceHealth {
   const rate = errors / requests;
   const enoughRequests = requests >= minRequests;
 
-  if (enoughRequests && rate >= errorRate.critical) return { health: 'critical', reason: `Error rate ${percent(rate)}` };
+  if (enoughRequests && rate >= errorRate.critical)
+    return { health: 'critical', reason: `Error rate ${percent(rate)}` };
   if (p95Ms !== null && p95Ms >= latency.critical) return { health: 'critical', reason: `P95 ${duration(p95Ms)}` };
-  if (enoughRequests && rate >= errorRate.degraded) return { health: 'degraded', reason: `Error rate ${percent(rate)}` };
+  if (enoughRequests && rate >= errorRate.degraded)
+    return { health: 'degraded', reason: `Error rate ${percent(rate)}` };
   if (!enoughRequests && errors > 0) {
     return { health: 'degraded', reason: `${errors} of ${requests} request${requests === 1 ? '' : 's'} failed` };
   }

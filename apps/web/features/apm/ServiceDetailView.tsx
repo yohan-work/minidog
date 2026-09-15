@@ -1,6 +1,12 @@
 'use client';
 
-import type { DbQueryListResponse, ServiceResponse, ServiceSummary, TimeRange, TraceListResponse } from '@minidog/types';
+import type {
+  DbQueryListResponse,
+  ServiceResponse,
+  ServiceSummary,
+  TimeRange,
+  TraceListResponse,
+} from '@minidog/types';
 import Link from 'next/link';
 import { useMemo } from 'react';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -66,7 +72,13 @@ export function ServiceDetailView({ service }: { service: string }) {
             </>
           )
         }
-        meta={summary ? <ServiceMeta summary={summary} range={range} /> : detail.isLoading && <Skeleton width="calc(var(--space-16) * 3)" height="var(--text-secondary)" />}
+        meta={
+          summary ? (
+            <ServiceMeta summary={summary} range={range} />
+          ) : (
+            detail.isLoading && <Skeleton width="calc(var(--space-16) * 3)" height="var(--text-secondary)" />
+          )
+        }
         actions={
           <>
             <ButtonLink href={tracesHref({ service }, range)} size="sm">
@@ -81,7 +93,11 @@ export function ServiceDetailView({ service }: { service: string }) {
           </>
         }
       />
-      <StaleNotice error={detail.data ? detail.error : undefined} updatedAt={detail.updatedAt} onRetry={detail.refetch} />
+      <StaleNotice
+        error={detail.data ? detail.error : undefined}
+        updatedAt={detail.updatedAt}
+        onRetry={detail.refetch}
+      />
 
       {!detail.data && !detail.isLoading ? (
         <ErrorState title="Unable to load service." description={detail.error?.message} onRetry={detail.refetch} />
@@ -89,23 +105,59 @@ export function ServiceDetailView({ service }: { service: string }) {
         <>
           <ServiceMetrics summary={summary} />
 
-          <Section title="Latency" actions={<><SelectHint /><LatencyTrendLegend /></>}>
+          <Section
+            title="Latency"
+            actions={
+              <>
+                <SelectHint />
+                <LatencyTrendLegend />
+              </>
+            }
+          >
             {chart.selectionFor('latency') && (
-              <SelectionBar selection={chart.selectionFor('latency')!} links={drilldownLinks(chart.selectionFor('latency')!, range, service)} onClear={chart.clear} />
+              <SelectionBar
+                selection={chart.selectionFor('latency')!}
+                links={drilldownLinks(chart.selectionFor('latency')!, range, service)}
+                onClear={chart.clear}
+              />
             )}
             {detail.data ? (
-              <LatencyTrendChart series={detail.data.series} subject={service} emptyAction={tracesLink} onSelectRange={chart.select('latency')} markers={markers} />
+              <LatencyTrendChart
+                series={detail.data.series}
+                subject={service}
+                emptyAction={tracesLink}
+                onSelectRange={chart.select('latency')}
+                markers={markers}
+              />
             ) : (
               <Skeleton height="var(--chart-height)" />
             )}
           </Section>
 
-          <Section title="Requests" actions={<><SelectHint /><RequestsLegend /></>}>
+          <Section
+            title="Requests"
+            actions={
+              <>
+                <SelectHint />
+                <RequestsLegend />
+              </>
+            }
+          >
             {chart.selectionFor('requests') && (
-              <SelectionBar selection={chart.selectionFor('requests')!} links={drilldownLinks(chart.selectionFor('requests')!, range, service)} onClear={chart.clear} />
+              <SelectionBar
+                selection={chart.selectionFor('requests')!}
+                links={drilldownLinks(chart.selectionFor('requests')!, range, service)}
+                onClear={chart.clear}
+              />
             )}
             {detail.data ? (
-              <RequestsChart series={detail.data.series} subject={service} emptyAction={tracesLink} onSelectRange={chart.select('requests')} markers={markers} />
+              <RequestsChart
+                series={detail.data.series}
+                subject={service}
+                emptyAction={tracesLink}
+                onSelectRange={chart.select('requests')}
+                markers={markers}
+              />
             ) : (
               <Skeleton height="var(--chart-height)" />
             )}
@@ -127,12 +179,12 @@ export function ServiceDetailView({ service }: { service: string }) {
           )}
 
           <Section
-            title={
-              <>
-                Versions {detail.data && <span className={styles.count}>{detail.data.versions.length}</span>}
-              </>
+            title={<>Versions {detail.data && <span className={styles.count}>{detail.data.versions.length}</span>}</>}
+            actions={
+              <span className={styles.note}>
+                From the service.version resource attribute · newest first · current = serving now
+              </span>
             }
-            actions={<span className={styles.note}>From the service.version resource attribute · newest first · current = serving now</span>}
             flush
           >
             {!detail.data ? (
@@ -149,11 +201,7 @@ export function ServiceDetailView({ service }: { service: string }) {
           </Section>
 
           <Section
-            title={
-              <>
-                Endpoints {detail.data && <span className={styles.count}>{detail.data.endpoints.length}</span>}
-              </>
-            }
+            title={<>Endpoints {detail.data && <span className={styles.count}>{detail.data.endpoints.length}</span>}</>}
             actions={<span className={styles.note}>Slowest first</span>}
             flush
           >
@@ -162,7 +210,11 @@ export function ServiceDetailView({ service }: { service: string }) {
             ) : detail.data.endpoints.length > 0 ? (
               <EndpointTable endpoints={detail.data.endpoints} range={range} />
             ) : (
-              <EmptyState title="No endpoints in this range" description="Endpoints come from server span routes." action={tracesLink} />
+              <EmptyState
+                title="No endpoints in this range"
+                description="Endpoints come from server span routes."
+                action={tracesLink}
+              />
             )}
           </Section>
 
@@ -179,7 +231,11 @@ export function ServiceDetailView({ service }: { service: string }) {
               traces.data.traces.length > 0 ? (
                 <TraceTable traces={traces.data.traces} range={range} label={`Recent traces of ${service}`} />
               ) : (
-                <EmptyState title="No traces in this range" description="Try a longer time range." action={tracesLink} />
+                <EmptyState
+                  title="No traces in this range"
+                  description="Try a longer time range."
+                  action={tracesLink}
+                />
               )
             ) : traces.error ? (
               <ErrorState title="Unable to load traces." description={traces.error.message} onRetry={traces.refetch} />

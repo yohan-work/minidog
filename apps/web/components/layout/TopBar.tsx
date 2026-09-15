@@ -58,27 +58,29 @@ export function TopBar() {
       }
       controls={
         <>
-        <CommandMenuTrigger />
-        <AlertsIndicator />
-        {data?.auth.enabled && (
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => void apiFetch('/auth/logout', { method: 'POST' }).finally(() => window.location.assign('/login'))}
-          >
-            Sign out
-          </Button>
-        )}
-        <label className={styles.range}>
-          <span className={styles.visuallyHidden}>Time range</span>
-          <Select controlSize="sm" value={range} onChange={onRangeChange}>
-            {TIME_RANGE_KEYS.map((key) => (
-              <option key={key} value={key}>
-                {TIME_RANGES[key].label}
-              </option>
-            ))}
-          </Select>
-        </label>
+          <CommandMenuTrigger />
+          <AlertsIndicator />
+          {data?.auth.enabled && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() =>
+                void apiFetch('/auth/logout', { method: 'POST' }).finally(() => window.location.assign('/login'))
+              }
+            >
+              Sign out
+            </Button>
+          )}
+          <label className={styles.range}>
+            <span className={styles.visuallyHidden}>Time range</span>
+            <Select controlSize="sm" value={range} onChange={onRangeChange}>
+              {TIME_RANGE_KEYS.map((key) => (
+                <option key={key} value={key}>
+                  {TIME_RANGES[key].label}
+                </option>
+              ))}
+            </Select>
+          </label>
         </>
       }
     />

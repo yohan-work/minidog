@@ -24,5 +24,7 @@ function markerLabel(group: readonly Deployment[], withService: boolean): string
   if (!withService) return first.version;
   if (group.length === 1) return `${first.service} ${first.version}`;
   const sameVersion = group.every((deployment) => deployment.version === first.version);
-  return sameVersion ? `${group.map((deployment) => deployment.service).join(', ')} ${first.version}` : `${group.length} deployments`;
+  return sameVersion
+    ? `${group.map((deployment) => deployment.service).join(', ')} ${first.version}`
+    : `${group.length} deployments`;
 }

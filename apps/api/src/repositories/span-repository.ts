@@ -1,5 +1,13 @@
 import { LATENCY_BINS_PER_DOUBLING } from '@minidog/types';
-import type { DbQuerySort, DbQuerySummary, ErrorGroup, SpanEvent, SpanKind, SpanStatus, TraceSort } from '@minidog/types';
+import type {
+  DbQuerySort,
+  DbQuerySummary,
+  ErrorGroup,
+  SpanEvent,
+  SpanKind,
+  SpanStatus,
+  TraceSort,
+} from '@minidog/types';
 import { ClickHouseRepository } from '../db/clickhouse-repository';
 import type { SpanRow } from '../ingest/otlp-traces';
 import type { Scope } from './project-repository';
@@ -242,8 +250,21 @@ export class SpanRepository extends ClickHouseRepository {
   }
 
   /** Requests, errors and latency per bucket, for one service or all. */
-  async requestSeries(scope: Scope, fromMs: number, stepSeconds: number, service?: string, endpoint?: string): Promise<RawRequestPoint[]> {
-    const rows = await this.query<{ t: Num; requests: Num; errors: Num; p50: NullableNum; p95: NullableNum; p99: NullableNum }>(
+  async requestSeries(
+    scope: Scope,
+    fromMs: number,
+    stepSeconds: number,
+    service?: string,
+    endpoint?: string,
+  ): Promise<RawRequestPoint[]> {
+    const rows = await this.query<{
+      t: Num;
+      requests: Num;
+      errors: Num;
+      p50: NullableNum;
+      p95: NullableNum;
+      p99: NullableNum;
+    }>(
       `SELECT
          intDiv(toUnixTimestamp(timestamp), {step:UInt32}) * {step:UInt32} AS t,
          count() AS requests,
@@ -259,11 +280,22 @@ export class SpanRepository extends ClickHouseRepository {
        ORDER BY t`,
       { ...scope, fromMs, step: stepSeconds, service, endpoint },
     );
-    return rows.map((row) => ({ t: Number(row.t), requests: Number(row.requests), errors: Number(row.errors), ...latency(row) }));
+    return rows.map((row) => ({
+      t: Number(row.t),
+      requests: Number(row.requests),
+      errors: Number(row.errors),
+      ...latency(row),
+    }));
   }
 
   async totals(scope: Scope, fromMs: number): Promise<{ requests: number; errors: number } & LatencyRow> {
-    const [row] = await this.query<{ requests: Num; errors: Num; p50: NullableNum; p95: NullableNum; p99: NullableNum }>(
+    const [row] = await this.query<{
+      requests: Num;
+      errors: Num;
+      p50: NullableNum;
+      p95: NullableNum;
+      p99: NullableNum;
+    }>(
       `SELECT count() AS requests, sum(is_error) AS errors, ${LATENCY()}
        FROM spans
        WHERE ${SCOPE_FILTER} AND is_entry = 1 AND ${since('fromMs')}`,
@@ -275,7 +307,11 @@ export class SpanRepository extends ClickHouseRepository {
   }
 
   /** Requests, errors and P95 of one service since `fromMs` — used by monitors. */
-  async windowStats(scope: Scope, service: string, fromMs: number): Promise<{ requests: number; errors: number; p95Ms: number | null }> {
+  async windowStats(
+    scope: Scope,
+    service: string,
+    fromMs: number,
+  ): Promise<{ requests: number; errors: number; p95Ms: number | null }> {
     const [row] = await this.query<{ requests: Num; errors: Num; p95: NullableNum }>(
       `SELECT count() AS requests, sum(is_error) AS errors, quantile(0.95)(duration_ms) AS p95
        FROM spans
@@ -489,7 +525,10 @@ export class SpanRepository extends ClickHouseRepository {
   }
 
   /** Versions (`service.version` resource attribute) per service, from entry spans. */
-  async versionStats(scope: Scope, window: { fromMs: number; lookbackFromMs: number; service?: string }): Promise<RawVersionRow[]> {
+  async versionStats(
+    scope: Scope,
+    window: { fromMs: number; lookbackFromMs: number; service?: string },
+  ): Promise<RawVersionRow[]> {
     const rows = await this.query<{
       service: string;
       version: string;
@@ -606,7 +645,10 @@ export class SpanRepository extends ClickHouseRepository {
   }
 
   /** Entry spans of one endpoint counted in logarithmic duration bins. */
-  async latencyHistogram(scope: Scope, filters: { fromMs: number; service: string; endpoint: string }): Promise<RawLatencyBin[]> {
+  async latencyHistogram(
+    scope: Scope,
+    filters: { fromMs: number; service: string; endpoint: string },
+  ): Promise<RawLatencyBin[]> {
     const rows = await this.query<{ bin: Num; requests: Num; errors: Num }>(
       `SELECT
          if(duration_ms < 1, -1, toInt32(floor(log2(duration_ms) * {perDoubling:UInt8}))) AS bin,

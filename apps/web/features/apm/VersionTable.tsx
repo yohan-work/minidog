@@ -16,7 +16,10 @@ const COLUMNS = [
 export function VersionTable({ versions }: { versions: readonly VersionSummary[] }) {
   const now = Date.now();
   // The version serving now, which is not the newest one after a rollback.
-  const current = versions.reduce<VersionSummary | null>((best, version) => (!best || version.lastSeenAt > best.lastSeenAt ? version : best), null);
+  const current = versions.reduce<VersionSummary | null>(
+    (best, version) => (!best || version.lastSeenAt > best.lastSeenAt ? version : best),
+    null,
+  );
   return (
     <Table aria-label="Versions">
       <TableHead columns={COLUMNS} />

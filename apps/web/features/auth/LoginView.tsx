@@ -67,7 +67,11 @@ export function LoginView() {
       <p className={styles.wordmark}>minidog</p>
       {!status.data ? (
         status.error ? (
-          <ErrorState title="Unable to reach the Query API." description={status.error.message} onRetry={status.refetch} />
+          <ErrorState
+            title="Unable to reach the Query API."
+            description={status.error.message}
+            onRetry={status.refetch}
+          />
         ) : (
           <Skeleton height="calc(var(--row-height) * 4)" />
         )
@@ -79,7 +83,12 @@ export function LoginView() {
               ? 'This password protects the dashboard and its API. There is one account, yours; you can change the password in Settings.'
               : 'Enter the dashboard password.'}
           </p>
-          <Field id="password" label="Password" hint={setup ? 'At least 8 characters.' : undefined} error={setup ? undefined : (error ?? undefined)}>
+          <Field
+            id="password"
+            label="Password"
+            hint={setup ? 'At least 8 characters.' : undefined}
+            error={setup ? undefined : (error ?? undefined)}
+          >
             <Input
               id="password"
               type="password"
@@ -92,14 +101,23 @@ export function LoginView() {
           </Field>
           {setup && (
             <Field id="confirm" label="Password again" error={error ?? undefined}>
-              <Input id="confirm" type="password" autoComplete="new-password" value={confirm} onChange={(event) => setConfirm(event.target.value)} invalid={Boolean(error)} />
+              <Input
+                id="confirm"
+                type="password"
+                autoComplete="new-password"
+                value={confirm}
+                onChange={(event) => setConfirm(event.target.value)}
+                invalid={Boolean(error)}
+              />
             </Field>
           )}
           <Button type="submit" variant="primary" loading={busy}>
             {setup ? 'Set password and continue' : 'Sign in'}
           </Button>
           <p className={styles.hint}>
-            {setup ? 'Anyone who can open this page before you could set it, so do this now.' : 'Forgot it? Run pnpm auth:reset on the machine running minidog.'}
+            {setup
+              ? 'Anyone who can open this page before you could set it, so do this now.'
+              : 'Forgot it? Run pnpm auth:reset on the machine running minidog.'}
           </p>
         </form>
       )}

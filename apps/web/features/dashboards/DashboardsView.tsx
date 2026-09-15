@@ -85,7 +85,10 @@ function NewDashboardForm() {
     setSaving(true);
     setError(null);
     try {
-      const { dashboard } = await apiFetch<DashboardResponse>('/dashboards', { method: 'POST', body: JSON.stringify({ name }) });
+      const { dashboard } = await apiFetch<DashboardResponse>('/dashboards', {
+        method: 'POST',
+        body: JSON.stringify({ name }),
+      });
       // Opens in edit mode, ready for its first widgets.
       router.push(withRange(`/dashboards/${dashboard.id}?edit=1`, range));
     } catch (failure) {
@@ -98,7 +101,14 @@ function NewDashboardForm() {
   return (
     <form className={styles.form} onSubmit={onSubmit} noValidate>
       <Field id="dashboard-name" label="Name" error={error ?? undefined}>
-        <Input id="dashboard-name" value={name} onChange={(event) => setName(event.target.value)} maxLength={100} placeholder="My site" invalid={Boolean(error)} />
+        <Input
+          id="dashboard-name"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          maxLength={100}
+          placeholder="My site"
+          invalid={Boolean(error)}
+        />
       </Field>
       <div className={styles.actions}>
         <Button type="submit" variant="primary" loading={saving}>

@@ -101,7 +101,13 @@ export function MonitorsView() {
                     <Td
                       align="end"
                       mono
-                      className={monitor.state === 'critical' ? styles.error : monitor.state === 'warning' ? styles.warning : undefined}
+                      className={
+                        monitor.state === 'critical'
+                          ? styles.error
+                          : monitor.state === 'warning'
+                            ? styles.warning
+                            : undefined
+                      }
                     >
                       {formatAlertValue(monitor, monitor.stateValue)}
                     </Td>
@@ -120,7 +126,10 @@ export function MonitorsView() {
           <Section
             title={
               <>
-                Alert history {summary.data && summary.data.unread > 0 && <span className={styles.unread}>{summary.data.unread} new</span>}
+                Alert history{' '}
+                {summary.data && summary.data.unread > 0 && (
+                  <span className={styles.unread}>{summary.data.unread} new</span>
+                )}
               </>
             }
             actions={
@@ -147,7 +156,11 @@ export function MonitorsView() {
                 />
               )
             ) : summary.error ? (
-              <ErrorState title="Unable to load alert history." description={summary.error.message} onRetry={summary.refetch} />
+              <ErrorState
+                title="Unable to load alert history."
+                description={summary.error.message}
+                onRetry={summary.refetch}
+              />
             ) : (
               <TableSkeleton columns={COLUMNS} rows={2} label="Loading alert history" />
             )}

@@ -73,7 +73,8 @@ export function deriveHealth(input: HealthInput): HealthResult {
     if (days <= SSL_EXPIRY_WARNING_DAYS) {
       return {
         health: 'degraded',
-        reason: days <= 0 ? 'SSL certificate expired' : `SSL certificate expires in ${days} day${days === 1 ? '' : 's'}`,
+        reason:
+          days <= 0 ? 'SSL certificate expired' : `SSL certificate expires in ${days} day${days === 1 ? '' : 's'}`,
         stale: false,
       };
     }

@@ -105,7 +105,8 @@ export async function performHttpCheck(target: HttpCheckTarget): Promise<HttpChe
   const finish = (hop: Hop, url: string, failure = ''): HttpCheckResult => {
     let error = failure || hop.error;
     let passed = error === '' && matchesStatus(target.expectedStatus, hop.statusCode);
-    if (!error && !passed) error = `Expected status ${formatExpectedStatus(target.expectedStatus)}, got ${hop.statusCode}`;
+    if (!error && !passed)
+      error = `Expected status ${formatExpectedStatus(target.expectedStatus)}, got ${hop.statusCode}`;
     if (passed && readBody && !hop.body.includes(expected)) {
       passed = false;
       error = `Response body does not contain "${expected}"${hop.bodyTruncated ? ' (in the first 1 MB)' : ''}`;
@@ -142,9 +143,11 @@ export async function performHttpCheck(target: HttpCheckTarget): Promise<HttpChe
     const hop = await requestOnce(url, target.method, remaining, readBody, timeoutMessage);
     firstCertificate ??= hop.sslExpiresAt;
 
-    const redirected = target.followRedirects && hop.error === '' && REDIRECT_STATUSES.has(hop.statusCode) && hop.location;
+    const redirected =
+      target.followRedirects && hop.error === '' && REDIRECT_STATUSES.has(hop.statusCode) && hop.location;
     if (!redirected) return finish(hop, url.toString());
-    if (redirects >= MAX_REDIRECTS) return finish(hop, url.toString(), `Too many redirects (more than ${MAX_REDIRECTS})`);
+    if (redirects >= MAX_REDIRECTS)
+      return finish(hop, url.toString(), `Too many redirects (more than ${MAX_REDIRECTS})`);
 
     let next: URL;
     try {
@@ -158,7 +161,13 @@ export async function performHttpCheck(target: HttpCheckTarget): Promise<HttpChe
   }
 }
 
-function requestOnce(url: URL, method: HttpMethod, timeoutMs: number, readBody: boolean, timeoutMessage: string): Promise<Hop> {
+function requestOnce(
+  url: URL,
+  method: HttpMethod,
+  timeoutMs: number,
+  readBody: boolean,
+  timeoutMessage: string,
+): Promise<Hop> {
   return new Promise((resolve) => {
     const t0 = performance.now();
     const marks: { lookup?: number; connect?: number; secureConnect?: number; response?: number } = {};
@@ -227,7 +236,8 @@ function requestOnce(url: URL, method: HttpMethod, timeoutMs: number, readBody: 
       statusCode = response.statusCode ?? 0;
       location = typeof response.headers.location === 'string' ? response.headers.location : null;
       response.on('data', (chunk: Buffer) => {
-        if (readBody) chunks.push(received + chunk.length > MAX_BODY_BYTES ? chunk.subarray(0, MAX_BODY_BYTES - received) : chunk);
+        if (readBody)
+          chunks.push(received + chunk.length > MAX_BODY_BYTES ? chunk.subarray(0, MAX_BODY_BYTES - received) : chunk);
         received += chunk.length;
         if (received >= MAX_BODY_BYTES) {
           truncated = true;

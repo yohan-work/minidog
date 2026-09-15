@@ -60,7 +60,9 @@ export function LiveTail({ filters, range, emptyAction }: LiveTailProps) {
       if (document.visibilityState === 'visible') {
         const since = sinceRef.current ?? Date.now() - TAIL_START_LOOKBACK_MS;
         try {
-          const data = await apiFetch<LogTailResponse>(`/logs/tail${toQuery({ ...filters, since })}`, { signal: controller.signal });
+          const data = await apiFetch<LogTailResponse>(`/logs/tail${toQuery({ ...filters, since })}`, {
+            signal: controller.signal,
+          });
           const buffer = bufferRef.current;
           bufferRef.current = mergeTail(buffer, data.logs, data.since, data.truncated);
           setLogs(bufferRef.current);
@@ -109,7 +111,9 @@ export function LiveTail({ filters, range, emptyAction }: LiveTailProps) {
         </>
       }
     >
-      {skipped && !paused && <p className={styles.notice}>More than 500 records arrived at once; some older ones are not shown.</p>}
+      {skipped && !paused && (
+        <p className={styles.notice}>More than 500 records arrived at once; some older ones are not shown.</p>
+      )}
       {logs.length > 0 ? (
         <LogList logs={logs} range={range} />
       ) : error && !loaded ? (

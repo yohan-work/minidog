@@ -10,7 +10,13 @@ import { StatusIndicator } from '@/components/observability/StatusIndicator';
 import { ChartLegend, TimeSeriesChart, type ChartSeries } from '@/components/observability/TimeSeriesChart';
 import { Button, ButtonLink } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { formatBytesRate, formatBytesRateAxis, formatRelative, formatUtilization, formatUtilizationAxis } from '@/lib/format';
+import {
+  formatBytesRate,
+  formatBytesRateAxis,
+  formatRelative,
+  formatUtilization,
+  formatUtilizationAxis,
+} from '@/lib/format';
 import { useTimeRange, withRange } from '@/lib/time-range';
 import { useApi } from '@/lib/use-api';
 import { utilizationTone } from './host';

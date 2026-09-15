@@ -21,7 +21,9 @@ import styles from './Apm.module.scss';
 
 export function ServicesView() {
   const range = useTimeRange();
-  const { data, error, isLoading, updatedAt, refetch } = useApi<ServiceListResponse>(`/services?range=${range}&deployments=1`);
+  const { data, error, isLoading, updatedAt, refetch } = useApi<ServiceListResponse>(
+    `/services?range=${range}&deployments=1`,
+  );
   const loading = !data;
   const seconds = data ? data.series.points.length * data.series.stepSeconds : 1;
   const tracesLink = <ButtonLink href={tracesHref({}, range)}>View traces</ButtonLink>;
@@ -78,36 +80,65 @@ export function ServicesView() {
             />
           </MetricGrid>
 
-          <Section title="Requests" actions={<><SelectHint /><RequestsLegend /></>}>
+          <Section
+            title="Requests"
+            actions={
+              <>
+                <SelectHint />
+                <RequestsLegend />
+              </>
+            }
+          >
             {chart.selectionFor('requests') && (
-              <SelectionBar selection={chart.selectionFor('requests')!} links={drilldownLinks(chart.selectionFor('requests')!, range)} onClear={chart.clear} />
+              <SelectionBar
+                selection={chart.selectionFor('requests')!}
+                links={drilldownLinks(chart.selectionFor('requests')!, range)}
+                onClear={chart.clear}
+              />
             )}
             {data ? (
-              <RequestsChart series={data.series} subject="all services" emptyAction={tracesLink} onSelectRange={chart.select('requests')} markers={markers} />
-            ) : (
-              <Skeleton height="var(--chart-height)" />
-            )}
-          </Section>
-
-          <Section title="Latency" actions={<><SelectHint /><LatencyTrendLegend /></>}>
-            {chart.selectionFor('latency') && (
-              <SelectionBar selection={chart.selectionFor('latency')!} links={drilldownLinks(chart.selectionFor('latency')!, range)} onClear={chart.clear} />
-            )}
-            {data ? (
-              <LatencyTrendChart series={data.series} subject="all services" emptyAction={tracesLink} onSelectRange={chart.select('latency')} markers={markers} />
+              <RequestsChart
+                series={data.series}
+                subject="all services"
+                emptyAction={tracesLink}
+                onSelectRange={chart.select('requests')}
+                markers={markers}
+              />
             ) : (
               <Skeleton height="var(--chart-height)" />
             )}
           </Section>
 
           <Section
-            title={
+            title="Latency"
+            actions={
               <>
-                Services {data && <span className={styles.count}>{data.services.length}</span>}
+                <SelectHint />
+                <LatencyTrendLegend />
               </>
             }
-            flush
           >
+            {chart.selectionFor('latency') && (
+              <SelectionBar
+                selection={chart.selectionFor('latency')!}
+                links={drilldownLinks(chart.selectionFor('latency')!, range)}
+                onClear={chart.clear}
+              />
+            )}
+            {data ? (
+              <LatencyTrendChart
+                series={data.series}
+                subject="all services"
+                emptyAction={tracesLink}
+                onSelectRange={chart.select('latency')}
+                markers={markers}
+              />
+            ) : (
+              <Skeleton height="var(--chart-height)" />
+            )}
+          </Section>
+
+          <Section title={<>Services {data && <span className={styles.count}>{data.services.length}</span>}</>} flush>
             {data ? <ServiceTable services={data.services} range={range} /> : <ServiceTableSkeleton />}
           </Section>
         </>

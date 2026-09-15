@@ -8,14 +8,22 @@ interface Percentile {
 }
 
 const bucketLabel = (bucket: LatencyBucket) =>
-  bucket.fromMs === 0 ? `under ${formatLatency(bucket.toMs)}` : `${formatLatency(bucket.fromMs)}–${formatLatency(bucket.toMs)}`;
+  bucket.fromMs === 0
+    ? `under ${formatLatency(bucket.toMs)}`
+    : `${formatLatency(bucket.fromMs)}–${formatLatency(bucket.toMs)}`;
 
 /**
  * Response times in logarithmic buckets, four per doubling. Each bar's failed
  * share is drawn in red at its base, and the percentiles mark the buckets
  * they fall in. Axis labels sit on the doublings (1, 2, 4 … ms) only.
  */
-export function LatencyHistogram({ buckets, percentiles }: { buckets: readonly LatencyBucket[]; percentiles: readonly Percentile[] }) {
+export function LatencyHistogram({
+  buckets,
+  percentiles,
+}: {
+  buckets: readonly LatencyBucket[];
+  percentiles: readonly Percentile[];
+}) {
   const peak = Math.max(1, ...buckets.map((bucket) => bucket.requests));
   const total = buckets.reduce((sum, bucket) => sum + bucket.requests, 0);
   const busiest = buckets.reduce((best, bucket) => (bucket.requests > best.requests ? bucket : best), buckets[0]!);
@@ -49,7 +57,9 @@ export function LatencyHistogram({ buckets, percentiles }: { buckets: readonly L
             </div>
             <div className={styles.track}>
               <div className={styles.bar} style={{ height: `${(bucket.requests / peak) * 100}%` }}>
-                {bucket.errors > 0 && <div className={styles.errors} style={{ height: `${(bucket.errors / bucket.requests) * 100}%` }} />}
+                {bucket.errors > 0 && (
+                  <div className={styles.errors} style={{ height: `${(bucket.errors / bucket.requests) * 100}%` }} />
+                )}
               </div>
             </div>
             <span className={styles.label}>
@@ -58,7 +68,9 @@ export function LatencyHistogram({ buckets, percentiles }: { buckets: readonly L
           </div>
         ))}
       </div>
-      <figcaption className={styles.caption}>Four bars per doubling of the response time · red = failed requests</figcaption>
+      <figcaption className={styles.caption}>
+        Four bars per doubling of the response time · red = failed requests
+      </figcaption>
     </figure>
   );
 }

@@ -56,7 +56,11 @@ export function Td({ align, hideBelow, mono, muted, className, ...rest }: TdProp
   );
 }
 
-export function Tr({ interactive, className, ...rest }: HTMLAttributes<HTMLTableRowElement> & { interactive?: boolean }) {
+export function Tr({
+  interactive,
+  className,
+  ...rest
+}: HTMLAttributes<HTMLTableRowElement> & { interactive?: boolean }) {
   return <tr className={cx(styles.tr, interactive && styles.interactive, className)} {...rest} />;
 }
 

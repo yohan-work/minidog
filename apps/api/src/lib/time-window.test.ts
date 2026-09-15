@@ -17,7 +17,13 @@ test('fillSeries keeps existing buckets and fills gaps with empty points', () =>
   const points = fillSeries(window, [existing]);
 
   assert.equal(points.length, 60);
-  assert.deepEqual(points[0], { t: window.startSeconds, checks: 0, failures: 0, avgLatencyMs: null, p95LatencyMs: null });
+  assert.deepEqual(points[0], {
+    t: window.startSeconds,
+    checks: 0,
+    failures: 0,
+    avgLatencyMs: null,
+    p95LatencyMs: null,
+  });
   assert.deepEqual(points[1], existing);
   assert.equal(points.at(-1)?.t, window.endSeconds);
 });

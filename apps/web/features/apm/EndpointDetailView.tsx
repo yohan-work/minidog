@@ -53,14 +53,26 @@ export function EndpointDetailView({ service }: { service: string }) {
     return (
       <>
         <PageHeader title={endpoint} back={back} />
-        <EmptyState title="No requests to this endpoint in this range" description="Choose a longer time range in the top bar." action={tracesLink} />
+        <EmptyState
+          title="No requests to this endpoint in this range"
+          description="Choose a longer time range in the top bar."
+          action={tracesLink}
+        />
       </>
     );
   }
 
   const bar = (source: 'latency' | 'requests') => {
     const selection = chart.selectionFor(source);
-    return selection && <SelectionBar selection={selection} links={drilldownLinks(selection, range, service, endpoint)} onClear={chart.clear} />;
+    return (
+      selection && (
+        <SelectionBar
+          selection={selection}
+          links={drilldownLinks(selection, range, service, endpoint)}
+          onClear={chart.clear}
+        />
+      )
+    );
   };
 
   return (
@@ -82,7 +94,11 @@ export function EndpointDetailView({ service }: { service: string }) {
           </ButtonLink>
         }
       />
-      <StaleNotice error={detail.data ? detail.error : undefined} updatedAt={detail.updatedAt} onRetry={detail.refetch} />
+      <StaleNotice
+        error={detail.data ? detail.error : undefined}
+        updatedAt={detail.updatedAt}
+        onRetry={detail.refetch}
+      />
 
       {!detail.data && !detail.isLoading ? (
         <ErrorState title="Unable to load endpoint." description={detail.error?.message} onRetry={detail.refetch} />
@@ -98,11 +114,20 @@ export function EndpointDetailView({ service }: { service: string }) {
               meta={summary && `${formatCount(summary.errors)} errors`}
             />
             <Metric label="P50" loading={!summary} value={formatLatency(summary?.p50Ms)} meta="median" />
-            <Metric label="P95" loading={!summary} value={formatLatency(summary?.p95Ms)} tone={latencyTone(summary?.p95Ms)} meta="95% of requests are faster" />
+            <Metric
+              label="P95"
+              loading={!summary}
+              value={formatLatency(summary?.p95Ms)}
+              tone={latencyTone(summary?.p95Ms)}
+              meta="95% of requests are faster"
+            />
             <Metric label="P99" loading={!summary} value={formatLatency(summary?.p99Ms)} meta="tail" />
           </MetricGrid>
 
-          <Section title="Response time distribution" actions={<span className={styles.note}>Where the requests of the range fall</span>}>
+          <Section
+            title="Response time distribution"
+            actions={<span className={styles.note}>Where the requests of the range fall</span>}
+          >
             {detail.data && summary ? (
               <LatencyHistogram
                 buckets={detail.data.histogram}
@@ -128,7 +153,12 @@ export function EndpointDetailView({ service }: { service: string }) {
           >
             {bar('latency')}
             {detail.data ? (
-              <LatencyTrendChart series={detail.data.series} subject={endpoint} emptyAction={tracesLink} onSelectRange={chart.select('latency')} />
+              <LatencyTrendChart
+                series={detail.data.series}
+                subject={endpoint}
+                emptyAction={tracesLink}
+                onSelectRange={chart.select('latency')}
+              />
             ) : (
               <Skeleton height="var(--chart-height)" />
             )}
@@ -145,7 +175,12 @@ export function EndpointDetailView({ service }: { service: string }) {
           >
             {bar('requests')}
             {detail.data ? (
-              <RequestsChart series={detail.data.series} subject={endpoint} emptyAction={tracesLink} onSelectRange={chart.select('requests')} />
+              <RequestsChart
+                series={detail.data.series}
+                subject={endpoint}
+                emptyAction={tracesLink}
+                onSelectRange={chart.select('requests')}
+              />
             ) : (
               <Skeleton height="var(--chart-height)" />
             )}
@@ -154,7 +189,11 @@ export function EndpointDetailView({ service }: { service: string }) {
           <Section
             title="Slowest requests"
             actions={
-              <ButtonLink href={withRange(`/traces${toQuery({ service, endpoint, sort: 'slowest' })}`, range)} variant="ghost" size="sm">
+              <ButtonLink
+                href={withRange(`/traces${toQuery({ service, endpoint, sort: 'slowest' })}`, range)}
+                variant="ghost"
+                size="sm"
+              >
                 View all
               </ButtonLink>
             }
@@ -164,10 +203,18 @@ export function EndpointDetailView({ service }: { service: string }) {
               slowest.data.traces.length > 0 ? (
                 <TraceTable traces={slowest.data.traces} range={range} label={`Slowest requests to ${endpoint}`} />
               ) : (
-                <EmptyState title="No requests in this range" description="Try a longer time range." action={tracesLink} />
+                <EmptyState
+                  title="No requests in this range"
+                  description="Try a longer time range."
+                  action={tracesLink}
+                />
               )
             ) : slowest.error ? (
-              <ErrorState title="Unable to load traces." description={slowest.error.message} onRetry={slowest.refetch} />
+              <ErrorState
+                title="Unable to load traces."
+                description={slowest.error.message}
+                onRetry={slowest.refetch}
+              />
             ) : (
               <TraceTableSkeleton rows={5} />
             )}

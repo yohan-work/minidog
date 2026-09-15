@@ -17,7 +17,10 @@ export function CheckSettings({ monitor, onSaved }: { monitor: MonitorWithSummar
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const bodyHint = monitor.method === 'HEAD' ? 'Needs GET: HEAD responses have no body.' : 'Optional. Case-sensitive, in the first 1 MB.';
+  const bodyHint =
+    monitor.method === 'HEAD'
+      ? 'Needs GET: HEAD responses have no body.'
+      : 'Optional. Case-sensitive, in the first 1 MB.';
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -27,7 +30,11 @@ export function CheckSettings({ monitor, onSaved }: { monitor: MonitorWithSummar
     try {
       await apiFetch(`/monitors/${monitor.id}`, {
         method: 'PATCH',
-        body: JSON.stringify({ followRedirects, bodyContains: bodyContains.trim(), expectedStatus: expectedStatus.trim() }),
+        body: JSON.stringify({
+          followRedirects,
+          bodyContains: bodyContains.trim(),
+          expectedStatus: expectedStatus.trim(),
+        }),
       });
       setSaved(true);
       onSaved();
@@ -46,7 +53,11 @@ export function CheckSettings({ monitor, onSaved }: { monitor: MonitorWithSummar
       <form className={styles.form} onSubmit={onSubmit} noValidate>
         <div className={styles.full}>
           <label className={styles.checkbox}>
-            <input type="checkbox" checked={followRedirects} onChange={(event) => setFollowRedirects(event.target.checked)} />
+            <input
+              type="checkbox"
+              checked={followRedirects}
+              onChange={(event) => setFollowRedirects(event.target.checked)}
+            />
             <span>
               Follow redirects <span className={styles.checkboxHint}>up to 5; the final response is checked</span>
             </span>
@@ -62,7 +73,12 @@ export function CheckSettings({ monitor, onSaved }: { monitor: MonitorWithSummar
             aria-describedby={fieldDescription('settings-body', { hint: bodyHint, error: errors.bodyContains })}
           />
         </Field>
-        <Field id="settings-status" label="Expected status" hint="Codes or ranges, e.g. 200-299,301." error={errors.expectedStatus}>
+        <Field
+          id="settings-status"
+          label="Expected status"
+          hint="Codes or ranges, e.g. 200-299,301."
+          error={errors.expectedStatus}
+        >
           <Input
             id="settings-status"
             value={expectedStatus}

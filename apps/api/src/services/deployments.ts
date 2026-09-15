@@ -18,7 +18,9 @@ export function deriveDeployments(rows: readonly RawVersionRow[], fromMs: number
     ordered.forEach((row, index) => {
       if (index === 0 || row.firstSeenAt < fromMs) return;
       // Ties (both still serving) go to the newer version.
-      const previous = ordered.slice(0, index).reduce((best, candidate) => (candidate.lastSeenAt >= best.lastSeenAt ? candidate : best));
+      const previous = ordered
+        .slice(0, index)
+        .reduce((best, candidate) => (candidate.lastSeenAt >= best.lastSeenAt ? candidate : best));
       deployments.push({ service, version: row.version, previousVersion: previous.version, at: row.firstSeenAt });
     });
   }

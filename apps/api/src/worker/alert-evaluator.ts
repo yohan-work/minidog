@@ -172,10 +172,12 @@ export class AlertEvaluator {
   }
 
   private deliver(monitor: ScopedAlertMonitor, event: AlertEvent, note?: string): void {
-    const delivery = sendWebhook(monitor.webhookUrl, webhookPayload(publicMonitor(monitor), event, note)).then((status) => {
-      this.deps.monitors.setWebhookStatus(event.id, status);
-      if (status.startsWith('failed')) this.deps.log.warn({ monitorId: monitor.id, status }, 'Alert webhook failed');
-    });
+    const delivery = sendWebhook(monitor.webhookUrl, webhookPayload(publicMonitor(monitor), event, note)).then(
+      (status) => {
+        this.deps.monitors.setWebhookStatus(event.id, status);
+        if (status.startsWith('failed')) this.deps.log.warn({ monitorId: monitor.id, status }, 'Alert webhook failed');
+      },
+    );
     this.deliveries.add(delivery);
     void delivery.finally(() => this.deliveries.delete(delivery));
   }

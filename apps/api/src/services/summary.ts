@@ -23,7 +23,11 @@ export function localTime(at: number, timeZone: string): LocalTime {
     hourCycle: 'h23',
   }).formatToParts(at);
   const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? '';
-  return { date: `${part('year')}-${part('month')}-${part('day')}`, hour: Number(part('hour')), weekday: part('weekday') };
+  return {
+    date: `${part('year')}-${part('month')}-${part('day')}`,
+    hour: Number(part('hour')),
+    weekday: part('weekday'),
+  };
 }
 
 export function isValidTimeZone(zone: string): boolean {
@@ -39,7 +43,11 @@ export function isValidTimeZone(zone: string): boolean {
  * The summary to send now, if any: once per local day, at or after the chosen
  * hour, so a day missed while the computer was off goes out when minidog runs.
  */
-export function dueSummary(settings: SummarySettings, lastSentDate: string | null, now: number): { date: string; days: 1 | 7 } | null {
+export function dueSummary(
+  settings: SummarySettings,
+  lastSentDate: string | null,
+  now: number,
+): { date: string; days: 1 | 7 } | null {
   if (!settings.enabled || !settings.webhookUrl) return null;
   const local = localTime(now, settings.timeZone);
   if (local.hour < settings.hour || local.date === lastSentDate) return null;
@@ -70,7 +78,12 @@ export interface SummaryInput {
 /** Plain text that reads well in a phone notification or a chat message. */
 export function summaryText(input: SummaryInput): string {
   const title = input.days === 7 ? 'minidog weekly summary' : 'minidog daily summary';
-  const date = new Intl.DateTimeFormat('en-US', { timeZone: input.timeZone, weekday: 'short', month: 'short', day: 'numeric' }).format(input.now);
+  const date = new Intl.DateTimeFormat('en-US', {
+    timeZone: input.timeZone,
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  }).format(input.now);
   const lines = [`${title} · ${date} (last ${input.days === 7 ? '7 days' : '24 h'})`];
 
   if (input.monitors.length === 0) lines.push('No synthetic monitors are running.');
@@ -87,7 +100,9 @@ export function summaryText(input: SummaryInput): string {
   for (const gap of input.gaps) byReason.set(gap.reason, (byReason.get(gap.reason) ?? 0) + (gap.to - gap.from));
   const unmeasured = [...byReason.values()].reduce((sum, ms) => sum + ms, 0);
   if (unmeasured > 0) {
-    const reasons = [...byReason].map(([reason, ms]) => (byReason.size > 1 ? `${reason} ${formatDuration(ms)}` : reason));
+    const reasons = [...byReason].map(([reason, ms]) =>
+      byReason.size > 1 ? `${reason} ${formatDuration(ms)}` : reason,
+    );
     lines.push(`Not measured: ${formatDuration(unmeasured)} (${reasons.join(', ')})`);
   }
   return lines.join('\n');

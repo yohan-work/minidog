@@ -179,7 +179,10 @@ test('a mute holds the notification and sends it once when the mute ends', async
   await alerting.unmute(created.id);
   await evaluator.settled();
   assert.equal(received.length, 1);
-  assert.match(received[0]!.text, /^\[CRITICAL\] Failed checks · example\.com: .*\(still critical after the mute ended\)$/);
+  assert.match(
+    received[0]!.text,
+    /^\[CRITICAL\] Failed checks · example\.com: .*\(still critical after the mute ended\)$/,
+  );
   assert.equal(monitors.lastEvent(created.id)?.webhookStatus, 'sent 200');
 
   await evaluator.evaluate(monitors.get(created.id)!);

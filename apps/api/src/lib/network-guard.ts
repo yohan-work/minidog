@@ -37,7 +37,8 @@ export function blockedReason(address: string, blockPrivate: boolean = networkPo
   if (family === 0) return null;
   const type = family === 4 ? 'ipv4' : 'ipv6';
   if (alwaysBlocked.check(ip, type)) return 'link-local, cloud metadata or reserved address';
-  if (blockPrivate && privateNetworks.check(ip, type)) return 'private or loopback address (BLOCK_PRIVATE_TARGETS is set)';
+  if (blockPrivate && privateNetworks.check(ip, type))
+    return 'private or loopback address (BLOCK_PRIVATE_TARGETS is set)';
   return null;
 }
 

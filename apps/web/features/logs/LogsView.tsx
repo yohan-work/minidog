@@ -53,7 +53,9 @@ export function LogsView() {
   const serviceOptions = [
     { value: '', label: 'All services' },
     ...(data?.services.map((service) => ({ value: service, label: service })) ?? []),
-    ...(filters.service && !data?.services.includes(filters.service) ? [{ value: filters.service, label: filters.service }] : []),
+    ...(filters.service && !data?.services.includes(filters.service)
+      ? [{ value: filters.service, label: filters.service }]
+      : []),
   ];
 
   const clear = () => set({ service: null, level: null, q: null, traceId: null, limit: null, from: null, to: null });
@@ -72,10 +74,28 @@ export function LogsView() {
           </Button>
         }
       />
-      <FilterBar trailing={!live && data && (data.truncated ? `Latest ${formatCount(limit)}` : `${formatCount(data.logs.length)} records`)}>
-        <FilterSelect label="Service" value={filters.service} options={serviceOptions} onChange={(service) => set({ service })} />
-        <FilterSelect label="Level" value={filters.level} options={LEVEL_OPTIONS} onChange={(level) => set({ level })} />
-        {window && !filters.traceId && <FilterChip label="Window" value={formatWindow(window)} onClear={() => set({ from: null, to: null })} />}
+      <FilterBar
+        trailing={
+          !live &&
+          data &&
+          (data.truncated ? `Latest ${formatCount(limit)}` : `${formatCount(data.logs.length)} records`)
+        }
+      >
+        <FilterSelect
+          label="Service"
+          value={filters.service}
+          options={serviceOptions}
+          onChange={(service) => set({ service })}
+        />
+        <FilterSelect
+          label="Level"
+          value={filters.level}
+          options={LEVEL_OPTIONS}
+          onChange={(level) => set({ level })}
+        />
+        {window && !filters.traceId && (
+          <FilterChip label="Window" value={formatWindow(window)} onClear={() => set({ from: null, to: null })} />
+        )}
         {filters.traceId && <FilterChip label="Trace" value={filters.traceId} onClear={() => set({ traceId: null })} />}
         <SearchField label="Search logs" value={filters.q} placeholder="Search logs…" onChange={(q) => set({ q })} />
       </FilterBar>
@@ -107,7 +127,11 @@ export function LogsView() {
                 </>
               }
             >
-              {data ? <VolumeChart data={data} onSelectRange={selectWindow} /> : <Skeleton height="var(--chart-height)" />}
+              {data ? (
+                <VolumeChart data={data} onSelectRange={selectWindow} />
+              ) : (
+                <Skeleton height="var(--chart-height)" />
+              )}
             </Section>
           )}
 
@@ -151,14 +175,24 @@ export function LogsView() {
   );
 }
 
-function VolumeChart({ data, onSelectRange }: { data: LogListResponse; onSelectRange: (fromMs: number, toMs: number) => void }) {
+function VolumeChart({
+  data,
+  onSelectRange,
+}: {
+  data: LogListResponse;
+  onSelectRange: (fromMs: number, toMs: number) => void;
+}) {
   const { timestamps, lines, total } = useMemo(() => {
     const points = data.series.points;
     const result: ChartSeries[] = [
       { ...VOLUME_SERIES[0], values: points.map((point) => point.total) },
       { ...VOLUME_SERIES[1], values: points.map((point) => point.errors) },
     ];
-    return { timestamps: points.map((point) => point.t), lines: result, total: points.reduce((sum, point) => sum + point.total, 0) };
+    return {
+      timestamps: points.map((point) => point.t),
+      lines: result,
+      total: points.reduce((sum, point) => sum + point.total, 0),
+    };
   }, [data]);
 
   if (total === 0) {

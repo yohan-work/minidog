@@ -19,12 +19,22 @@ test('dashboards are saved with their widgets in order and stay in their scope',
 
   const widgets = [
     { id: 'w1', kind: 'synthetic' as const, title: 'example.com', size: 'full' as const, monitorId: 'mon_1' },
-    { id: 'w2', kind: 'service' as const, title: 'api requests', size: 'half' as const, service: 'api', chart: 'requests' as const },
+    {
+      id: 'w2',
+      kind: 'service' as const,
+      title: 'api requests',
+      size: 'half' as const,
+      service: 'api',
+      chart: 'requests' as const,
+    },
   ];
   const updated = dashboards.update(scope, created.id, 'My site', widgets);
   assert.equal(updated?.name, 'My site');
   assert.deepEqual(updated?.widgets, widgets);
-  assert.deepEqual(dashboards.list(scope).map((item) => [item.name, item.widgetCount]), [['My site', 2]]);
+  assert.deepEqual(
+    dashboards.list(scope).map((item) => [item.name, item.widgetCount]),
+    [['My site', 2]],
+  );
 
   const other = { projectId: scope.projectId, environment: 'staging' };
   assert.equal(dashboards.get(other, created.id), undefined);
@@ -36,12 +46,28 @@ test('dashboards are saved with their widgets in order and stay in their scope',
 
 test('widgets are validated per kind', () => {
   const metric = widgetSchema.parse({ kind: 'metric', metric: 'system.cpu.utilization', aggregation: 'avg' });
-  assert.deepEqual(metric, { kind: 'metric', metric: 'system.cpu.utilization', aggregation: 'avg', title: '', size: 'half', service: '', host: '', groupBy: '' });
+  assert.deepEqual(metric, {
+    kind: 'metric',
+    metric: 'system.cpu.utilization',
+    aggregation: 'avg',
+    title: '',
+    size: 'half',
+    service: '',
+    host: '',
+    groupBy: '',
+  });
   assert.equal(widgetSchema.safeParse({ kind: 'service', service: 'api', chart: 'pie' }).success, false);
   for (const groupBy of ['service', 'host', 'attr:http.route']) {
-    assert.equal(widgetSchema.safeParse({ kind: 'metric', metric: 'm', aggregation: 'avg', groupBy }).success, true, groupBy);
+    assert.equal(
+      widgetSchema.safeParse({ kind: 'metric', metric: 'm', aggregation: 'avg', groupBy }).success,
+      true,
+      groupBy,
+    );
   }
-  assert.equal(widgetSchema.safeParse({ kind: 'metric', metric: 'm', aggregation: 'avg', groupBy: 'region' }).success, false);
+  assert.equal(
+    widgetSchema.safeParse({ kind: 'metric', metric: 'm', aggregation: 'avg', groupBy: 'region' }).success,
+    false,
+  );
   assert.equal(widgetSchema.safeParse({ kind: 'synthetic', monitorId: 'm', url: 'x' }).success, false);
   const tooMany = Array.from({ length: 25 }, () => ({ kind: 'synthetic', monitorId: 'm' }));
   const result = updateSchema.safeParse({ name: 'x', widgets: tooMany });

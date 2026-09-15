@@ -52,7 +52,12 @@ export class MonitorService {
     const monitor = this.get(id);
     const window = timeWindow(range);
     const rows = await this.results.series(this.scope, [id], window.fromMs, window.stepSeconds);
-    return { range, stepSeconds: window.stepSeconds, points: fillSeries(window, rows), gaps: this.gapsSince([monitor], window.fromMs) };
+    return {
+      range,
+      stepSeconds: window.stepSeconds,
+      points: fillSeries(window, rows),
+      gaps: this.gapsSince([monitor], window.fromMs),
+    };
   }
 
   async checks(id: string, limit: number) {

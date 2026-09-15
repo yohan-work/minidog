@@ -43,7 +43,9 @@ export function ErrorsView() {
   const serviceOptions = [
     { value: '', label: 'All services' },
     ...(services.data?.services.map((item) => ({ value: item.service, label: item.service })) ?? []),
-    ...(service && !services.data?.services.some((item) => item.service === service) ? [{ value: service, label: service }] : []),
+    ...(service && !services.data?.services.some((item) => item.service === service)
+      ? [{ value: service, label: service }]
+      : []),
   ];
   const clear = () => set({ service: null, from: null, to: null });
 
@@ -53,26 +55,41 @@ export function ErrorsView() {
         title="Errors"
         actions={
           <ButtonLink
-            href={withRange(`/traces${toQuery({ status: 'error', service, ...(window ? windowParams(window) : {}) })}`, range)}
+            href={withRange(
+              `/traces${toQuery({ status: 'error', service, ...(window ? windowParams(window) : {}) })}`,
+              range,
+            )}
             size="sm"
           >
             Error traces
           </ButtonLink>
         }
       />
-      <FilterBar trailing={data && `${data.groups.length} group${data.groups.length === 1 ? '' : 's'}${data.truncated ? ' (top 100)' : ''}`}>
-        <FilterSelect label="Service" value={service} options={serviceOptions} onChange={(next) => set({ service: next })} />
-        {window && <FilterChip label="Window" value={formatWindow(window)} onClear={() => set({ from: null, to: null })} />}
+      <FilterBar
+        trailing={
+          data &&
+          `${data.groups.length} group${data.groups.length === 1 ? '' : 's'}${data.truncated ? ' (top 100)' : ''}`
+        }
+      >
+        <FilterSelect
+          label="Service"
+          value={service}
+          options={serviceOptions}
+          onChange={(next) => set({ service: next })}
+        />
+        {window && (
+          <FilterChip label="Window" value={formatWindow(window)} onClear={() => set({ from: null, to: null })} />
+        )}
       </FilterBar>
       <StaleNotice error={data ? error : undefined} updatedAt={updatedAt} onRetry={refetch} />
 
       <Section
-        title={
-          <>
-            Exceptions {data && <span className={styles.count}>{data.groups.length}</span>}
-          </>
+        title={<>Exceptions {data && <span className={styles.count}>{data.groups.length}</span>}</>}
+        actions={
+          <span className={styles.note}>
+            Grouped by type and message · most affected traces first · opens the latest trace
+          </span>
         }
-        actions={<span className={styles.note}>Grouped by type and message · most affected traces first · opens the latest trace</span>}
         flush
       >
         {isLoading ? (

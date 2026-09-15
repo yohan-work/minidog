@@ -674,7 +674,13 @@ export interface ServiceMapResponse {
 // Monitors (alerting)
 // ---------------------------------------------------------------------------
 
-export const ALERT_MONITOR_TYPES = ['service_down', 'error_rate', 'latency', 'host_resource', 'synthetic_check'] as const;
+export const ALERT_MONITOR_TYPES = [
+  'service_down',
+  'error_rate',
+  'latency',
+  'host_resource',
+  'synthetic_check',
+] as const;
 export type AlertMonitorType = (typeof ALERT_MONITOR_TYPES)[number];
 
 export const HOST_RESOURCE_METRICS = ['cpu', 'memory', 'disk'] as const;
@@ -727,7 +733,13 @@ export interface SummarySettings {
   timeZone: string;
 }
 
-export const SUMMARY_DEFAULTS: SummarySettings = { enabled: false, webhookUrl: '', hour: 9, weekly: false, timeZone: 'UTC' };
+export const SUMMARY_DEFAULTS: SummarySettings = {
+  enabled: false,
+  webhookUrl: '',
+  hour: 9,
+  weekly: false,
+  timeZone: 'UTC',
+};
 
 /** `GET /api/summary` and `PUT /api/summary`. */
 export interface SummaryResponse {
@@ -774,7 +786,8 @@ export const SYNTHETIC_ALERT_DEFAULTS: Record<SyntheticAlertMetric, AlertDefault
 };
 
 export function alertDefaults(type: AlertMonitorType, metric: AlertMetric | null): AlertDefaults {
-  if (type === 'synthetic_check') return SYNTHETIC_ALERT_DEFAULTS[isSyntheticAlertMetric(metric) ? metric : 'failure_rate'];
+  if (type === 'synthetic_check')
+    return SYNTHETIC_ALERT_DEFAULTS[isSyntheticAlertMetric(metric) ? metric : 'failure_rate'];
   return ALERT_MONITOR_DEFAULTS[type];
 }
 
@@ -861,7 +874,14 @@ export interface CreateAlertMonitorInput {
 export type UpdateAlertMonitorInput = Partial<
   Pick<
     AlertMonitor,
-    'name' | 'warningThreshold' | 'criticalThreshold' | 'windowMinutes' | 'webhookUrl' | 'enabled' | 'alertAfterMinutes' | 'recoverAfterMinutes'
+    | 'name'
+    | 'warningThreshold'
+    | 'criticalThreshold'
+    | 'windowMinutes'
+    | 'webhookUrl'
+    | 'enabled'
+    | 'alertAfterMinutes'
+    | 'recoverAfterMinutes'
   >
 >;
 
@@ -1018,7 +1038,11 @@ export interface SyntheticWidget extends DashboardWidgetBase {
 export type DashboardWidget = MetricWidget | ServiceWidget | SyntheticWidget;
 
 /** A widget before it is saved; the server gives it an id. */
-export type NewDashboardWidget = DashboardWidget extends infer W ? (W extends DashboardWidget ? Omit<W, 'id'> : never) : never;
+export type NewDashboardWidget = DashboardWidget extends infer W
+  ? W extends DashboardWidget
+    ? Omit<W, 'id'>
+    : never
+  : never;
 
 export interface Dashboard {
   id: string;

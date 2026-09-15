@@ -118,7 +118,11 @@ export function NewMonitorView() {
   return (
     <>
       <PageHeader title="New monitor" back={{ href: backHref, label: 'Synthetics' }} />
-      {formError && <Notice tone="error" title="Unable to create monitor.">{formError}</Notice>}
+      {formError && (
+        <Notice tone="error" title="Unable to create monitor.">
+          {formError}
+        </Notice>
+      )}
       <Section title="HTTP check">
         <form className={styles.form} onSubmit={onSubmit} noValidate>
           <div className={styles.full}>
@@ -156,20 +160,34 @@ export function NewMonitorView() {
             />
           </Field>
           <div className={styles.full}>
-            <Field id="expectedStatus" label="Expected status" hint={HINTS.expectedStatus} error={errors.expectedStatus}>
+            <Field
+              id="expectedStatus"
+              label="Expected status"
+              hint={HINTS.expectedStatus}
+              error={errors.expectedStatus}
+            >
               <Input {...control('expectedStatus')} mono />
             </Field>
           </div>
           <div className={styles.full}>
             <label className={styles.checkbox}>
-              <input type="checkbox" checked={followRedirects} onChange={(event) => setFollowRedirects(event.target.checked)} />
+              <input
+                type="checkbox"
+                checked={followRedirects}
+                onChange={(event) => setFollowRedirects(event.target.checked)}
+              />
               <span>
                 Follow redirects <span className={styles.checkboxHint}>up to 5; the final response is checked</span>
               </span>
             </label>
           </div>
           <div className={styles.full}>
-            <Field id="bodyContains" label="Response must contain" hint={HINTS.bodyContains} error={errors.bodyContains}>
+            <Field
+              id="bodyContains"
+              label="Response must contain"
+              hint={HINTS.bodyContains}
+              error={errors.bodyContains}
+            >
               <Input {...control('bodyContains')} maxLength={MONITOR_BODY_CONTAINS_MAX} placeholder="e.g. Welcome" />
             </Field>
           </div>

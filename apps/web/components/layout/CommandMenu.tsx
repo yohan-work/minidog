@@ -82,7 +82,12 @@ function CommandDialog({ onClose }: { onClose: () => void }) {
 
   const items = useMemo<CommandItem[]>(
     () => [
-      ...NAV_PAGES.map((page) => ({ id: `page:${page.href}`, kind: 'page' as const, label: page.label, href: withRange(page.href, range) })),
+      ...NAV_PAGES.map((page) => ({
+        id: `page:${page.href}`,
+        kind: 'page' as const,
+        label: page.label,
+        href: withRange(page.href, range),
+      })),
       ...(services.data?.services ?? []).map((service) => ({
         id: `service:${service.service}`,
         kind: 'service' as const,
@@ -123,7 +128,11 @@ function CommandDialog({ onClose }: { onClose: () => void }) {
   );
 
   const groups = useMemo(
-    () => searchCommands([...items, ...queryCommands(query).map((item) => ({ ...item, href: withRange(item.href, range) }))], query),
+    () =>
+      searchCommands(
+        [...items, ...queryCommands(query).map((item) => ({ ...item, href: withRange(item.href, range) }))],
+        query,
+      ),
     [items, query, range],
   );
   const flat = groups.flatMap((group) => group.items);
@@ -232,7 +241,9 @@ function CommandDialog({ onClose }: { onClose: () => void }) {
               })}
             </div>
           ))}
-          {flat.length === 0 && <p className={styles.empty}>{loading ? 'Loading…' : `Nothing matches “${query.trim()}”.`}</p>}
+          {flat.length === 0 && (
+            <p className={styles.empty}>{loading ? 'Loading…' : `Nothing matches “${query.trim()}”.`}</p>
+          )}
         </div>
 
         <div className={styles.footer}>
@@ -251,7 +262,12 @@ export function CommandMenuTrigger() {
   const [apple, setApple] = useState(false);
   useEffect(() => setApple(isApplePlatform()), []);
   return (
-    <button type="button" className={styles.trigger} onClick={openCommandMenu} aria-keyshortcuts={apple ? 'Meta+K' : 'Control+K'}>
+    <button
+      type="button"
+      className={styles.trigger}
+      onClick={openCommandMenu}
+      aria-keyshortcuts={apple ? 'Meta+K' : 'Control+K'}
+    >
       <Icon name="search" size={14} />
       <span className={styles.triggerLabel}>Search</span>
       <kbd className={styles.kbd}>{apple ? '⌘K' : 'Ctrl K'}</kbd>

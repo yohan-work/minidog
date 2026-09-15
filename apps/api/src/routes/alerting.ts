@@ -1,4 +1,10 @@
-import { ALERT_DELAYS_MINUTES, ALERT_METRICS, ALERT_MONITOR_TYPES, ALERT_MUTE_MINUTES, ALERT_WINDOWS_MINUTES } from '@minidog/types';
+import {
+  ALERT_DELAYS_MINUTES,
+  ALERT_METRICS,
+  ALERT_MONITOR_TYPES,
+  ALERT_MUTE_MINUTES,
+  ALERT_WINDOWS_MINUTES,
+} from '@minidog/types';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { AppContext } from '../app';
@@ -59,7 +65,9 @@ const updateSchema = z
   .partial()
   .strict();
 
-const webhookTestSchema = z.object({ url: webhookUrl.refine((value) => value !== '', 'Enter a webhook URL.') }).strict();
+const webhookTestSchema = z
+  .object({ url: webhookUrl.refine((value) => value !== '', 'Enter a webhook URL.') })
+  .strict();
 
 const muteSchema = z.object({ minutes: oneOf(ALERT_MUTE_MINUTES, 'Unsupported mute duration.') }).strict();
 

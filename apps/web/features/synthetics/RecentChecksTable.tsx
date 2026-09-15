@@ -30,7 +30,10 @@ export function RecentChecksTable({ checks }: { checks: readonly CheckResult[] }
               <span className={styles.result}>
                 <StatusIndicator status={check.status} />
                 {check.redirects > 0 && (
-                  <span className={styles.redirects} title={`Followed ${check.redirects} redirect${check.redirects === 1 ? '' : 's'} to ${check.finalUrl}`}>
+                  <span
+                    className={styles.redirects}
+                    title={`Followed ${check.redirects} redirect${check.redirects === 1 ? '' : 's'} to ${check.finalUrl}`}
+                  >
                     ↪ {check.redirects}
                   </span>
                 )}

@@ -31,13 +31,17 @@ export class GapRepository {
     }
     const start = overlaps ? Math.max(from, last.ended_at) : from;
     if (to <= start) return;
-    this.db.prepare('INSERT INTO measurement_gaps (started_at, ended_at, reason) VALUES (?, ?, ?)').run(start, to, reason);
+    this.db
+      .prepare('INSERT INTO measurement_gaps (started_at, ended_at, reason) VALUES (?, ?, ?)')
+      .run(start, to, reason);
   }
 
   /** Gaps overlapping [fromMs, toMs], oldest first, clipped to that window. */
   list(fromMs: number, toMs: number): MeasurementGap[] {
     const rows = this.db
-      .prepare('SELECT id, started_at, ended_at, reason FROM measurement_gaps WHERE ended_at > ? AND started_at < ? ORDER BY started_at')
+      .prepare(
+        'SELECT id, started_at, ended_at, reason FROM measurement_gaps WHERE ended_at > ? AND started_at < ? ORDER BY started_at',
+      )
       .all(fromMs, toMs) as unknown as GapRow[];
     return rows.map((row) => ({
       from: Math.max(row.started_at, fromMs),
@@ -48,7 +52,9 @@ export class GapRepository {
 
   /** Epoch ms of the last sign of life, or null before the first run. */
   heartbeat(): number | null {
-    const row = this.db.prepare('SELECT value FROM settings WHERE key = ?').get(HEARTBEAT_KEY) as unknown as { value: string } | undefined;
+    const row = this.db.prepare('SELECT value FROM settings WHERE key = ?').get(HEARTBEAT_KEY) as unknown as
+      | { value: string }
+      | undefined;
     const value = Number(row?.value);
     return row && Number.isFinite(value) ? value : null;
   }

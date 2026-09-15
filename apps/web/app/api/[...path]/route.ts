@@ -10,10 +10,22 @@ export const dynamic = 'force-dynamic';
 
 const DEFAULT_API_URL = 'http://127.0.0.1:4000';
 // Connection-level headers describe this hop, not the request.
-const HOP_BY_HOP = ['connection', 'keep-alive', 'transfer-encoding', 'te', 'trailer', 'upgrade', 'host', 'content-length'];
+const HOP_BY_HOP = [
+  'connection',
+  'keep-alive',
+  'transfer-encoding',
+  'te',
+  'trailer',
+  'upgrade',
+  'host',
+  'content-length',
+];
 
 async function forward(request: NextRequest): Promise<Response> {
-  const target = new URL(`${request.nextUrl.pathname}${request.nextUrl.search}`, process.env.API_URL || DEFAULT_API_URL);
+  const target = new URL(
+    `${request.nextUrl.pathname}${request.nextUrl.search}`,
+    process.env.API_URL || DEFAULT_API_URL,
+  );
   const headers = new Headers(request.headers);
   for (const name of HOP_BY_HOP) headers.delete(name);
   headers.set('x-forwarded-host', request.headers.get('host') ?? '');
@@ -31,7 +43,10 @@ async function forward(request: NextRequest): Promise<Response> {
       signal: request.signal,
     } as RequestInit);
   } catch {
-    return Response.json({ error: { code: 'api_unavailable', message: 'The Query API did not respond.' } }, { status: 502 });
+    return Response.json(
+      { error: { code: 'api_unavailable', message: 'The Query API did not respond.' } },
+      { status: 502 },
+    );
   }
 
   const response = new Headers(upstream.headers);

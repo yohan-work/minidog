@@ -1,4 +1,11 @@
-import { RETENTION_MAX_DAYS, type LogLevel, type LogListResponse, type LogTailResponse, type LogVolumePoint, type TimeRange } from '@minidog/types';
+import {
+  RETENTION_MAX_DAYS,
+  type LogLevel,
+  type LogListResponse,
+  type LogTailResponse,
+  type LogVolumePoint,
+  type TimeRange,
+} from '@minidog/types';
 import { customWindow, timeWindow, type TimeWindow } from '../lib/time-window';
 import type { LogRepository } from '../repositories/log-repository';
 import type { Scope } from '../repositories/project-repository';
@@ -42,11 +49,15 @@ export class LogService {
     const custom = from !== undefined && to !== undefined ? customWindow(from, to) : null;
     const window: Buckets = custom ?? timeWindow(range, now);
     // A trace's logs are found wherever they are, regardless of the window.
-    const bounds = filters.traceId ? { fromMs: now - TRACE_LOOKBACK_MS } : { fromMs: window.fromMs, toMs: custom?.toMs };
+    const bounds = filters.traceId
+      ? { fromMs: now - TRACE_LOOKBACK_MS }
+      : { fromMs: window.fromMs, toMs: custom?.toMs };
 
     const [logs, points, services] = await Promise.all([
       this.logs.search(this.scope, { ...filters, ...bounds, limit }),
-      filters.traceId ? Promise.resolve([]) : this.logs.volume(this.scope, { ...filters, ...bounds }, window.stepSeconds),
+      filters.traceId
+        ? Promise.resolve([])
+        : this.logs.volume(this.scope, { ...filters, ...bounds }, window.stepSeconds),
       this.logs.services(this.scope, window.fromMs),
     ]);
 

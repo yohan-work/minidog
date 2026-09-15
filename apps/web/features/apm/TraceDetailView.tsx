@@ -72,7 +72,13 @@ export function TraceDetailView({ traceId }: { traceId: string }) {
       <PageHeader
         back={back}
         title={root?.name ?? traceId}
-        status={errors > 0 ? <StatusIndicator status="down" label={`${errors} error${errors === 1 ? '' : 's'}`} /> : <StatusIndicator status="up" label="OK" />}
+        status={
+          errors > 0 ? (
+            <StatusIndicator status="down" label={`${errors} error${errors === 1 ? '' : 's'}`} />
+          ) : (
+            <StatusIndicator status="up" label="OK" />
+          )
+        }
         meta={
           <>
             <span className={styles.mono}>{formatLatency(model.durationMs)}</span>
@@ -124,7 +130,11 @@ export function TraceDetailView({ traceId }: { traceId: string }) {
             <EmptyState
               title="No logs for this trace"
               description="Logs carry a trace id when they are emitted inside an active span."
-              action={root ? <ButtonLink href={logsHref({ service: root.service }, range)}>View logs of {root.service}</ButtonLink> : null}
+              action={
+                root ? (
+                  <ButtonLink href={logsHref({ service: root.service }, range)}>View logs of {root.service}</ButtonLink>
+                ) : null
+              }
             />
           )
         ) : logs.error ? (
@@ -160,7 +170,11 @@ function SpanDetails({ span, traceStartMs, range }: { span: SpanDetail; traceSta
         </Fact>
         <Fact name="Kind">{span.kind}</Fact>
         <Fact name="Status">
-          {span.status === 'error' ? <span className={styles.error}>error{span.statusMessage && ` — ${span.statusMessage}`}</span> : span.status}
+          {span.status === 'error' ? (
+            <span className={styles.error}>error{span.statusMessage && ` — ${span.statusMessage}`}</span>
+          ) : (
+            span.status
+          )}
         </Fact>
         {span.httpMethod && (
           <Fact name="HTTP">
@@ -185,8 +199,12 @@ function SpanDetails({ span, traceStartMs, range }: { span: SpanDetail; traceSta
                   {event.name}
                   {event.timeUnixMs !== null && ` · +${formatLatency(event.timeUnixMs - traceStartMs)}`}
                 </span>
-                {event.attributes['exception.message'] && <span className={styles.error}>{event.attributes['exception.message']}</span>}
-                {event.attributes['exception.stacktrace'] && <pre className={styles.stack}>{event.attributes['exception.stacktrace']}</pre>}
+                {event.attributes['exception.message'] && (
+                  <span className={styles.error}>{event.attributes['exception.message']}</span>
+                )}
+                {event.attributes['exception.stacktrace'] && (
+                  <pre className={styles.stack}>{event.attributes['exception.stacktrace']}</pre>
+                )}
               </li>
             ))}
           </ul>
