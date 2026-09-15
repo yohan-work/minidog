@@ -104,7 +104,6 @@ export class ApmService {
     };
   }
 
-  /** Endpoints of every service, slowest first — used to point at a likely cause. */
   /** One endpoint of a service: summary, trend and response-time distribution. */
   async endpoint(service: string, endpoint: string, range: TimeRange): Promise<EndpointResponse> {
     const now = Date.now();
@@ -123,6 +122,7 @@ export class ApmService {
     };
   }
 
+  /** Endpoints of every service, slowest first — used to point at a likely cause. */
   async endpoints(range: TimeRange): Promise<EndpointListResponse> {
     const window = timeWindow(range);
     return { range, endpoints: (await this.spans.endpoints(this.scope, window.fromMs)).map(toEndpointSummary) };

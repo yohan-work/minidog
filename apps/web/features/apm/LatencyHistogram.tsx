@@ -1,4 +1,4 @@
-import type { LatencyBucket } from '@minidog/types';
+import { LATENCY_BINS_PER_DOUBLING, latencyBin, type LatencyBucket } from '@minidog/types';
 import { formatCount, formatLatency, formatLatencyAxis } from '@/lib/format';
 import styles from './LatencyHistogram.module.scss';
 
@@ -22,7 +22,7 @@ export function LatencyHistogram({ buckets, percentiles }: { buckets: readonly L
   const marks = percentiles.flatMap((percentile) =>
     percentile.valueMs === null
       ? []
-      : [{ ...percentile, index: buckets.findIndex((bucket) => percentile.valueMs! >= bucket.fromMs && percentile.valueMs! < bucket.toMs) }],
+      : [{ ...percentile, index: buckets.findIndex((bucket) => bucket.bin === latencyBin(percentile.valueMs!)) }],
   );
 
   return (
@@ -34,7 +34,7 @@ export function LatencyHistogram({ buckets, percentiles }: { buckets: readonly L
       >
         {buckets.map((bucket, index) => (
           <div
-            key={bucket.fromMs}
+            key={bucket.bin}
             className={styles.column}
             title={`${bucketLabel(bucket)}: ${formatCount(bucket.requests)} requests${bucket.errors > 0 ? `, ${formatCount(bucket.errors)} failed` : ''}`}
           >
@@ -53,7 +53,7 @@ export function LatencyHistogram({ buckets, percentiles }: { buckets: readonly L
               </div>
             </div>
             <span className={styles.label}>
-              {bucket.fromMs === 0 || Number.isInteger(Math.log2(bucket.fromMs)) ? formatLatencyAxis(bucket.fromMs) : ''}
+              {bucket.bin < 0 || bucket.bin % LATENCY_BINS_PER_DOUBLING === 0 ? formatLatencyAxis(bucket.fromMs) : ''}
             </span>
           </div>
         ))}

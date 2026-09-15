@@ -544,8 +544,21 @@ export interface EndpointListResponse {
   endpoints: EndpointSummary[];
 }
 
-/** Requests whose duration falls in [fromMs, toMs). */
+/**
+ * Duration buckets per doubling. Power-of-two buckets are too coarse to show a
+ * distribution's shape (256 and 511 ms would share one); four per doubling
+ * are about 19% wide each.
+ */
+export const LATENCY_BINS_PER_DOUBLING = 4;
+
+/** Bucket index of a duration, as the API counts it: floor(log2(ms) × 4); -1 under 1 ms. */
+export function latencyBin(ms: number): number {
+  return ms < 1 ? -1 : Math.floor(Math.log2(ms) * LATENCY_BINS_PER_DOUBLING);
+}
+
+/** Requests whose duration falls in bucket `bin`, i.e. [fromMs, toMs) (bounds rounded for display). */
 export interface LatencyBucket {
+  bin: number;
   fromMs: number;
   toMs: number;
   requests: number;

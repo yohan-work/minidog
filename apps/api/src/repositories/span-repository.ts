@@ -1,7 +1,7 @@
+import { LATENCY_BINS_PER_DOUBLING } from '@minidog/types';
 import type { DbQuerySort, DbQuerySummary, ErrorGroup, SpanEvent, SpanKind, SpanStatus, TraceSort } from '@minidog/types';
 import { ClickHouseRepository } from '../db/clickhouse-repository';
 import type { SpanRow } from '../ingest/otlp-traces';
-import { BINS_PER_DOUBLING } from '../services/histogram';
 import type { Scope } from './project-repository';
 
 // ClickHouse serialises 64-bit integers as strings and empty quantiles as NaN.
@@ -61,7 +61,7 @@ export interface RawEndpoint extends LatencyRow {
   errors: number;
 }
 
-/** Entry spans in logarithmic duration bin `bin` (BINS_PER_DOUBLING per doubling); bin -1 is under 1 ms. */
+/** Entry spans in logarithmic duration bin `bin` (see latencyBin); bin -1 is under 1 ms. */
 export interface RawLatencyBin {
   bin: number;
   requests: number;
@@ -620,7 +620,7 @@ export class SpanRepository extends ClickHouseRepository {
          AND ${since('fromMs')}
        GROUP BY bin
        ORDER BY bin`,
-      { ...scope, ...filters, perDoubling: BINS_PER_DOUBLING },
+      { ...scope, ...filters, perDoubling: LATENCY_BINS_PER_DOUBLING },
     );
     return rows.map((row) => ({ bin: Number(row.bin), requests: Number(row.requests), errors: Number(row.errors) }));
   }
