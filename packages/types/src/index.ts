@@ -198,6 +198,16 @@ export interface ContextResponse {
     /** When false, data without an API key goes to the default project. */
     requireApiKey: boolean;
   };
+  /** False when AUTH_DISABLED is set. */
+  auth: { enabled: boolean };
+}
+
+/** `GET /api/auth/status`: whether the dashboard needs a first password or a sign-in. */
+export interface AuthStatusResponse {
+  enabled: boolean;
+  /** No password yet: the first visit sets one. */
+  setupRequired: boolean;
+  signedIn: boolean;
 }
 
 // ---------------------------------------------------------------------------

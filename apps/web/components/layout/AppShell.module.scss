@@ -45,3 +45,11 @@
     transform: none;
   }
 }
+
+// Sign-in: centred on its own, without the sidebar and top bar.
+.bare {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: var(--space-6) var(--space-4);
+}

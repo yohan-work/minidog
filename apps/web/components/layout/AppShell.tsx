@@ -1,6 +1,7 @@
 import { DEFAULT_TIME_RANGE } from '@minidog/types';
 import { Suspense, type ReactNode } from 'react';
 import { CommandMenu } from './CommandMenu';
+import { ShellGate } from './ShellGate';
 import { Sidebar } from './Sidebar';
 import { SidebarFrame, SidebarNav } from './SidebarNav';
 import { TopBar, TopBarFallback } from './TopBar';
@@ -8,6 +9,19 @@ import styles from './AppShell.module.scss';
 
 /** Grid shell: sidebar | top context bar over content. */
 export function AppShell({ children }: { children: ReactNode }) {
+  return (
+    <ShellGate
+      bare={
+        <main id="main" className={styles.bare}>
+          {children}
+        </main>
+      }
+      full={<Shell>{children}</Shell>}
+    />
+  );
+}
+
+function Shell({ children }: { children: ReactNode }) {
   return (
     <div className={styles.shell}>
       <a href="#main" className={styles.skipLink}>

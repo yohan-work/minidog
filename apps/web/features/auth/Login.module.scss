@@ -1,0 +1,37 @@
+.card {
+  display: grid;
+  gap: var(--space-5);
+  width: min(100%, 360px);
+  padding: var(--space-6);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--background-primary);
+}
+
+.wordmark {
+  font-family: var(--font-mono);
+  font-size: var(--text-secondary);
+  font-weight: var(--weight-medium);
+  color: var(--foreground-primary);
+}
+
+.form {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.title {
+  font-size: var(--text-title, 1.25rem);
+  font-weight: var(--weight-medium);
+}
+
+.note,
+.hint {
+  font-size: var(--text-secondary);
+  color: var(--foreground-secondary);
+}
+
+.hint {
+  font-size: var(--text-meta);
+  color: var(--foreground-muted);
+}

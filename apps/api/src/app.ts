@@ -9,6 +9,7 @@ import { openDatabase } from './db/sqlite';
 import { errorBody, HttpError } from './lib/errors';
 import { networkPolicy } from './lib/network-guard';
 import { AlertMonitorRepository } from './repositories/alert-monitor-repository';
+import { AuthRepository } from './repositories/auth-repository';
 import { ApiKeyRepository } from './repositories/api-key-repository';
 import { DashboardRepository } from './repositories/dashboard-repository';
 import { GapRepository } from './repositories/gap-repository';
@@ -21,6 +22,7 @@ import { StorageRepository } from './repositories/storage-repository';
 import { SummaryRepository } from './repositories/summary-repository';
 import { SyntheticResultRepository } from './repositories/synthetic-result-repository';
 import { registerAlertingRoutes } from './routes/alerting';
+import { authGuard, registerAuthRoutes } from './routes/auth';
 import { registerApmRoutes } from './routes/apm';
 import { registerDashboardRoutes } from './routes/dashboards';
 import { registerHostRoutes } from './routes/hosts';
@@ -33,6 +35,7 @@ import { registerStorageRoutes } from './routes/storage';
 import { registerSummaryRoutes } from './routes/summary';
 import { registerSystemRoutes } from './routes/system';
 import { AlertingService } from './services/alerting-service';
+import { AuthService } from './services/auth';
 import { ApmService } from './services/apm-service';
 import { HostService } from './services/host-service';
 import { LogService } from './services/log-service';
@@ -66,6 +69,7 @@ export interface AppContext {
   metricsExplorer: MetricsExplorerService;
   alerting: AlertingService;
   dashboards: DashboardRepository;
+  auth: AuthService;
   storage: StorageService;
   summary: SummaryService;
   /** Null when WORKER_ENABLED=false. */
@@ -138,6 +142,7 @@ export async function buildApp(config: Config, options: BuildAppOptions = {}): P
     metricsExplorer: new MetricsExplorerService(metrics, scope),
     alerting: new AlertingService(alertMonitors, evaluator, scope, config.ALERTS_ENABLED, monitors),
     dashboards: new DashboardRepository(sqlite),
+    auth: new AuthService(new AuthRepository(sqlite), config.AUTH_DISABLED),
     storage: new StorageService(new StorageRepository(clickhouse), config.SQLITE_PATH),
     summary,
     scheduler,
@@ -194,6 +199,8 @@ export async function buildApp(config: Config, options: BuildAppOptions = {}): P
   // from these routes are still logged.
   await app.register(
     async (routes) => {
+      routes.addHook('onRequest', authGuard(ctx));
+      registerAuthRoutes(routes, ctx);
       registerSystemRoutes(routes, ctx);
       registerDashboardRoutes(routes, ctx);
       registerStorageRoutes(routes, ctx);
