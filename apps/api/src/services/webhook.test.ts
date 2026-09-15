@@ -18,6 +18,9 @@ test('recognises webhook services by URL', () => {
   assert.equal(webhookFormat('https://hooks.slack.com/services/T/B/X'), 'slack');
   assert.equal(webhookFormat('https://discord.com/api/webhooks/1/abc'), 'discord');
   assert.equal(webhookFormat('https://ptb.discordapp.com/api/webhooks/1/abc'), 'discord');
+  assert.equal(webhookFormat('https://discord.com/api/v10/webhooks/1/abc'), 'discord');
+  assert.equal(webhookFormat('https://discord.com/api/webhooks/1/abc/slack'), 'slack');
+  assert.equal(webhookFormat('https://discord.com/api/webhooks/1/abc/github'), 'json');
   assert.equal(webhookFormat('https://discord.com/channels/1'), 'json');
   assert.equal(webhookFormat('https://api.telegram.org/bot123:abc/sendMessage?chat_id=42'), 'telegram');
   assert.equal(webhookFormat('https://ntfy.sh/my-alerts'), 'ntfy');

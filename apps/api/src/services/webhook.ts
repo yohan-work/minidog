@@ -56,7 +56,11 @@ export function webhookFormat(url: string): WebhookFormat {
   const host = parsed.hostname.toLowerCase();
   const within = (domain: string) => host === domain || host.endsWith(`.${domain}`);
   if (host === 'hooks.slack.com') return 'slack';
-  if ((within('discord.com') || within('discordapp.com')) && parsed.pathname.startsWith('/api/webhooks/')) return 'discord';
+  if (within('discord.com') || within('discordapp.com')) {
+    // /api[/v10]/webhooks/<id>/<token>; the /slack variant takes the Slack-style body.
+    const match = /^\/api(?:\/v\d+)?\/webhooks\/[^/]+\/[^/]+(\/slack|\/github)?\/?$/.exec(parsed.pathname);
+    if (match) return match[1] === '/slack' ? 'slack' : match[1] ? 'json' : 'discord';
+  }
   if (host === 'api.telegram.org' && /^\/bot[^/]+\/sendMessage$/.test(parsed.pathname)) return 'telegram';
   if (host === 'ntfy.sh') return 'ntfy';
   return 'json';
