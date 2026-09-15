@@ -25,6 +25,8 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+      # Formatting and lint rules from biome.jsonc; warnings do not fail the build.
+      - run: pnpm exec biome ci .
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build

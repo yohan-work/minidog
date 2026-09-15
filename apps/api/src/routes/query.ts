@@ -28,10 +28,15 @@ export const windowFields = {
 };
 
 export function checkWindow(value: { from?: number; to?: number }, ctx: z.RefinementCtx): void {
-  const issue = (message: string) => ctx.addIssue({ code: 'custom', path: ['to'], message });
-  if ((value.from === undefined) !== (value.to === undefined)) return issue('Give both from and to.');
-  if (value.from === undefined || value.to === undefined) return;
-  if (value.to <= value.from) return issue('to must be after from.');
-  if (value.to - value.from > MAX_WINDOW_MS) return issue('A window can span at most 7 days.');
-  if (value.from < Date.now() - MAX_WINDOW_AGE_MS) return issue(`from is older than ${RETENTION_MAX_DAYS} days.`);
+  const problem = windowProblem(value);
+  if (problem) ctx.addIssue({ code: 'custom', path: ['to'], message: problem });
+}
+
+function windowProblem(value: { from?: number; to?: number }): string | undefined {
+  if ((value.from === undefined) !== (value.to === undefined)) return 'Give both from and to.';
+  if (value.from === undefined || value.to === undefined) return undefined;
+  if (value.to <= value.from) return 'to must be after from.';
+  if (value.to - value.from > MAX_WINDOW_MS) return 'A window can span at most 7 days.';
+  if (value.from < Date.now() - MAX_WINDOW_AGE_MS) return `from is older than ${RETENTION_MAX_DAYS} days.`;
+  return undefined;
 }
