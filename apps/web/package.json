@@ -2,10 +2,11 @@
   "name": "@minidog/web",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "scripts": {
-    "dev": "next dev --port 3000",
+    "dev": "next dev --port 3000 --hostname 127.0.0.1",
     "build": "next build",
-    "start": "next start --port 3000",
+    "start": "next start --port 3000 --hostname 127.0.0.1",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "tsx --test \"lib/**/*.test.ts\""
   },

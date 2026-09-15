@@ -1,6 +1,7 @@
 {
   "name": "minidog",
   "private": true,
+  "license": "MIT",
   "packageManager": "pnpm@10.30.0",
   "engines": {
     "node": ">=24"

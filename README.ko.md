@@ -166,3 +166,11 @@ pnpm infra:down
 - [ ] Heartbeat / Cron 모니터
 - [ ] Slack, Discord, 이메일 알림
 - [ ] Command menu (trace ID로 바로 이동)
+
+## 보안
+
+아직 로그인 기능이 없습니다. 대시보드·Query API·ClickHouse는 127.0.0.1에서만 열리니 그대로 두고, 로그인이 추가되기 전까지 3000·4000 포트를 믿을 수 없는 네트워크에 열지 마세요.
+
+## 라이선스
+
+[MIT](LICENSE). minidog은 Datadog과 관련 없는 독립 프로젝트입니다.

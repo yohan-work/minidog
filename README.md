@@ -175,15 +175,22 @@ pnpm infra:down
 
 The product and design spec is in [`docs/phase-01.md`](docs/phase-01.md).
 
+## Security
+
+minidog has no sign-in yet. The dashboard, the Query API and ClickHouse listen on 127.0.0.1 only; keep it that way, and do not expose ports 3000 or 4000 on a network you do not control until sign-in lands (see the roadmap). To report a vulnerability, open a private security advisory on GitHub.
+
 ## Roadmap
 
-- [x] Synthetic monitoring
-- [x] Infrastructure metrics
-- [x] APM: services, endpoints, traces
-- [x] Logs + trace correlation
-- [x] Monitors and webhooks
-- [x] Service map
-- [ ] Baseline comparison ("P95 ↑ 312% vs last week")
+Already in: synthetic checks (redirects, response text, SSL), host metrics, APM (services, endpoints, traces, errors, slow queries, service map), logs with live tail, alert monitors with Slack, Discord, Telegram and ntfy, daily summaries, dashboards, measurement gaps and ⌘K search.
+
+Next:
+
+- [ ] Sign-in for the dashboard (password set on first run)
+- [ ] One-command install from published Docker images
+- [ ] A lower-memory ClickHouse profile, with measured numbers
 - [ ] Heartbeat / cron monitors
-- [ ] Slack, Discord and email notifications
-- [ ] Command menu (jump to trace ID)
+- [ ] Baseline comparison ("P95 ↑ 312% vs last week")
+
+## License
+
+[MIT](LICENSE). minidog is an independent project and is not affiliated with Datadog.

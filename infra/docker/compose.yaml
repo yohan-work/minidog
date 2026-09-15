@@ -90,7 +90,8 @@ services:
     init: true
     user: node
     working_dir: /app/apps/web
-    command: ["node_modules/.bin/next", "start", "--port", "3000"]
+    # All interfaces inside the container; the port below is published on 127.0.0.1 only.
+    command: ["node_modules/.bin/next", "start", "--port", "3000", "--hostname", "0.0.0.0"]
     ports:
       - "127.0.0.1:3000:3000"
     depends_on:

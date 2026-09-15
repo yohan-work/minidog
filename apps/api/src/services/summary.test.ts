@@ -31,7 +31,7 @@ test('the text lists monitors, alerts and time not measured', () => {
     now: MONDAY_0930_SEOUL,
     timeZone: 'Asia/Seoul',
     monitors: [
-      { name: 'yohan.co.kr', checks: 1440, failures: 0, avgLatencyMs: 281.4, p95LatencyMs: 410, sslExpiresAt: MONDAY_0930_SEOUL + 59.5 * 86_400_000 },
+      { name: 'example.com', checks: 1440, failures: 0, avgLatencyMs: 281.4, p95LatencyMs: 410, sslExpiresAt: MONDAY_0930_SEOUL + 59.5 * 86_400_000 },
       { name: 'api', checks: 1440, failures: 1, avgLatencyMs: 1234, p95LatencyMs: null, sslExpiresAt: null },
       { name: 'new', checks: 0, failures: 0, avgLatencyMs: null, p95LatencyMs: null, sslExpiresAt: null },
       { name: 'once', checks: 1, failures: 0, avgLatencyMs: 90, p95LatencyMs: null, sslExpiresAt: null },
@@ -49,7 +49,7 @@ test('the text lists monitors, alerts and time not measured', () => {
     text,
     [
       'minidog daily summary · Mon, Sep 14 (last 24 h)',
-      '• yohan.co.kr — 100% up (1,440 checks) · avg 281 ms · p95 410 ms · SSL 59 days',
+      '• example.com — 100% up (1,440 checks) · avg 281 ms · p95 410 ms · SSL 59 days',
       '• api — 99.9% up (1 of 1,440 failed) · avg 1.23 s',
       '• new — no checks',
       '• once — 100% up (1 check) · avg 90 ms',
