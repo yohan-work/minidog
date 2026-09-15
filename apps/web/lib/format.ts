@@ -130,17 +130,25 @@ export function formatUtilizationAxis(ratio: number): string {
 
 const BYTE_UNITS = ['B', 'KB', 'MB', 'GB', 'TB'] as const;
 
-/** `812 B/s`, `4.2 KB/s`, `18 MB/s` (1 KB = 1024 B) */
-export function formatBytesRate(bytesPerSecond: number | null | undefined): string {
-  if (!isNumber(bytesPerSecond)) return EMPTY;
-  let value = Math.max(bytesPerSecond, 0);
+function scaleBytes(bytes: number): string {
+  let value = Math.max(bytes, 0);
   let unit = 0;
   while (value >= 1024 && unit < BYTE_UNITS.length - 1) {
     value /= 1024;
     unit += 1;
   }
   const digits = unit === 0 || value >= 10 ? 0 : 1;
-  return `${value.toFixed(digits)} ${BYTE_UNITS[unit]}/s`;
+  return `${value.toFixed(digits)} ${BYTE_UNITS[unit]}`;
+}
+
+/** `812 B`, `4.2 KB`, `1.3 GB` (1 KB = 1024 B) */
+export function formatBytes(bytes: number | null | undefined): string {
+  return isNumber(bytes) ? scaleBytes(bytes) : EMPTY;
+}
+
+/** `812 B/s`, `4.2 KB/s`, `18 MB/s` (1 KB = 1024 B) */
+export function formatBytesRate(bytesPerSecond: number | null | undefined): string {
+  return isNumber(bytesPerSecond) ? `${scaleBytes(bytesPerSecond)}/s` : EMPTY;
 }
 
 /** Axis labels: `0`, `512 B/s`, `1.5 MB/s` */

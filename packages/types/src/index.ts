@@ -281,6 +281,29 @@ export interface HealthResponse {
   clickhouse: 'ok' | 'unavailable';
 }
 
+/** Signals with their own retention; each is one ClickHouse table shared by every project. */
+export const RETENTION_SIGNALS = ['traces', 'logs', 'metrics', 'synthetics'] as const;
+export type RetentionSignal = (typeof RETENTION_SIGNALS)[number];
+export const RETENTION_DAYS = [3, 7, 14, 30, 60, 90, 180, 365] as const;
+
+export interface StorageSignal {
+  signal: RetentionSignal;
+  rows: number;
+  /** Compressed size on disk. */
+  bytes: number;
+  /** Epoch ms of the oldest record; null when there are none. */
+  oldest: number | null;
+  /** Null when the table has no TTL. */
+  retentionDays: number | null;
+}
+
+/** `GET /api/storage` and `PUT /api/storage/retention`. */
+export interface StorageResponse {
+  signals: StorageSignal[];
+  /** Settings database (projects, monitors, alerts), including its WAL. */
+  sqliteBytes: number;
+}
+
 // ---------------------------------------------------------------------------
 // Infrastructure
 // ---------------------------------------------------------------------------
