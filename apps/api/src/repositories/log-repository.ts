@@ -10,6 +10,8 @@ const LEVEL_ORDER = `[${LOG_LEVELS.map((level) => `'${level}'`).join(', ')}]`;
 
 export interface LogFilters {
   fromMs: number;
+  /** Exclusive upper bound; open-ended when absent. */
+  toMs?: number;
   service?: string;
   /** Records at this level or more severe. */
   minLevel?: LogLevel;
@@ -26,6 +28,7 @@ function filterSql(filters: Omit<LogFilters, 'limit'>): string {
     filters.query === undefined ? '' : 'AND positionCaseInsensitive(body, {query:String}) > 0',
     filters.traceId === undefined ? '' : 'AND trace_id = {traceId:String}',
     'AND timestamp >= fromUnixTimestamp64Milli({fromMs:Int64})',
+    filters.toMs === undefined ? '' : 'AND timestamp < fromUnixTimestamp64Milli({toMs:Int64})',
   ].join('\n');
 }
 

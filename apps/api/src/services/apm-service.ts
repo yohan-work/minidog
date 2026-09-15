@@ -10,13 +10,14 @@ import {
   type ServiceMapNode,
   type ServiceMapResponse,
   type ServiceResponse,
+  type ErrorListResponse,
   type ServiceSummary,
   type TimeRange,
   type TraceListResponse,
   type TraceResponse,
 } from '@minidog/types';
 import { NotFoundError } from '../lib/errors';
-import { timeWindow, type TimeWindow } from '../lib/time-window';
+import { queryBounds, timeWindow, type TimeWindow } from '../lib/time-window';
 import type { LogRepository } from '../repositories/log-repository';
 import type { Scope } from '../repositories/project-repository';
 import type { RawEndpoint, RawRequestPoint, RawServiceStats, SpanRepository, TraceFilters } from '../repositories/span-repository';
@@ -25,7 +26,16 @@ import { deriveServiceHealth } from './service-health';
 /** Span retention; a service page opens for any service seen within it. */
 const LOOKBACK_MS = 14 * 24 * 60 * 60 * 1000;
 
-export type TraceQuery = Omit<TraceFilters, 'fromMs'> & { range: TimeRange };
+/** `from`/`to` (epoch ms) is an absolute window selected on a chart; it overrides `range`. */
+export type TraceQuery = Omit<TraceFilters, 'fromMs' | 'toMs'> & { range: TimeRange; from?: number; to?: number };
+
+export interface ErrorQuery {
+  range: TimeRange;
+  from?: number;
+  to?: number;
+  service?: string;
+  limit: number;
+}
 
 /** Services, endpoints and traces, derived from entry spans. */
 export class ApmService {
@@ -143,9 +153,15 @@ export class ApmService {
   }
 
   async traces(query: TraceQuery): Promise<TraceListResponse> {
-    const { range, ...filters } = query;
-    const traces = await this.spans.traces(this.scope, { ...filters, fromMs: timeWindow(range).fromMs });
+    const { range, from, to, ...filters } = query;
+    const traces = await this.spans.traces(this.scope, { ...filters, ...queryBounds(range, from, to) });
     return { range, traces, truncated: traces.length >= filters.limit };
+  }
+
+  /** Recorded exceptions grouped by type and message. */
+  async errors({ range, from, to, service, limit }: ErrorQuery): Promise<ErrorListResponse> {
+    const groups = await this.spans.errorGroups(this.scope, { ...queryBounds(range, from, to), service, limit });
+    return { range, groups, truncated: groups.length >= limit };
   }
 
   async trace(traceId: string): Promise<TraceResponse> {

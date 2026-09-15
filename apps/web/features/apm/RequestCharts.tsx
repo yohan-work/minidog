@@ -29,10 +29,12 @@ interface ChartProps {
   series: RequestSeries;
   subject: string;
   emptyAction: ReactNode;
+  /** Makes the chart selectable; receives the dragged window in epoch ms. */
+  onSelectRange?: (fromMs: number, toMs: number) => void;
 }
 
 /** P50/P95/P99 of entry spans per bucket. */
-export function LatencyTrendChart({ series, subject, emptyAction }: ChartProps) {
+export function LatencyTrendChart({ series, subject, emptyAction, onSelectRange }: ChartProps) {
   const { timestamps, lines, peak } = useMemo(() => {
     const points = series.points;
     const p95 = points.map((point) => point.p95Ms);
@@ -55,12 +57,13 @@ export function LatencyTrendChart({ series, subject, emptyAction }: ChartProps) 
       formatValue={formatLatency}
       formatAxis={formatLatencyAxis}
       ariaLabel={`Latency of ${subject}. Peak P95 ${formatLatency(peak)}.`}
+      onSelectRange={onSelectRange}
     />
   );
 }
 
 /** Requests and errors per bucket. */
-export function RequestsChart({ series, subject, emptyAction }: ChartProps) {
+export function RequestsChart({ series, subject, emptyAction, onSelectRange }: ChartProps) {
   const { timestamps, lines, total, errors } = useMemo(() => {
     const points = series.points;
     const result: ChartSeries[] = [
@@ -85,6 +88,7 @@ export function RequestsChart({ series, subject, emptyAction }: ChartProps) {
       formatValue={formatCount}
       formatAxis={formatCount}
       ariaLabel={`Requests of ${subject}: ${formatCount(total)} requests, ${formatCount(errors)} errors.`}
+      onSelectRange={onSelectRange}
     />
   );
 }

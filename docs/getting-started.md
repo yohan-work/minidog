@@ -103,7 +103,8 @@ Observe
  ├ Services              서비스 목록 · 상세(P50/P95/P99, 엔드포인트, 최근 트레이스) · Service map
  ├ Infrastructure        호스트 목록 · 상세(CPU/Memory/Disk/Network)
  ├ Metrics               지표 · 집계 · 서비스/호스트 필터 · 그룹
- ├ Traces                Trace Explorer · Trace 상세(Waterfall, 느린 span, 관련 로그)
+ ├ Traces                Trace Explorer · Trace 상세(Waterfall, 느린 span, 관련 로그) · 느린 순 정렬
+ ├ Errors                예외(type+message) 묶음 · 영향받은 트레이스 수 · 엔드포인트 · 처음/마지막 발생
  └ Logs                  Log Explorer(서비스/레벨/검색/trace id) → Trace
 Monitor
  ├ Synthetics            URL 체크(상태 코드, 지연, 가용성, SSL 만료)
@@ -112,7 +113,7 @@ Monitor
 Settings                 프로젝트 · 환경 · API key · 연결 정보
 ```
 
-상단 바에서 프로젝트/환경과 시간 범위를 바꾼다. 경고·위험 모니터가 있으면 알림 표시가 나타난다.
+상단 바에서 프로젝트/환경과 시간 범위를 바꾼다. 요청·지연 차트를 드래그하면 그 구간의 느린 트레이스 · 에러 트레이스 · 에러 로그 · 예외로 바로 이동한다. 경고·위험 모니터가 있으면 알림 표시가 나타난다.
 
 ## MVP 완료 기준 확인
 
@@ -123,6 +124,7 @@ Settings                 프로젝트 · 환경 · API key · 연결 정보
 | C. 에러 트레이스 → 로그 | Traces에서 Status: Errors → 트레이스 → Related logs (Logs 화면의 trace 링크로 역방향) |
 | D. Latency 모니터 | Monitors → New monitor(Latency, `api`, warning 250 ms, critical 500 ms, 1 min) → `dbDelayMs` 200 → 600. 이력에 Healthy → Warning → Critical |
 | E. URL 다운 알림 | Synthetics → 모니터 상세 → Create alert(Synthetic check · Failed checks, Webhook URL). 다운되면 Critical로 바뀌고 Webhook이 간다. Alert after를 고르면 그 시간 동안 계속될 때만, Mute 중에는 기록만 하고 해제 후 한 번 보낸다 |
+| F. 구간 드릴다운 · Errors | `pnpm demo` 후 `curl -X POST localhost:5100/__demo/scenario -d '{"paymentErrorRate":0.5,"dbDelayMs":300}'` → Services 요청 차트를 드래그 → Slowest traces / Exceptions. Errors에 `card declined by issuer`가 묶여 보인다 |
 
 ## 개발
 

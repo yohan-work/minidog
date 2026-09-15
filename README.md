@@ -31,7 +31,8 @@ The goal is to reach the root cause in three screens or fewer, without first lea
 - **Overview**: health of every service at a glance, with a *needs attention* list that points at the problem.
 - **APM**: requests, error rate and P50/P95/P99 for each service and endpoint, a trace explorer and a span waterfall.
 - **Logs**: search and filter by service and level. Log lines that carry a trace ID link to that trace.
-- **Correlation**: trace → related logs and log → trace, carrying the time range and filters across pages.
+- **Correlation**: trace → related logs and log → trace, carrying the time range and filters across pages. Drag across a request or latency chart to open that window's slowest traces, error traces, error logs or exceptions.
+- **Errors**: exceptions recorded on spans, grouped by type and message, with affected traces, endpoints, first and last seen.
 - **Infrastructure**: host CPU, memory, disk and network through the OTel `hostmetrics` receiver.
 - **Metrics Explorer**: query any ingested metric with aggregation and filters.
 - **Synthetics**: HTTP checks with status, latency, availability and SSL expiry.

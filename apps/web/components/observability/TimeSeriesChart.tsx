@@ -27,14 +27,18 @@ interface TimeSeriesChartProps {
   height?: number;
   /** Fixed upper bound of the y axis, e.g. 1 for utilization. Defaults to the data maximum. */
   yMax?: number;
+  /** Makes the chart selectable: dragging across it reports the window in epoch ms. */
+  onSelectRange?: (fromMs: number, toMs: number) => void;
 }
 
 const DEFAULT_HEIGHT = 200;
 const Y_AXIS_SIZE = 64;
 const X_AXIS_SIZE = 28;
 const TWO_DAYS = 2 * 24 * 60 * 60;
+const HALF_HOUR = 30 * 60;
 
 const tickTime = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+const tickSeconds = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
 const tickDate = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
 
 interface Hover {
@@ -55,11 +59,18 @@ export function TimeSeriesChart({
   ariaLabel,
   height = DEFAULT_HEIGHT,
   yMax,
+  onSelectRange,
 }: TimeSeriesChartProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const plotHostRef = useRef<HTMLDivElement>(null);
   const plotRef = useRef<uPlot | null>(null);
   const [hover, setHover] = useState<Hover | null>(null);
+  // Latest callback without rebuilding the plot when its identity changes.
+  const selectRef = useRef(onSelectRange);
+  useEffect(() => {
+    selectRef.current = onSelectRange;
+  });
+  const selectable = onSelectRange !== undefined;
 
   const data = useMemo<uPlot.AlignedData>(
     () => [Array.from(timestamps), ...series.map((item) => Array.from(item.values))],
@@ -81,11 +92,12 @@ export function TimeSeriesChart({
     const options: uPlot.Options = {
       width: Math.max(host.clientWidth, 1),
       height,
-      padding: [8, 8, 0, 0],
+      // Right padding keeps the last x label (centered on the edge) from being clipped.
+      padding: [8, 32, 0, 0],
       legend: { show: false },
       cursor: {
         y: false,
-        drag: { x: false, y: false, setScale: false },
+        drag: { x: selectable, y: false, setScale: false },
         points: { size: 6, width: 0 },
       },
       scales: {
@@ -105,7 +117,8 @@ export function TimeSeriesChart({
           values: (plot, splits) => {
             const xs = plot.data[0];
             const span = xs.length > 1 ? xs[xs.length - 1]! - xs[0]! : 0;
-            const format = span > TWO_DAYS ? tickDate : tickTime;
+            // Short windows (zoomed in from a chart) need seconds, or ticks repeat the same minute.
+            const format = span > TWO_DAYS ? tickDate : span <= HALF_HOUR ? tickSeconds : tickTime;
             return splits.map((value) => format.format(value * 1000));
           },
         },
@@ -132,6 +145,17 @@ export function TimeSeriesChart({
         })),
       ],
       hooks: {
+        setSelect: [
+          (plot) => {
+            const { left, width } = plot.select;
+            // A click is not a selection.
+            if (width < 4) return;
+            const fromSeconds = plot.posToVal(left, 'x');
+            const toSeconds = plot.posToVal(left + width, 'x');
+            plot.setSelect({ left: 0, top: 0, width: 0, height: 0 }, false);
+            selectRef.current?.(fromSeconds * 1000, toSeconds * 1000);
+          },
+        ],
         setCursor: [
           (plot) => {
             const { idx, left } = plot.cursor;
@@ -160,7 +184,7 @@ export function TimeSeriesChart({
     };
     // formatAxis is documented as stable; configKey captures series identity.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [configKey, height, yMax]);
+  }, [configKey, height, yMax, selectable]);
 
   useEffect(() => {
     dataRef.current = data;
@@ -170,7 +194,7 @@ export function TimeSeriesChart({
   const hoveredTime = hover ? timestamps[hover.index] : undefined;
 
   return (
-    <div ref={rootRef} className={styles.chart} role="img" aria-label={ariaLabel}>
+    <div ref={rootRef} className={styles.chart} role="img" aria-label={ariaLabel} data-selectable={selectable || undefined}>
       <div ref={plotHostRef} className={styles.plot} style={{ height }} />
       {hover && hoveredTime !== undefined && (
         <div className={styles.tooltip} style={{ left: hover.left }} data-flip={hover.flip || undefined} aria-hidden>

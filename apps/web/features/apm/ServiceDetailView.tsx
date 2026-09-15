@@ -7,6 +7,7 @@ import { Section } from '@/components/layout/Section';
 import { Metric, MetricGrid } from '@/components/observability/Metric';
 import { EmptyState, ErrorState, StaleNotice } from '@/components/observability/States';
 import { StatusIndicator } from '@/components/observability/StatusIndicator';
+import { drilldownLinks, SelectHint, SelectionBar, useChartSelection } from '@/components/observability/TimeSelection';
 import { ButtonLink } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { formatChange, formatCount, formatLatency, formatPercent, formatRate, formatRelative } from '@/lib/format';
@@ -28,6 +29,7 @@ export function ServiceDetailView({ service }: { service: string }) {
   const backHref = withRange('/services', range);
   const back = { href: backHref, label: 'Services' };
   const summary = detail.data?.service;
+  const chart = useChartSelection<'latency' | 'requests'>();
 
   if (detail.error?.status === 404) {
     return (
@@ -80,17 +82,23 @@ export function ServiceDetailView({ service }: { service: string }) {
         <>
           <ServiceMetrics summary={summary} />
 
-          <Section title="Latency" actions={<LatencyTrendLegend />}>
+          <Section title="Latency" actions={<><SelectHint /><LatencyTrendLegend /></>}>
+            {chart.selectionFor('latency') && (
+              <SelectionBar selection={chart.selectionFor('latency')!} links={drilldownLinks(chart.selectionFor('latency')!, service)} onClear={chart.clear} />
+            )}
             {detail.data ? (
-              <LatencyTrendChart series={detail.data.series} subject={service} emptyAction={tracesLink} />
+              <LatencyTrendChart series={detail.data.series} subject={service} emptyAction={tracesLink} onSelectRange={chart.select('latency')} />
             ) : (
               <Skeleton height="var(--chart-height)" />
             )}
           </Section>
 
-          <Section title="Requests" actions={<RequestsLegend />}>
+          <Section title="Requests" actions={<><SelectHint /><RequestsLegend /></>}>
+            {chart.selectionFor('requests') && (
+              <SelectionBar selection={chart.selectionFor('requests')!} links={drilldownLinks(chart.selectionFor('requests')!, service)} onClear={chart.clear} />
+            )}
             {detail.data ? (
-              <RequestsChart series={detail.data.series} subject={service} emptyAction={tracesLink} />
+              <RequestsChart series={detail.data.series} subject={service} emptyAction={tracesLink} onSelectRange={chart.select('requests')} />
             ) : (
               <Skeleton height="var(--chart-height)" />
             )}

@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { Section } from '@/components/layout/Section';
 import { FilterBar, FilterChip, FilterSelect, SearchField } from '@/components/layout/FilterBar';
 import { EmptyState, ErrorState, StaleNotice } from '@/components/observability/States';
+import { formatWindow, parseWindow, windowParams } from '@/components/observability/TimeSelection';
 import { Button } from '@/components/ui/Button';
 import { toQuery, useQueryParams } from '@/lib/query-params';
 import { useTimeRange } from '@/lib/time-range';
@@ -27,11 +28,17 @@ const DURATION_OPTIONS = [
   { value: '3000', label: '≥ 3 s' },
 ];
 
+const SORT_OPTIONS = [
+  { value: '', label: 'Newest first' },
+  { value: 'slowest', label: 'Slowest first' },
+];
+
 const LIMIT = 100;
 
 export function TracesView() {
   const range = useTimeRange();
   const { get, set } = useQueryParams();
+  const window = parseWindow(get('from'), get('to'));
   const filters = {
     service: get('service'),
     endpoint: get('endpoint'),
@@ -39,11 +46,12 @@ export function TracesView() {
     minDurationMs: get('minDurationMs'),
     q: get('q'),
   };
-  const hasFilters = Object.values(filters).some(Boolean);
+  const sort = get('sort');
+  const hasFilters = Object.values(filters).some(Boolean) || window !== null;
 
   const services = useApi<ServiceListResponse>(`/services?range=${range}`, 60_000);
   const { data, error, isLoading, updatedAt, refetch } = useApi<TraceListResponse>(
-    `/traces${toQuery({ range, limit: LIMIT, ...filters })}`,
+    `/traces${toQuery({ range, limit: LIMIT, sort, ...filters, ...(window ? windowParams(window) : {}) })}`,
   );
 
   const serviceOptions = [
@@ -54,16 +62,13 @@ export function TracesView() {
       : []),
   ];
 
-  const clear = () => set({ service: null, endpoint: null, status: null, minDurationMs: null, q: null });
+  const clear = () => set({ service: null, endpoint: null, status: null, minDurationMs: null, q: null, from: null, to: null });
+  const count = data && (data.truncated ? `${sort === 'slowest' ? 'Slowest' : 'Latest'} ${LIMIT}` : `${data.traces.length} trace${data.traces.length === 1 ? '' : 's'}`);
 
   return (
     <>
       <PageHeader title="Traces" />
-      <FilterBar
-        trailing={
-          data && (data.truncated ? `Latest ${LIMIT}` : `${data.traces.length} trace${data.traces.length === 1 ? '' : 's'}`)
-        }
-      >
+      <FilterBar trailing={count}>
         <FilterSelect
           label="Service"
           value={filters.service}
@@ -77,6 +82,8 @@ export function TracesView() {
           options={DURATION_OPTIONS}
           onChange={(minDurationMs) => set({ minDurationMs })}
         />
+        <FilterSelect label="Sort" value={sort} options={SORT_OPTIONS} onChange={(next) => set({ sort: next })} />
+        {window && <FilterChip label="Window" value={formatWindow(window)} onClear={() => set({ from: null, to: null })} />}
         {filters.endpoint && <FilterChip label="Endpoint" value={filters.endpoint} onClear={() => set({ endpoint: null })} />}
         <SearchField label="Search traces" value={filters.q} placeholder="Trace id or name…" onChange={(q) => set({ q })} />
       </FilterBar>
@@ -101,7 +108,7 @@ export function TracesView() {
         ) : hasFilters ? (
           <EmptyState
             title="No traces match these filters"
-            description="Widen the time range or remove a filter."
+            description={window ? 'Nothing matched in the selected window. Widen it or remove a filter.' : 'Widen the time range or remove a filter.'}
             action={
               <Button size="sm" onClick={clear}>
                 Clear filters

@@ -414,6 +414,36 @@ export interface TraceListResponse {
   truncated: boolean;
 }
 
+/** Trace list order: newest first, or slowest first (to find what made a window slow). */
+export const TRACE_SORTS = ['recent', 'slowest'] as const;
+export type TraceSort = (typeof TRACE_SORTS)[number];
+
+/** Exceptions recorded on spans (`span.recordException`), grouped by type and message. */
+export interface ErrorGroup {
+  /** `exception.type`, e.g. `TypeError`; '' when the SDK did not set it. */
+  type: string;
+  /** `exception.message`. */
+  message: string;
+  services: string[];
+  /** Recorded exception events; one request can record the same exception on several nested spans. */
+  count: number;
+  /** Requests (traces) affected; groups are ordered by this. */
+  traces: number;
+  /** Epoch milliseconds. */
+  firstSeenAt: number;
+  lastSeenAt: number;
+  /** Endpoints of the requests that raised them. */
+  endpoints: string[];
+  latestTraceId: string;
+}
+
+export interface ErrorListResponse {
+  range: TimeRange;
+  groups: ErrorGroup[];
+  /** True when the result hit the limit. */
+  truncated: boolean;
+}
+
 export interface SpanEvent {
   timeUnixMs: number | null;
   name: string;
