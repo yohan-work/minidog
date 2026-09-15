@@ -36,7 +36,7 @@ const queryListSchema = rangeQuerySchema
   .superRefine(checkWindow);
 
 const endpointQuerySchema = rangeQuerySchema.extend({
-  endpoint: z.string().trim().min(1, 'Choose an endpoint.').max(500),
+  endpoint: z.string({ error: 'Choose an endpoint.' }).trim().min(1, 'Choose an endpoint.').max(500),
 });
 
 const errorQuerySchema = rangeQuerySchema

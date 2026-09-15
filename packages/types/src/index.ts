@@ -556,7 +556,7 @@ export interface EndpointResponse {
   range: TimeRange;
   endpoint: EndpointSummary;
   series: RequestSeries;
-  /** Power-of-two duration buckets (…, 4–8, 8–16 ms, …), fastest first. */
+  /** Logarithmic duration buckets, four per doubling (…, 256–304, 304–362 ms, …), fastest first. */
   histogram: LatencyBucket[];
 }
 

@@ -11,8 +11,9 @@ const bucketLabel = (bucket: LatencyBucket) =>
   bucket.fromMs === 0 ? `under ${formatLatency(bucket.toMs)}` : `${formatLatency(bucket.fromMs)}–${formatLatency(bucket.toMs)}`;
 
 /**
- * Response times in power-of-two buckets. Each bar's failed share is drawn in
- * red at its base, and the percentiles mark the buckets they fall in.
+ * Response times in logarithmic buckets, four per doubling. Each bar's failed
+ * share is drawn in red at its base, and the percentiles mark the buckets
+ * they fall in. Axis labels sit on the doublings (1, 2, 4 … ms) only.
  */
 export function LatencyHistogram({ buckets, percentiles }: { buckets: readonly LatencyBucket[]; percentiles: readonly Percentile[] }) {
   const peak = Math.max(1, ...buckets.map((bucket) => bucket.requests));
@@ -51,11 +52,13 @@ export function LatencyHistogram({ buckets, percentiles }: { buckets: readonly L
                 {bucket.errors > 0 && <div className={styles.errors} style={{ height: `${(bucket.errors / bucket.requests) * 100}%` }} />}
               </div>
             </div>
-            <span className={styles.label}>{formatLatencyAxis(bucket.fromMs)}</span>
+            <span className={styles.label}>
+              {bucket.fromMs === 0 || Number.isInteger(Math.log2(bucket.fromMs)) ? formatLatencyAxis(bucket.fromMs) : ''}
+            </span>
           </div>
         ))}
       </div>
-      <figcaption className={styles.caption}>Each bar is twice as wide as the one before it · red = failed requests</figcaption>
+      <figcaption className={styles.caption}>Four bars per doubling of the response time · red = failed requests</figcaption>
     </figure>
   );
 }

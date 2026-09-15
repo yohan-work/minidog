@@ -1,6 +1,7 @@
 import type { DbQuerySort, DbQuerySummary, ErrorGroup, SpanEvent, SpanKind, SpanStatus, TraceSort } from '@minidog/types';
 import { ClickHouseRepository } from '../db/clickhouse-repository';
 import type { SpanRow } from '../ingest/otlp-traces';
+import { BINS_PER_DOUBLING } from '../services/histogram';
 import type { Scope } from './project-repository';
 
 // ClickHouse serialises 64-bit integers as strings and empty quantiles as NaN.
@@ -60,7 +61,7 @@ export interface RawEndpoint extends LatencyRow {
   errors: number;
 }
 
-/** Entry spans in duration bin `bin`: [2^bin, 2^(bin+1)) ms; bin -1 is under 1 ms. */
+/** Entry spans in logarithmic duration bin `bin` (BINS_PER_DOUBLING per doubling); bin -1 is under 1 ms. */
 export interface RawLatencyBin {
   bin: number;
   requests: number;
@@ -604,11 +605,11 @@ export class SpanRepository extends ClickHouseRepository {
     });
   }
 
-  /** Entry spans of one endpoint counted in power-of-two duration bins. */
+  /** Entry spans of one endpoint counted in logarithmic duration bins. */
   async latencyHistogram(scope: Scope, filters: { fromMs: number; service: string; endpoint: string }): Promise<RawLatencyBin[]> {
     const rows = await this.query<{ bin: Num; requests: Num; errors: Num }>(
       `SELECT
-         if(duration_ms < 1, -1, toInt32(floor(log2(duration_ms)))) AS bin,
+         if(duration_ms < 1, -1, toInt32(floor(log2(duration_ms) * {perDoubling:UInt8}))) AS bin,
          count() AS requests,
          sum(is_error) AS errors
        FROM spans
@@ -619,7 +620,7 @@ export class SpanRepository extends ClickHouseRepository {
          AND ${since('fromMs')}
        GROUP BY bin
        ORDER BY bin`,
-      { ...scope, ...filters },
+      { ...scope, ...filters, perDoubling: BINS_PER_DOUBLING },
     );
     return rows.map((row) => ({ bin: Number(row.bin), requests: Number(row.requests), errors: Number(row.errors) }));
   }
