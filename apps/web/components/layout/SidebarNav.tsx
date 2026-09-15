@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { cx } from '@/lib/cx';
 import { withRange } from '@/lib/range-href';
 import styles from './Sidebar.module.scss';
+import { ThemeSwitcher } from './ThemeSwitcher';
 
 interface NavItem {
   label: string;
@@ -59,6 +60,9 @@ export function SidebarFrame({ children }: { children: ReactNode }) {
         </Link>
       </div>
       {children}
+      <div className={styles.footer}>
+        <ThemeSwitcher />
+      </div>
     </aside>
   );
 }

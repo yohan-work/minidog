@@ -1,0 +1,34 @@
+@use '../../styles/mixins' as *;
+
+.switcher {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+}
+
+.option {
+  height: var(--control-height-sm);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-meta);
+  color: var(--foreground-muted);
+  cursor: pointer;
+  @include transition(background-color, color);
+
+  &:hover {
+    color: var(--foreground-primary);
+  }
+
+  &:focus-visible {
+    @include focus-ring;
+    outline-offset: 0;
+  }
+}
+
+.selected {
+  background: var(--background-active);
+  color: var(--foreground-primary);
+  font-weight: var(--weight-medium);
+}

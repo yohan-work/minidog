@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import uPlot from 'uplot';
 import 'uplot/dist/uPlot.min.css';
 import { formatDateTime } from '@/lib/format';
+import { useThemeVersion } from '@/lib/use-theme-version';
 import styles from './TimeSeriesChart.module.scss';
 
 export interface ChartSeries {
@@ -93,6 +94,8 @@ export function TimeSeriesChart({
     selectRef.current = onSelectRange;
   });
   const selectable = onSelectRange !== undefined;
+  // Colors are read from the tokens when the plot is built; a theme switch rebuilds it.
+  const themeVersion = useThemeVersion();
   // Markers are drawn from a ref, so new markers only need a redraw.
   const markersRef = useRef(markers);
   useEffect(() => {
@@ -243,7 +246,7 @@ export function TimeSeriesChart({
     };
     // formatAxis is documented as stable; configKey captures series identity.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [configKey, height, yMax, selectable]);
+  }, [configKey, height, yMax, selectable, themeVersion]);
 
   useEffect(() => {
     dataRef.current = data;
