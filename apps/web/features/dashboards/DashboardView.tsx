@@ -2,6 +2,7 @@
 
 import {
   DASHBOARD_MAX_WIDGETS,
+  type Dashboard,
   type DashboardResponse,
   type DashboardWidget,
   type DashboardWidgetKind,
@@ -49,6 +50,8 @@ export function DashboardView({ id }: { id: string }) {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  // The dashboard as last saved, shown until a fresh load catches up with it.
+  const [saved, setSaved] = useState<Dashboard | null>(null);
   const back = { href: withRange('/dashboards', range), label: 'Dashboards' };
 
   if (!data) {
@@ -60,7 +63,7 @@ export function DashboardView({ id }: { id: string }) {
     );
   }
 
-  const dashboard = data.dashboard;
+  const dashboard = saved && saved.updatedAt > data.dashboard.updatedAt ? saved : data.dashboard;
   // A new dashboard opens ready for its first widgets (?edit=1).
   const editing = draft !== null || get('edit') === '1';
   const current: Draft = draft ?? { name: dashboard.name, widgets: dashboard.widgets };
@@ -86,7 +89,8 @@ export function DashboardView({ id }: { id: string }) {
     setSaving(true);
     setFormError(null);
     try {
-      await apiFetch<DashboardResponse>(`/dashboards/${id}`, { method: 'PUT', body: JSON.stringify(current) });
+      const response = await apiFetch<DashboardResponse>(`/dashboards/${id}`, { method: 'PUT', body: JSON.stringify(current) });
+      setSaved(response.dashboard);
       refetch();
       stopEditing();
     } catch (failure) {
@@ -99,8 +103,12 @@ export function DashboardView({ id }: { id: string }) {
 
   const destroy = async () => {
     if (!window.confirm(`Delete the dashboard "${dashboard.name}"? Its widgets are removed; the data they show is not.`)) return;
-    await apiFetch(`/dashboards/${id}`, { method: 'DELETE' });
-    router.push(back.href);
+    try {
+      await apiFetch(`/dashboards/${id}`, { method: 'DELETE' });
+      router.push(back.href);
+    } catch (failure) {
+      setFormError(toApiClientError(failure).message);
+    }
   };
 
   return (

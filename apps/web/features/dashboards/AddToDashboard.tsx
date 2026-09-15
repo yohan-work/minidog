@@ -30,6 +30,9 @@ export function AddToDashboard({ widget }: { widget: NewDashboardWidget }) {
       if (!dashboard) {
         const created = await apiFetch<DashboardResponse>('/dashboards', { method: 'POST', body: JSON.stringify({ name: 'My dashboard' }) });
         dashboard = { id: created.dashboard.id, name: created.dashboard.name, widgetCount: 0, updatedAt: created.dashboard.updatedAt };
+        // Chosen at once: if adding the widget fails, a retry adds to this one instead of creating another.
+        setChoice(dashboard.id);
+        list.refetch();
       }
       await apiFetch<DashboardResponse>(`/dashboards/${dashboard.id}/widgets`, { method: 'POST', body: JSON.stringify({ widget }) });
       setResult({ text: `Added to ${dashboard.name}`, href: withRange(`/dashboards/${dashboard.id}`, range) });
@@ -52,7 +55,8 @@ export function AddToDashboard({ widget }: { widget: NewDashboardWidget }) {
         ))}
         <option value={NEW}>New dashboard</option>
       </Select>
-      <Button size="sm" loading={busy} onClick={() => void add()}>
+      {/* Until the list arrives, "New dashboard" would be picked by default and duplicate existing ones. */}
+      <Button size="sm" loading={busy} disabled={!list.data} onClick={() => void add()}>
         Add to dashboard
       </Button>
       {result &&

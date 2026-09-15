@@ -38,6 +38,10 @@ test('widgets are validated per kind', () => {
   const metric = widgetSchema.parse({ kind: 'metric', metric: 'system.cpu.utilization', aggregation: 'avg' });
   assert.deepEqual(metric, { kind: 'metric', metric: 'system.cpu.utilization', aggregation: 'avg', title: '', size: 'half', service: '', host: '', groupBy: '' });
   assert.equal(widgetSchema.safeParse({ kind: 'service', service: 'api', chart: 'pie' }).success, false);
+  for (const groupBy of ['service', 'host', 'attr:http.route']) {
+    assert.equal(widgetSchema.safeParse({ kind: 'metric', metric: 'm', aggregation: 'avg', groupBy }).success, true, groupBy);
+  }
+  assert.equal(widgetSchema.safeParse({ kind: 'metric', metric: 'm', aggregation: 'avg', groupBy: 'region' }).success, false);
   assert.equal(widgetSchema.safeParse({ kind: 'synthetic', monitorId: 'm', url: 'x' }).success, false);
   const tooMany = Array.from({ length: 25 }, () => ({ kind: 'synthetic', monitorId: 'm' }));
   const result = updateSchema.safeParse({ name: 'x', widgets: tooMany });

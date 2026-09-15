@@ -29,7 +29,8 @@ export const widgetSchema = z.discriminatedUnion('kind', [
       aggregation: z.enum(METRIC_AGGREGATIONS),
       service: optionalText(255),
       host: optionalText(255),
-      groupBy: optionalText(255),
+      // The values the metrics query accepts.
+      groupBy: optionalText(255).refine((value) => /^(|service|host|attr:\S+)$/.test(value), 'Group by service, host or attr:<key>.'),
     })
     .strict(),
   z
