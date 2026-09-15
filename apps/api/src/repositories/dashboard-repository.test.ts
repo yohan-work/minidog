@@ -18,7 +18,7 @@ test('dashboards are saved with their widgets in order and stay in their scope',
   assert.deepEqual(created.widgets, []);
 
   const widgets = [
-    { id: 'w1', kind: 'synthetic' as const, title: 'yohan.co.kr', size: 'full' as const, monitorId: 'mon_1' },
+    { id: 'w1', kind: 'synthetic' as const, title: 'example.com', size: 'full' as const, monitorId: 'mon_1' },
     { id: 'w2', kind: 'service' as const, title: 'api requests', size: 'half' as const, service: 'api', chart: 'requests' as const },
   ];
   const updated = dashboards.update(scope, created.id, 'My site', widgets);

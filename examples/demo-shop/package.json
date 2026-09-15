@@ -2,6 +2,7 @@
   "name": "@minidog/demo-shop",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "Three instrumented Node.js services that send traces, logs and metrics to minidog.",
   "scripts": {

@@ -68,8 +68,8 @@ function setup(initial: Partial<RawMonitorSummary> | null) {
   const monitors = new AlertMonitorRepository(db);
   const checks = new MonitorRepository(db);
   const check = checks.create(scope, {
-    name: 'yohan.co.kr',
-    url: 'https://www.yohan.co.kr/',
+    name: 'example.com',
+    url: 'https://www.example.com/',
     method: 'GET',
     intervalSeconds: 60,
     timeoutMs: 10_000,
@@ -109,8 +109,8 @@ test('failed checks: critical when the share of failures reaches the threshold',
   assert.equal(monitor.state, 'critical');
   assert.equal(monitor.stateValue, 60);
   assert.equal(monitor.stateMessage, 'Failed checks 60.0% ≥ critical 50.0% (last 5 min)');
-  assert.equal(monitor.name, 'Failed checks · yohan.co.kr');
-  assert.equal(monitor.targetLabel, 'yohan.co.kr');
+  assert.equal(monitor.name, 'Failed checks · example.com');
+  assert.equal(monitor.targetLabel, 'example.com');
 });
 
 test('response time uses the P95 of passing checks', async () => {
@@ -179,7 +179,7 @@ test('a mute holds the notification and sends it once when the mute ends', async
   await alerting.unmute(created.id);
   await evaluator.settled();
   assert.equal(received.length, 1);
-  assert.match(received[0]!.text, /^\[CRITICAL\] Failed checks · yohan\.co\.kr: .*\(still critical after the mute ended\)$/);
+  assert.match(received[0]!.text, /^\[CRITICAL\] Failed checks · example\.com: .*\(still critical after the mute ended\)$/);
   assert.equal(monitors.lastEvent(created.id)?.webhookStatus, 'sent 200');
 
   await evaluator.evaluate(monitors.get(created.id)!);

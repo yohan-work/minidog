@@ -156,13 +156,20 @@ pnpm infra:down
 
 ## 로드맵
 
-- [x] Synthetic 모니터링
-- [x] 인프라 메트릭
-- [x] APM: 서비스, 엔드포인트, 트레이스
-- [x] 로그 + 트레이스 연결
-- [x] 모니터와 Webhook
-- [x] Service Map
-- [ ] 기준선 비교 ("P95 ↑ 312% vs 지난주")
-- [ ] Heartbeat / Cron 모니터
-- [ ] Slack, Discord, 이메일 알림
-- [ ] Command menu (trace ID로 바로 이동)
+이미 있는 것: Synthetics(리다이렉트·본문 문구·SSL), 호스트 지표, APM(서비스·엔드포인트·트레이스·에러·느린 쿼리·서비스 맵), 로그와 실시간 보기, Slack·Discord·Telegram·ntfy 알림, 하루 요약, 대시보드, 측정 공백 표시, ⌘K 검색.
+
+다음:
+
+- [ ] 대시보드 로그인 (첫 실행 때 비밀번호 설정)
+- [ ] 공개 Docker 이미지로 한 줄 설치
+- [ ] 메모리를 적게 쓰는 ClickHouse 설정과 실측값
+- [ ] Heartbeat / cron 모니터
+- [ ] 기준 비교 ("P95 ↑ 312% vs 지난주")
+
+## 보안
+
+아직 로그인 기능이 없습니다. 대시보드·Query API·ClickHouse는 127.0.0.1에서만 열리니 그대로 두고, 로그인이 추가되기 전까지 3000·4000 포트를 믿을 수 없는 네트워크에 열지 마세요.
+
+## 라이선스
+
+[MIT](LICENSE). minidog은 Datadog과 관련 없는 독립 프로젝트입니다.
