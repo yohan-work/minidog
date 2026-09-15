@@ -103,8 +103,14 @@ function monitorLine(monitor: SummaryMonitor, now: number): string {
   const parts = [`${monitor.name} — ${formatUp(up)} up (${detail})`];
   if (monitor.avgLatencyMs !== null) parts.push(`avg ${formatMs(monitor.avgLatencyMs)}`);
   if (monitor.p95LatencyMs !== null) parts.push(`p95 ${formatMs(monitor.p95LatencyMs)}`);
-  if (monitor.sslExpiresAt !== null) parts.push(`SSL ${Math.floor((monitor.sslExpiresAt - now) / DAY_MS)} days`);
+  if (monitor.sslExpiresAt !== null) parts.push(sslText(monitor.sslExpiresAt - now));
   return parts.join(' · ');
+}
+
+function sslText(msLeft: number): string {
+  if (msLeft <= 0) return 'SSL EXPIRED';
+  const days = Math.floor(msLeft / DAY_MS);
+  return days === 0 ? 'SSL expires today' : `SSL ${days} ${days === 1 ? 'day' : 'days'}`;
 }
 
 /** Rounded down, so 99.96% never reads as 100%. */

@@ -508,7 +508,11 @@ function SummaryForm({ data, onSaved }: { data: SummaryResponse; onSaved: () => 
     setSending(true);
     setErrors({});
     try {
-      const { status } = await apiFetch<SendSummaryResponse>('/summary/send', { method: 'POST', body: JSON.stringify({ days: 1 }) });
+      // The URL in the field, like Send test, even before it is saved.
+      const { status } = await apiFetch<SendSummaryResponse>('/summary/send', {
+        method: 'POST',
+        body: JSON.stringify({ days: 1, webhookUrl: values.webhookUrl.trim() }),
+      });
       setResult(`Sent now · ${status}`);
     } catch (failure) {
       capture(failure);
@@ -559,7 +563,7 @@ function SummaryForm({ data, onSaved }: { data: SummaryResponse; onSaved: () => 
           <Button type="submit" variant="primary" loading={saving}>
             Save
           </Button>
-          <Button type="button" loading={sending} disabled={!data.settings.webhookUrl} onClick={() => void sendNow()}>
+          <Button type="button" loading={sending} disabled={!values.webhookUrl.trim()} onClick={() => void sendNow()}>
             Send now
           </Button>
           {result && (

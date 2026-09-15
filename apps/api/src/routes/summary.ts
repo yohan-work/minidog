@@ -31,7 +31,16 @@ const settingsSchema = z
   });
 
 const sendSchema = z
-  .object({ days: z.union([z.literal(1), z.literal(7)]).default(1) })
+  .object({
+    days: z.union([z.literal(1), z.literal(7)]).default(1),
+    /** The URL in the form, which may not be saved yet. */
+    webhookUrl: z
+      .string()
+      .trim()
+      .max(2048)
+      .refine((value) => value === '' || isHttpUrl(value), 'Enter an http:// or https:// URL.')
+      .optional(),
+  })
   .strict();
 
 export function registerSummaryRoutes(app: FastifyInstance, ctx: AppContext): void {
@@ -43,7 +52,7 @@ export function registerSummaryRoutes(app: FastifyInstance, ctx: AppContext): vo
   });
 
   app.post('/api/summary/send', async (request) => {
-    const { days } = sendSchema.parse(request.body ?? {});
-    return { status: await ctx.summary.send(days) };
+    const { days, webhookUrl } = sendSchema.parse(request.body ?? {});
+    return { status: await ctx.summary.send(days, webhookUrl) };
   });
 }

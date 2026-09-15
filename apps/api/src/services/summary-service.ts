@@ -30,17 +30,23 @@ export class SummaryService {
     } catch {
       preview = 'Preview unavailable: check results could not be read.';
     }
-    return { settings: this.store.settings(), lastSentAt: last.sentAt, lastStatus: last.status, lastFailedAt: last.failedAt ?? null, preview };
+    const settings = this.store.settings();
+    // A retry is only pending while summaries are on.
+    const lastFailedAt = settings.enabled ? (last.failedAt ?? null) : null;
+    return { settings, lastSentAt: last.sentAt, lastStatus: last.status, lastFailedAt, preview };
   }
 
+  /** Saving (a fixed URL, turning it off) ends the wait after a failure: a due summary is tried right away. */
   save(settings: SummarySettings): void {
     this.store.saveSettings(settings);
+    const last = this.store.last();
+    if (last.failedAt) this.store.saveLast({ date: last.date, sentAt: last.sentAt, status: last.status });
   }
 
-  /** Sends a summary now, outside the schedule; resolves to the delivery status. */
-  async send(days: 1 | 7, now: number = Date.now()): Promise<string> {
-    const { webhookUrl } = this.store.settings();
-    if (!webhookUrl) throw new HttpError(400, 'no_webhook', 'Save a webhook URL first.');
+  /** Sends a summary now, outside the schedule, to `url` or the saved URL; resolves to the delivery status. */
+  async send(days: 1 | 7, url?: string, now: number = Date.now()): Promise<string> {
+    const webhookUrl = url || this.store.settings().webhookUrl;
+    if (!webhookUrl) throw new HttpError(400, 'no_webhook', 'Enter a webhook URL first.');
     return sendWebhook(webhookUrl, summaryPayload(await this.build(days, now), days));
   }
 
@@ -54,7 +60,7 @@ export class SummaryService {
     // Built first: if check results cannot be read, the next minute tries again.
     const text = await this.build(due.days, now);
     const sentAt = new Date(now).toISOString();
-    this.store.saveLast({ date: due.date, sentAt, status: 'sending' });
+    // The day is marked only once delivered, so a restart mid-send retries it rather than losing it.
     const status = await sendWebhook(settings.webhookUrl, summaryPayload(text, due.days));
     // A failed day stays due, so it is retried instead of lost.
     if (status.startsWith('sent')) this.store.saveLast({ date: due.date, sentAt, status });
