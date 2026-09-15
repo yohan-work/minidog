@@ -17,8 +17,8 @@ import { NodeSDK } from '@opentelemetry/sdk-node';
  */
 export function startTelemetry(service: string): NodeSDK {
   const sdk = new NodeSDK({
-    // OTEL_RESOURCE_ATTRIBUTES can add attributes (the ones set here win). The default host
-    // detector is left out: it replaced host.name with the container id in Docker.
+    // OTEL_RESOURCE_ATTRIBUTES can add or override attributes, host.name included. The default
+    // host detector is left out: it replaced host.name with the container id in Docker.
     resourceDetectors: [envDetector],
     resource: resourceFromAttributes({
       'service.name': service,
