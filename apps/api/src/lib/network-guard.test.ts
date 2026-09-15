@@ -38,6 +38,24 @@ test('a synthetic check never reaches the cloud metadata service', async () => {
   assert.match(result.error, /^Blocked 169\.254\.169\.254: link-local/);
 });
 
+test('a webhook target that trickles bytes is cut off at the deadline', async () => {
+  const trickle = createServer((req, res) => {
+    req.socket.write('HTTP/1.1 200 OK\r\nX-Slow: ');
+    const drip = setInterval(() => req.socket.write('a'), 50);
+    req.socket.on('close', () => clearInterval(drip));
+  });
+  await new Promise<void>((resolve) => trickle.listen(0, '127.0.0.1', resolve));
+  try {
+    const started = Date.now();
+    const status = await sendWebhook(`http://127.0.0.1:${(trickle.address() as AddressInfo).port}/hook`, testWebhookPayload(), 300);
+    assert.equal(status, 'failed: timeout');
+    assert.ok(Date.now() - started < 2000);
+  } finally {
+    trickle.closeAllConnections();
+    trickle.close();
+  }
+});
+
 test('webhooks are refused for blocked addresses', async () => {
   assert.match(await sendWebhook('http://169.254.169.254/hook', testWebhookPayload()), /^failed: Blocked 169\.254\.169\.254/);
 });

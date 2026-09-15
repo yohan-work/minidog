@@ -128,10 +128,10 @@ export function webhookRequest(url: string, payload: WebhookPayload): { headers:
 }
 
 /** POSTs the payload; resolves to a short status such as `sent 200` or `failed: timeout`. Never throws. */
-export async function sendWebhook(url: string, payload: WebhookPayload): Promise<string> {
+export async function sendWebhook(url: string, payload: WebhookPayload, timeoutMs: number = TIMEOUT_MS): Promise<string> {
   try {
     const { headers, body } = webhookRequest(url, payload);
-    const status = await post(new URL(url), headers, body);
+    const status = await post(new URL(url), headers, body, timeoutMs);
     return status >= 200 && status < 300 ? `sent ${status}` : `failed ${status}`;
   } catch (error) {
     const reason = error instanceof Error && error.name === 'TimeoutError' ? 'timeout' : error instanceof Error ? error.message : 'error';
@@ -139,8 +139,12 @@ export async function sendWebhook(url: string, payload: WebhookPayload): Promise
   }
 }
 
-/** One POST over a connection that refuses blocked addresses; redirects are not followed. */
-function post(url: URL, headers: Record<string, string>, body: string): Promise<number> {
+/**
+ * One POST over a connection that refuses blocked addresses; redirects are
+ * not followed. `timeoutMs` bounds the whole request, not just silences, so a
+ * target that trickles bytes cannot hold it open.
+ */
+function post(url: URL, headers: Record<string, string>, body: string, timeoutMs: number): Promise<number> {
   return new Promise((resolve, reject) => {
     if (url.protocol !== 'http:' && url.protocol !== 'https:') return reject(new Error(`Unsupported protocol ${url.protocol}`));
     const blocked = checkHost(url.hostname);
@@ -148,18 +152,23 @@ function post(url: URL, headers: Record<string, string>, body: string): Promise<
     const client = url.protocol === 'https:' ? https : http;
     const request = client.request(
       url,
-      { method: 'POST', headers: { ...headers, 'content-length': String(Buffer.byteLength(body)) }, lookup: guardedLookup, timeout: TIMEOUT_MS },
+      { method: 'POST', headers: { ...headers, 'content-length': String(Buffer.byteLength(body)) }, lookup: guardedLookup },
       (response) => {
-        response.resume();
+        clearTimeout(deadline);
         resolve(response.statusCode ?? 0);
+        // Only the status matters; the body is not read.
+        response.destroy();
       },
     );
-    request.on('timeout', () => {
+    const deadline = setTimeout(() => {
       const error = new Error('timeout');
       error.name = 'TimeoutError';
       request.destroy(error);
+    }, timeoutMs);
+    request.on('error', (error) => {
+      clearTimeout(deadline);
+      reject(error);
     });
-    request.on('error', reject);
     request.end(body);
   });
 }
