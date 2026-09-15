@@ -47,6 +47,24 @@ The goal is to reach the root cause in three screens or fewer, without first lea
 
 ## Quick start
 
+Docker is the only requirement.
+
+```bash
+mkdir minidog && cd minidog
+curl -fsSLO https://raw.githubusercontent.com/yohan-work/minidog/main/deploy/compose.yaml
+docker compose up -d
+```
+
+Open **http://localhost:3000** and set a password. Host metrics arrive within about 15 seconds. To see traces, logs and errors right away, start the demo shop, three services sending sample traffic:
+
+```bash
+docker compose --profile demo up -d
+```
+
+To update, run `docker compose pull && docker compose up -d`. To pin a release, set `MINIDOG_VERSION=0.1.0`. The ports, the ClickHouse password and the API key settings are environment variables in `compose.yaml`.
+
+### From source
+
 Requirements: Node.js 24+, pnpm 10 and Docker.
 
 ```bash
@@ -58,7 +76,7 @@ pnpm infra:up   # ClickHouse + OpenTelemetry Collector
 pnpm dev        # API on :4000, dashboard on :3000
 ```
 
-Open **http://localhost:3000**. Host metrics start arriving within about 15 seconds.
+Open **http://localhost:3000** and set a password.
 
 ### Always-on mode
 

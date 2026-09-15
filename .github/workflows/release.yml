@@ -1,0 +1,54 @@
+name: Release images
+
+# Publishes ghcr.io/<owner>/minidog-{api,web,demo} when a version tag (v0.1.0) is pushed,
+# for amd64 and arm64. Each platform is built in its own emulated build (the
+# dashboard's standalone output includes a platform-specific native module),
+# so arm64 takes longer; layers are cached between releases.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  images:
+    name: ${{ matrix.target }} image
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [api, web, demo]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/minidog-${{ matrix.target }}
+          # Pre-releases (v0.2.0-rc.1) get their own tag but never move `latest`.
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-') }}
+          labels: |
+            org.opencontainers.image.title=minidog-${{ matrix.target }}
+            org.opencontainers.image.licenses=MIT
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/docker/Dockerfile
+          target: ${{ matrix.target }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.target }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.target }}

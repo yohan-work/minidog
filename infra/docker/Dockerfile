@@ -1,6 +1,7 @@
 # Two small runtime images from one build (context: repository root):
 #   --target api   the Query/Ingestion API, bundled into a single file
 #   --target web   the dashboard, as Next's standalone server
+#   --target demo  a three-service demo shop that sends sample telemetry
 FROM node:24-alpine AS build
 ENV CI=true \
     COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
@@ -16,7 +17,7 @@ COPY packages/config/package.json packages/config/
 COPY examples/demo-shop/package.json examples/demo-shop/
 RUN pnpm install --frozen-lockfile
 COPY . .
-RUN pnpm --filter @minidog/api build && pnpm --filter @minidog/web build
+RUN pnpm --filter @minidog/api build && pnpm --filter @minidog/web build && pnpm --filter @minidog/demo-shop build
 
 FROM node:24-alpine AS api
 ENV NODE_ENV=production \
@@ -42,3 +43,12 @@ COPY --from=build /src/apps/web/.next/static ./apps/web/.next/static
 USER node
 EXPOSE 3000
 CMD ["node", "apps/web/server.js"]
+
+FROM node:24-alpine AS demo
+ENV NODE_ENV=production \
+    OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318 \
+    DEMO_HOST_NAME=demo-shop
+WORKDIR /app
+COPY --from=build /src/examples/demo-shop/dist ./
+USER node
+CMD ["node", "main.mjs"]

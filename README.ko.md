@@ -38,7 +38,25 @@ minidog은 Datadog의 핵심 흐름을 개인 개발자와 소규모 팀에 맞�
 
 ## 빠른 시작
 
-필요한 것: Node.js 24 이상, pnpm 10, Docker
+Docker만 있으면 됩니다.
+
+```bash
+mkdir minidog && cd minidog
+curl -fsSLO https://raw.githubusercontent.com/yohan-work/minidog/main/deploy/compose.yaml
+docker compose up -d
+```
+
+**http://localhost:3000** 을 열고 비밀번호를 정합니다. 호스트 지표는 15초 안에 들어오기 시작합니다. 트레이스·로그·에러를 바로 보고 싶다면 샘플 트래픽을 보내는 데모 가게(서비스 3개)를 켜세요.
+
+```bash
+docker compose --profile demo up -d
+```
+
+업데이트는 `docker compose pull && docker compose up -d`로 합니다. 특정 릴리스로 고정하려면 `MINIDOG_VERSION=0.1.0`을 지정하세요. 포트, ClickHouse 비밀번호, API 키 설정은 `compose.yaml`의 환경변수로 바꿀 수 있습니다.
+
+### 소스로 실행
+
+Node.js 24 이상, pnpm 10, Docker가 필요합니다.
 
 ```bash
 git clone https://github.com/yohan-work/minidog.git
@@ -49,7 +67,7 @@ pnpm infra:up   # ClickHouse + OpenTelemetry Collector
 pnpm dev        # API :4000, 대시보드 :3000
 ```
 
-**http://localhost:3000** 을 열면 됩니다. 약 15초 안에 호스트 메트릭이 들어오기 시작합니다.
+**http://localhost:3000** 을 열고 비밀번호를 정합니다.
 
 ### 데모 데이터로 체험하기
 
