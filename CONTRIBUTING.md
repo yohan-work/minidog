@@ -32,11 +32,14 @@ Open http://localhost:3000 and set a password. [`docs/architecture.md`](docs/arc
 Run what CI runs:
 
 ```bash
+pnpm lint           # Biome: formatting and lint rules; `pnpm format` fixes formatting
 pnpm typecheck
 pnpm test
 pnpm build
 pnpm check:deploy   # only if you touched infra/ or deploy/
 ```
+
+Editor support: the [Biome extension](https://biomejs.dev/guides/editors/first-party-extensions/) formats on save with the repository's `biome.jsonc`.
 
 - **One change per PR**, as small as it can be. Refactors go in their own PR.
 - **Behaviour changes come with a test.** API tests use `node:test` with `app.inject`; see `apps/api/src/routes/auth.test.ts` for a full example that needs no ClickHouse.
