@@ -58,6 +58,7 @@ export function CommandMenu() {
     };
   }, []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: navigating (a new pathname) closes the menu.
   useEffect(() => setOpen(false), [pathname]);
 
   return open ? <CommandDialog onClose={() => setOpen(false)} /> : null;
@@ -145,10 +146,9 @@ function CommandDialog({ onClose }: { onClose: () => void }) {
     return () => previous?.focus();
   }, []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: optionId is derived from the stable useId value.
   useEffect(() => {
     document.getElementById(optionId(activeIndex))?.scrollIntoView({ block: 'nearest' });
-    // optionId is derived from the stable useId value.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeIndex]);
 
   const open = (item: CommandItem) => {
@@ -184,6 +184,7 @@ function CommandDialog({ onClose }: { onClose: () => void }) {
 
   let index = -1;
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: clicking the backdrop is a mouse shortcut; Escape in the input closes it from the keyboard.
     <div
       className={styles.overlay}
       onMouseDown={(event) => {
@@ -216,6 +217,7 @@ function CommandDialog({ onClose }: { onClose: () => void }) {
 
         <div id={listId} role="listbox" aria-label="Results" className={styles.list}>
           {groups.map((group) => (
+            // biome-ignore lint/a11y/useSemanticElements: a group of options inside an ARIA listbox; a fieldset is not allowed there.
             <div key={group.kind} role="group" aria-label={group.label}>
               <p className={styles.groupLabel} aria-hidden>
                 {group.label}
@@ -224,6 +226,7 @@ function CommandDialog({ onClose }: { onClose: () => void }) {
                 index += 1;
                 const position = index;
                 return (
+                  // biome-ignore lint/a11y/useKeyWithClickEvents lint/a11y/useFocusableInteractive: combobox pattern; focus stays in the input, which moves aria-activedescendant and opens with Enter.
                   <div
                     key={item.id}
                     id={optionId(position)}

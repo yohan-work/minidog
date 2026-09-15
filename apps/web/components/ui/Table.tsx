@@ -98,6 +98,7 @@ export function TableSkeleton({
       <TableHead columns={columns} />
       <tbody>
         {Array.from({ length: rows }, (_, row) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: identical placeholder rows that never reorder.
           <Tr key={row}>
             {columns.map((column) => (
               <Td key={column.label} align={column.align} hideBelow={column.hideBelow}>

@@ -47,7 +47,7 @@ export function AlertEventTable({ events, range, types, showMonitor = true }: Al
               <Td>
                 <span className={styles.transition}>
                   <AlertStateIndicator state={event.fromState} />
-                  <span className={styles.arrow} aria-label="to">
+                  <span className={styles.arrow} role="img" aria-label="to">
                     →
                   </span>
                   <AlertStateIndicator state={event.toState} />

@@ -115,6 +115,7 @@ export function TimeSeriesChart({
   const dataRef = useRef(data);
   const configKey = series.map((item) => `${item.label}|${item.color}|${item.dashed ? 1 : 0}`).join(',');
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: rebuilds the plot only when its shape changes; configKey stands for series and themeVersion for the colours read from CSS. formatAxis must be stable (see its prop).
   useEffect(() => {
     const root = rootRef.current;
     const host = plotHostRef.current;
@@ -253,8 +254,6 @@ export function TimeSeriesChart({
       plot.destroy();
       plotRef.current = null;
     };
-    // formatAxis is documented as stable; configKey captures series identity.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [configKey, height, yMax, selectable, themeVersion]);
 
   useEffect(() => {

@@ -10,6 +10,7 @@ import styles from './FilterBar.module.scss';
 /** One row of filters under the page header; wraps on narrow screens. */
 export function FilterBar({ children, trailing }: { children: ReactNode; trailing?: ReactNode }) {
   return (
+    // biome-ignore lint/a11y/useSemanticElements: a fieldset would bring its own border and legend layout; role="group" gives the same semantics.
     <div className={styles.bar} role="group" aria-label="Filters">
       <div className={styles.controls}>{children}</div>
       {trailing && <div className={styles.trailing}>{trailing}</div>}

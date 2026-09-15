@@ -34,21 +34,12 @@
         // Used after a check the type system cannot see, e.g. a Map lookup right after `has`.
         "noNonNullAssertion": "off"
       },
-      "correctness": {
-        // Effects list values such as a refetch nonce or a filter key on purpose, to re-run when they change.
-        "useExhaustiveDependencies": "off"
-      },
-      // Real accessibility gaps, tracked as issues; warnings until they are fixed so CI stays green.
       "a11y": {
-        "noLabelWithoutControl": "warn",
-        "noStaticElementInteractions": "warn",
-        "useAriaPropsSupportedByRole": "warn",
-        "useFocusableInteractive": "warn",
-        "useKeyWithClickEvents": "warn",
-        "useSemanticElements": "warn"
-      },
-      "suspicious": {
-        "noArrayIndexKey": "warn"
+        "noLabelWithoutControl": {
+          "level": "error",
+          // components/ui wrappers that render a native <select> and <input>.
+          "options": { "inputComponents": ["Select", "Input"] }
+        }
       }
     }
   }

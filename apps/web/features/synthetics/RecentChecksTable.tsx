@@ -22,6 +22,7 @@ export function RecentChecksTable({ checks }: { checks: readonly CheckResult[] }
       <TableHead columns={COLUMNS} />
       <tbody>
         {checks.map((check, index) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: the index only separates checks that share a timestamp.
           <Tr key={`${check.timestamp}-${index}`}>
             <Td mono muted>
               {formatDateTime(check.timestamp)}

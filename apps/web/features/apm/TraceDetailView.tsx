@@ -194,6 +194,7 @@ function SpanDetails({ span, traceStartMs, range }: { span: SpanDetail; traceSta
           <h3 className={styles.subheading}>Events</h3>
           <ul className={styles.events}>
             {span.events.map((event, index) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: a span can record the same event name twice; the list is fixed for a trace.
               <li key={`${event.name}-${index}`} className={styles.event}>
                 <span className={styles.eventName}>
                   {event.name}

@@ -24,6 +24,7 @@ export function useApi<T>(path: string | null, refreshMs: number = DEFAULT_REFRE
   const [state, setState] = useState<{ data?: T; error?: ApiClientError; updatedAt?: number }>({});
   const [nonce, setNonce] = useState(0);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: nonce is not read; changing it (refetch) re-runs the load.
   useEffect(() => {
     if (!path) return;
     const controller = new AbortController();
