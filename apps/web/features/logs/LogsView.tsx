@@ -44,9 +44,10 @@ export function LogsView() {
   const hasFilters = Object.values(filters).some(Boolean) || window !== null;
   const live = get('live') === '1';
 
-  // While live tail runs this only feeds the service filter, so it asks for one record.
+  // Keeps loading while live tail runs: it feeds the service filter, and the
+  // records are ready when live tail stops.
   const { data, error, isLoading, updatedAt, refetch } = useApi<LogListResponse>(
-    `/logs${toQuery({ range, limit: live ? 1 : limit, ...filters, ...(window ? windowParams(window) : {}) })}`,
+    `/logs${toQuery({ range, limit, ...filters, ...(window ? windowParams(window) : {}) })}`,
   );
 
   const serviceOptions = [

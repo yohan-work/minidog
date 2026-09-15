@@ -8,7 +8,7 @@ import { EmptyState, ErrorState } from '@/components/observability/States';
 import { Button } from '@/components/ui/Button';
 import { apiFetch, toApiClientError, type ApiClientError } from '@/lib/api-client';
 import { formatCount } from '@/lib/format';
-import { mergeTail, nextSince, TAIL_INTERVAL_MS, TAIL_START_LOOKBACK_MS } from '@/lib/log-tail';
+import { hasGap, mergeTail, nextSince, TAIL_INTERVAL_MS, TAIL_START_LOOKBACK_MS } from '@/lib/log-tail';
 import { toQuery } from '@/lib/query-params';
 import styles from './Logs.module.scss';
 
@@ -37,12 +37,17 @@ export function LiveTail({ filters, range, emptyAction }: LiveTailProps) {
   const [error, setError] = useState<ApiClientError>();
   const [attempt, setAttempt] = useState(0);
   const sinceRef = useRef<number | null>(null);
+  // Mirrors `logs` so a poll can compare against what is on screen.
+  const bufferRef = useRef<LogEntry[]>([]);
   const filterKey = toQuery({ ...filters });
 
+  // New filters start a new tail, running even if the previous one was paused.
   useEffect(() => {
+    bufferRef.current = [];
     setLogs([]);
     setLoaded(false);
     setSkipped(false);
+    setPaused(false);
     sinceRef.current = null;
   }, [filterKey]);
 
@@ -56,8 +61,10 @@ export function LiveTail({ filters, range, emptyAction }: LiveTailProps) {
         const since = sinceRef.current ?? Date.now() - TAIL_START_LOOKBACK_MS;
         try {
           const data = await apiFetch<LogTailResponse>(`/logs/tail${toQuery({ ...filters, since })}`, { signal: controller.signal });
-          setLogs((buffer) => mergeTail(buffer, data.logs, data.since, data.truncated));
-          setSkipped(data.truncated);
+          const buffer = bufferRef.current;
+          bufferRef.current = mergeTail(buffer, data.logs, data.since, data.truncated);
+          setLogs(bufferRef.current);
+          setSkipped(hasGap(buffer, data.logs, data.truncated));
           setLoaded(true);
           setError(undefined);
           sinceRef.current = nextSince(data.now);

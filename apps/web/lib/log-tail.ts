@@ -23,6 +23,16 @@ export function mergeTail(buffer: readonly LogEntry[], fresh: readonly LogEntry[
   return [...fresh, ...older].slice(0, TAIL_BUFFER);
 }
 
+/**
+ * True when a poll hit its limit before reaching the records already shown, so
+ * some records between the two are missing. A poll that overlaps the buffer is
+ * complete even when truncated: everything older is already on screen.
+ */
+export function hasGap(buffer: readonly LogEntry[], fresh: readonly LogEntry[], truncated: boolean): boolean {
+  if (!truncated || buffer.length === 0 || fresh.length === 0) return false;
+  return fresh[fresh.length - 1]!.timestamp > buffer[0]!.timestamp;
+}
+
 /** Where the next poll starts, from the server clock of the last one. */
 export function nextSince(serverNow: number): number {
   return serverNow - TAIL_OVERLAP_MS;

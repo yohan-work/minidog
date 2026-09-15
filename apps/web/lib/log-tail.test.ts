@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { LogEntry } from '@minidog/types';
-import { mergeTail, TAIL_BUFFER } from './log-tail';
+import { hasGap, mergeTail, TAIL_BUFFER } from './log-tail';
 
 const log = (timestamp: number, body = `at ${timestamp}`): LogEntry => ({
   timestamp,
@@ -38,4 +38,12 @@ test('the buffer is capped', () => {
   const merged = mergeTail(buffer, [log(2000)], 1001, false);
   assert.equal(merged.length, TAIL_BUFFER);
   assert.equal(merged[0]!.timestamp, 2000);
+});
+
+test('a truncated poll only leaves a gap when it does not reach the buffer', () => {
+  const buffer = [log(120), log(110)];
+  assert.equal(hasGap(buffer, [log(140), log(115)], true), false);
+  assert.equal(hasGap(buffer, [log(140), log(130)], true), true);
+  assert.equal(hasGap(buffer, [log(140), log(130)], false), false);
+  assert.equal(hasGap([], [log(140)], true), false);
 });
