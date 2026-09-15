@@ -16,7 +16,15 @@ export function LatencyLegend() {
 }
 
 /** P95 and average response time of passing checks. */
-export function LatencyChart({ series, subject, emptyAction }: { series: Series; subject: string; emptyAction: ReactNode }) {
+export function LatencyChart({
+  series,
+  subject,
+  emptyAction,
+}: {
+  series: Series;
+  subject: string;
+  emptyAction: ReactNode;
+}) {
   const { timestamps, chartSeries, peak, hasData } = useMemo(() => {
     const points = series.points;
     const p95 = points.map((point) => point.p95LatencyMs);

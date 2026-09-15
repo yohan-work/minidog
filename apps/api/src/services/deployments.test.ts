@@ -22,12 +22,17 @@ test('a version first seen in the range after an earlier one is a deployment', (
     [row('api', '1.0.0', now - 5 * HOUR), row('api', '1.1.0', now - 20 * 60_000), row('web', '2.0.0', now - 3 * HOUR)],
     fromMs,
   );
-  assert.deepEqual(deployments, [{ service: 'api', version: '1.1.0', previousVersion: '1.0.0', at: now - 20 * 60_000 }]);
+  assert.deepEqual(deployments, [
+    { service: 'api', version: '1.1.0', previousVersion: '1.0.0', at: now - 20 * 60_000 },
+  ]);
 });
 
 test("a service's first version and versions deployed before the range are not deployments", () => {
   assert.deepEqual(deriveDeployments([row('api', '1.0.0', now - 10 * 60_000)], fromMs), []);
-  assert.deepEqual(deriveDeployments([row('api', '1.0.0', now - 5 * HOUR), row('api', '1.1.0', now - 2 * HOUR)], fromMs), []);
+  assert.deepEqual(
+    deriveDeployments([row('api', '1.0.0', now - 5 * HOUR), row('api', '1.1.0', now - 2 * HOUR)], fromMs),
+    [],
+  );
 });
 
 test('several deployments are ordered by time across services', () => {
@@ -49,7 +54,11 @@ test('several deployments are ordered by time across services', () => {
 
 test('versions in range are listed newest first with an error rate', () => {
   const versions = summarizeVersions(
-    [row('api', '0.9.0', now - 9 * HOUR, 0), row('api', '1.0.0', now - 5 * HOUR), row('api', '1.1.0', now - 20 * 60_000)],
+    [
+      row('api', '0.9.0', now - 9 * HOUR, 0),
+      row('api', '1.0.0', now - 5 * HOUR),
+      row('api', '1.1.0', now - 20 * 60_000),
+    ],
     fromMs,
   );
   assert.deepEqual(
@@ -66,5 +75,7 @@ test('after a rollback, the next deployment replaces the version that was servin
     { ...row('api', '1.1.0', now - 4 * HOUR), lastSeenAt: now - 3 * HOUR },
     row('api', '1.2.0', now - 20 * 60_000),
   ];
-  assert.deepEqual(deriveDeployments(rows, fromMs), [{ service: 'api', version: '1.2.0', previousVersion: '1.0.0', at: now - 20 * 60_000 }]);
+  assert.deepEqual(deriveDeployments(rows, fromMs), [
+    { service: 'api', version: '1.2.0', previousVersion: '1.0.0', at: now - 20 * 60_000 },
+  ]);
 });

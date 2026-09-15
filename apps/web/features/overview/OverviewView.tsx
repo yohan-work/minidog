@@ -83,7 +83,11 @@ export function OverviewView() {
   return (
     <>
       <PageHeader title="Overview" />
-      <StaleNotice error={services.data ? services.error : undefined} updatedAt={services.updatedAt} onRetry={services.refetch} />
+      <StaleNotice
+        error={services.data ? services.error : undefined}
+        updatedAt={services.updatedAt}
+        onRetry={services.refetch}
+      />
 
       {!services.data && !services.isLoading ? (
         <ErrorState title="Unable to load overview." description={services.error?.message} onRetry={services.refetch} />
@@ -108,7 +112,12 @@ export function OverviewView() {
               tone={attentionServices > 0 ? 'warning' : undefined}
               meta={attentionServices > 0 ? `${attentionServices} need attention` : 'all healthy'}
             />
-            <Metric label="Requests" loading={loading} value={formatCount(totals?.requests)} meta={totals && formatRate(totals.requests / seconds)} />
+            <Metric
+              label="Requests"
+              loading={loading}
+              value={formatCount(totals?.requests)}
+              meta={totals && formatRate(totals.requests / seconds)}
+            />
             <Metric
               label="Error rate"
               loading={loading}
@@ -128,7 +137,9 @@ export function OverviewView() {
               loading={!alerts.data && !alerts.error}
               value={alerts.data ? active.length : '—'}
               tone={criticalAlerts > 0 ? 'error' : active.length > 0 ? 'warning' : undefined}
-              meta={alerts.data ? (active.length > 0 ? `${criticalAlerts} critical` : 'no monitor alerting') : 'unavailable'}
+              meta={
+                alerts.data ? (active.length > 0 ? `${criticalAlerts} critical` : 'no monitor alerting') : 'unavailable'
+              }
             />
           </MetricGrid>
 
@@ -161,9 +172,21 @@ export function OverviewView() {
             </Section>
           )}
 
-          <Section title="Request throughput" actions={<><SelectHint /><RequestsLegend /></>}>
+          <Section
+            title="Request throughput"
+            actions={
+              <>
+                <SelectHint />
+                <RequestsLegend />
+              </>
+            }
+          >
             {chart.selectionFor('requests') && (
-              <SelectionBar selection={chart.selectionFor('requests')!} links={drilldownLinks(chart.selectionFor('requests')!, range)} onClear={chart.clear} />
+              <SelectionBar
+                selection={chart.selectionFor('requests')!}
+                links={drilldownLinks(chart.selectionFor('requests')!, range)}
+                onClear={chart.clear}
+              />
             )}
             {services.data ? (
               <RequestsChart
@@ -178,9 +201,21 @@ export function OverviewView() {
             )}
           </Section>
 
-          <Section title="Latency" actions={<><SelectHint /><LatencyTrendLegend /></>}>
+          <Section
+            title="Latency"
+            actions={
+              <>
+                <SelectHint />
+                <LatencyTrendLegend />
+              </>
+            }
+          >
             {chart.selectionFor('latency') && (
-              <SelectionBar selection={chart.selectionFor('latency')!} links={drilldownLinks(chart.selectionFor('latency')!, range)} onClear={chart.clear} />
+              <SelectionBar
+                selection={chart.selectionFor('latency')!}
+                links={drilldownLinks(chart.selectionFor('latency')!, range)}
+                onClear={chart.clear}
+              />
             )}
             {services.data ? (
               <LatencyTrendChart
@@ -209,7 +244,11 @@ export function OverviewView() {
             ) : serviceList.length > 0 ? (
               <ServiceTable services={serviceList} range={range} />
             ) : (
-              <EmptyState title="No services yet" description="Services appear when an OpenTelemetry SDK sends traces." action={<TelemetrySetup />} />
+              <EmptyState
+                title="No services yet"
+                description="Services appear when an OpenTelemetry SDK sends traces."
+                action={<TelemetrySetup />}
+              />
             )}
           </Section>
 
@@ -287,7 +326,10 @@ function buildAttention({
           <Detail label="P95 latency">
             {formatLatency(service.p95Ms)}
             {service.p95Change !== null && Math.abs(service.p95Change) >= 0.1 && (
-              <span className={service.p95Change > 0 ? styles.worse : styles.better}> {formatChange(service.p95Change)}</span>
+              <span className={service.p95Change > 0 ? styles.worse : styles.better}>
+                {' '}
+                {formatChange(service.p95Change)}
+              </span>
             )}
           </Detail>
           <Detail label="Error rate">{formatPercent(service.errorRate)}</Detail>
@@ -297,7 +339,10 @@ function buildAttention({
       ),
       action: {
         label: 'View traces',
-        href: tracesHref({ service: service.service, endpoint: endpoint?.endpoint, status: service.errors > 0 ? 'error' : undefined }, range),
+        href: tracesHref(
+          { service: service.service, endpoint: endpoint?.endpoint, status: service.errors > 0 ? 'error' : undefined },
+          range,
+        ),
       },
     });
   }

@@ -51,7 +51,13 @@ function setup(p95Ms: number | Error) {
   return { monitors, evaluator, latency, service };
 }
 
-const input = { type: 'latency', target: 'api', warningThreshold: 250, criticalThreshold: 500, windowMinutes: 1 } as const;
+const input = {
+  type: 'latency',
+  target: 'api',
+  warningThreshold: 250,
+  criticalThreshold: 500,
+  windowMinutes: 1,
+} as const;
 
 test('thresholds changed after a pass loaded its monitors apply to the evaluation', async () => {
   const { monitors, evaluator, latency } = setup(600);

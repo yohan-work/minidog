@@ -9,7 +9,11 @@ export class StorageService {
   ) {}
 
   async overview(): Promise<StorageResponse> {
-    const [usage, oldest, retention] = await Promise.all([this.storage.usage(), this.storage.oldest(), this.storage.retention()]);
+    const [usage, oldest, retention] = await Promise.all([
+      this.storage.usage(),
+      this.storage.oldest(),
+      this.storage.retention(),
+    ]);
     return {
       signals: RETENTION_SIGNALS.map((signal) => {
         const table = SIGNAL_TABLES[signal];

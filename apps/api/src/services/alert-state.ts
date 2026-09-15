@@ -100,7 +100,8 @@ export function alertMessage(monitor: MessageInput, state: AlertState, value: nu
   const window = `last ${monitor.windowMinutes} min`;
   if (state === 'no_data' || value === null) return noDataMessage(monitor, window);
   if (monitor.type === 'service_down' && state === 'critical' && value === 0) return `No requests in the ${window}`;
-  if (monitor.type === 'synthetic_check' && monitor.metric === 'ssl_days' && value <= 0) return 'SSL certificate expired';
+  if (monitor.type === 'synthetic_check' && monitor.metric === 'ssl_days' && value <= 0)
+    return 'SSL certificate expired';
 
   const scope = usesWindow(monitor.type, monitor.metric) ? ` (${window})` : '';
   const format = (amount: number) => formatAlertValue(monitor, amount);

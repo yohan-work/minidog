@@ -26,7 +26,10 @@ test('a lock left by a dead process on this machine is taken over', () => {
 test('a lock from another machine holds while refreshed and expires when not', () => {
   const path = dbPath();
   writeFileSync(`${path}.lock`, JSON.stringify({ pid: 1, host: 'minidog-container', startedAt: 'earlier' }));
-  assert.throws(() => acquireDataLock(path), (error: unknown) => error instanceof DataLockedError && /minidog-container/.test(error.message));
+  assert.throws(
+    () => acquireDataLock(path),
+    (error: unknown) => error instanceof DataLockedError && /minidog-container/.test(error.message),
+  );
 
   const old = new Date(Date.now() - LOCK_STALE_MS - 5_000);
   utimesSync(`${path}.lock`, old, old);

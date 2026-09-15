@@ -44,7 +44,9 @@ export class StorageRepository extends ClickHouseRepository {
   async oldest(): Promise<Map<string, number | null>> {
     // Table names come from SIGNAL_TABLES, never from a request.
     const rows = await this.query<{ table: string; oldest: Num }>(
-      TABLES.map((table) => `SELECT '${table}' AS table, toUnixTimestamp(min(timestamp)) AS oldest FROM ${table}`).join('\nUNION ALL\n'),
+      TABLES.map((table) => `SELECT '${table}' AS table, toUnixTimestamp(min(timestamp)) AS oldest FROM ${table}`).join(
+        '\nUNION ALL\n',
+      ),
       {},
     );
     return new Map(rows.map((row) => [row.table, Number(row.oldest) > 0 ? Number(row.oldest) * 1000 : null]));

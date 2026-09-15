@@ -17,8 +17,10 @@ function query(params: Params): string {
 export const serviceHref = (service: string, range: TimeRange) =>
   withRange(`/services/${encodeURIComponent(service)}`, range);
 
-export const tracesHref = (filters: { service?: string; endpoint?: string; status?: 'error' | 'ok' }, range: TimeRange) =>
-  withRange(`/traces${query(filters)}`, range);
+export const tracesHref = (
+  filters: { service?: string; endpoint?: string; status?: 'error' | 'ok' },
+  range: TimeRange,
+) => withRange(`/traces${query(filters)}`, range);
 
 export const traceHref = (traceId: string, range: TimeRange, spanId?: string) =>
   withRange(`/traces/${traceId}${query({ span: spanId })}`, range);

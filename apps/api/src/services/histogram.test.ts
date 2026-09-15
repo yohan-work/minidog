@@ -26,7 +26,10 @@ test('buckets span the occupied bins, four per doubling, with empty ones filled'
 });
 
 test('256 to 512 ms is split into four buckets', () => {
-  const buckets = fillHistogram([{ bin: latencyBin(300), requests: 1, errors: 0 }, { bin: latencyBin(500), requests: 1, errors: 0 }]);
+  const buckets = fillHistogram([
+    { bin: latencyBin(300), requests: 1, errors: 0 },
+    { bin: latencyBin(500), requests: 1, errors: 0 },
+  ]);
   assert.deepEqual(
     buckets.map((bucket) => bucket.fromMs),
     [256, 304.44, 362.04, 430.54],
@@ -38,9 +41,20 @@ test('no requests, no buckets', () => {
 });
 
 test('a value is placed by its bin, not by rounded bounds', () => {
-  const buckets = fillHistogram([{ bin: 4, requests: 1, errors: 0 }, { bin: 5, requests: 1, errors: 0 }]);
+  const buckets = fillHistogram([
+    { bin: 4, requests: 1, errors: 0 },
+    { bin: 5, requests: 1, errors: 0 },
+  ]);
   // Bin 5 is [2.3784, 2.8284) ms; its bounds display as 2.38 and 2.83.
-  assert.equal(buckets.find((bucket) => bucket.bin === latencyBin(2.3790))?.fromMs, 2.38, 'not bin 4, whose rounded top is 2.38');
-  assert.equal(buckets.find((bucket) => bucket.bin === latencyBin(2.8283))?.fromMs, 2.38, 'still found although it rounds to the top bound');
+  assert.equal(
+    buckets.find((bucket) => bucket.bin === latencyBin(2.379))?.fromMs,
+    2.38,
+    'not bin 4, whose rounded top is 2.38',
+  );
+  assert.equal(
+    buckets.find((bucket) => bucket.bin === latencyBin(2.8283))?.fromMs,
+    2.38,
+    'still found although it rounds to the top bound',
+  );
   assert.equal(latencyBin(0.4), -1);
 });

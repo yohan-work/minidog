@@ -24,7 +24,9 @@ test('a first start records nothing; a later start after downtime records a stop
   const restarted = new GapTracker(gaps, log, { now: () => 1_000_000 + 90 * MINUTE });
   restarted.start();
   restarted.stop();
-  assert.deepEqual(gaps.list(0, Number.MAX_SAFE_INTEGER), [{ from: 1_000_000, to: 1_000_000 + 90 * MINUTE, reason: 'stopped' }]);
+  assert.deepEqual(gaps.list(0, Number.MAX_SAFE_INTEGER), [
+    { from: 1_000_000, to: 1_000_000 + 90 * MINUTE, reason: 'stopped' },
+  ]);
 });
 
 test('a late tick records an asleep gap and holds checks for a while', () => {

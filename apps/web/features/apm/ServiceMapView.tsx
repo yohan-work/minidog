@@ -39,7 +39,10 @@ const ROW_GAP = 132;
  * Nodes in columns by call depth: callers on the left, each dependency one
  * column right of its deepest caller, so edges never pass through a node.
  */
-function layout(nodes: readonly ServiceMapNode[], edges: ServiceMapResponse['edges']): Map<string, { x: number; y: number }> {
+function layout(
+  nodes: readonly ServiceMapNode[],
+  edges: ServiceMapResponse['edges'],
+): Map<string, { x: number; y: number }> {
   const incoming = new Set(edges.map((edge) => edge.target));
   const depth = new Map<string, number>();
   const queue = nodes.filter((node) => !incoming.has(node.id)).map((node) => node.id);
@@ -68,7 +71,9 @@ function layout(nodes: readonly ServiceMapNode[], edges: ServiceMapResponse['edg
   for (const [column, members] of columns) {
     members.sort((a, b) => a.name.localeCompare(b.name));
     const offset = ((tallest - members.length) * ROW_GAP) / 2;
-    members.forEach((node, index) => positions.set(node.id, { x: column * COLUMN_GAP, y: offset + index * ROW_GAP }));
+    members.forEach((node, index) => {
+      positions.set(node.id, { x: column * COLUMN_GAP, y: offset + index * ROW_GAP });
+    });
   }
   return positions;
 }
@@ -119,7 +124,10 @@ const COLUMNS = [
 export function ServiceMapView() {
   const range = useTimeRange();
   const router = useRouter();
-  const { data, error, isLoading, updatedAt, refetch } = useApi<ServiceMapResponse>(`/service-map?range=${range}`, 30_000);
+  const { data, error, isLoading, updatedAt, refetch } = useApi<ServiceMapResponse>(
+    `/service-map?range=${range}`,
+    30_000,
+  );
 
   const graph = useMemo(() => {
     if (!data) return null;
@@ -169,8 +177,16 @@ export function ServiceMapView() {
         />
       ) : (
         <>
-          <Section title="Dependencies" actions={<span className={styles.note}>Drag to rearrange · click a service to open it</span>} flush>
-            <div className={styles.canvas} role="img" aria-label={`Service map with ${data.nodes.length} nodes and ${data.edges.length} dependencies. The table below lists every dependency.`}>
+          <Section
+            title="Dependencies"
+            actions={<span className={styles.note}>Drag to rearrange · click a service to open it</span>}
+            flush
+          >
+            <div
+              className={styles.canvas}
+              role="img"
+              aria-label={`Service map with ${data.nodes.length} nodes and ${data.edges.length} dependencies. The table below lists every dependency.`}
+            >
               <ReactFlow
                 nodes={graph.nodes}
                 edges={graph.edges}
@@ -195,7 +211,9 @@ export function ServiceMapView() {
             {data.edges.length > 0 ? (
               <DependencyTable data={data} range={range} nameOf={nameOf} />
             ) : (
-              <p className={styles.empty}>No calls between services in this range. Services link up when trace context is propagated.</p>
+              <p className={styles.empty}>
+                No calls between services in this range. Services link up when trace context is propagated.
+              </p>
             )}
           </Section>
         </>
@@ -204,7 +222,15 @@ export function ServiceMapView() {
   );
 }
 
-function DependencyTable({ data, range, nameOf }: { data: ServiceMapResponse; range: TimeRange; nameOf: (id: string) => string }) {
+function DependencyTable({
+  data,
+  range,
+  nameOf,
+}: {
+  data: ServiceMapResponse;
+  range: TimeRange;
+  nameOf: (id: string) => string;
+}) {
   const kinds = new Map(data.nodes.map((node) => [node.id, node.kind]));
   return (
     <Table aria-label="Service dependencies">
@@ -217,7 +243,9 @@ function DependencyTable({ data, range, nameOf }: { data: ServiceMapResponse; ra
               <Td>
                 <RowLink href={serviceHref(edge.source, range)}>{nameOf(edge.source)}</RowLink>
               </Td>
-              <Td>{kinds.get(edge.target) === 'database' ? `${nameOf(edge.target)} (database)` : nameOf(edge.target)}</Td>
+              <Td>
+                {kinds.get(edge.target) === 'database' ? `${nameOf(edge.target)} (database)` : nameOf(edge.target)}
+              </Td>
               <Td align="end" mono>
                 {formatRate(edge.callsPerSecond, '/s')}
               </Td>

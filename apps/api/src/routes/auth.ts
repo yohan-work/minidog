@@ -17,7 +17,9 @@ const password = z
   .max(200, 'Use at most 200 characters.');
 const setupSchema = z.object({ password }).strict();
 const loginSchema = z.object({ password: z.string().min(1, 'Enter the password.').max(200) }).strict();
-const changeSchema = z.object({ current: z.string().min(1, 'Enter the current password.').max(200), next: password }).strict();
+const changeSchema = z
+  .object({ current: z.string().min(1, 'Enter the current password.').max(200), next: password })
+  .strict();
 
 /** Tokens are base64url, so the value is read as is (decoding a malformed cookie would throw). */
 export function readSessionToken(request: FastifyRequest): string | undefined {
@@ -28,9 +30,17 @@ export function readSessionToken(request: FastifyRequest): string | undefined {
   return undefined;
 }
 
-function setSessionCookie(request: FastifyRequest, reply: FastifyReply, token: string, maxAge = SESSION_MAX_AGE_SECONDS): void {
+function setSessionCookie(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  token: string,
+  maxAge = SESSION_MAX_AGE_SECONDS,
+): void {
   const secure = request.protocol === 'https' || request.headers['x-forwarded-proto'] === 'https';
-  reply.header('set-cookie', `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure ? '; Secure' : ''}`);
+  reply.header(
+    'set-cookie',
+    `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure ? '; Secure' : ''}`,
+  );
 }
 
 /**
@@ -44,21 +54,29 @@ export function authGuard(ctx: AppContext) {
     const path = request.routeOptions.url ?? '';
     if (!path.startsWith('/api/')) return;
     if (CHANGES_DATA.has(request.method) && request.headers[REQUEST_HEADER] !== '1') {
-      throw new HttpError(403, 'missing_request_header', `Requests that change data need the ${REQUEST_HEADER} header.`);
+      throw new HttpError(
+        403,
+        'missing_request_header',
+        `Requests that change data need the ${REQUEST_HEADER} header.`,
+      );
     }
     if (ctx.auth.disabled || PUBLIC_PATHS.has(path)) return;
-    if (!ctx.auth.isSignedIn(readSessionToken(request))) throw new HttpError(401, 'unauthenticated', 'Sign in to continue.');
+    if (!ctx.auth.isSignedIn(readSessionToken(request)))
+      throw new HttpError(401, 'unauthenticated', 'Sign in to continue.');
   };
 }
 
 export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void {
   const { auth } = ctx;
 
-  app.get('/api/auth/status', async (request): Promise<AuthStatusResponse> => ({
-    enabled: !auth.disabled,
-    setupRequired: auth.setupRequired(),
-    signedIn: auth.disabled || auth.isSignedIn(readSessionToken(request)),
-  }));
+  app.get(
+    '/api/auth/status',
+    async (request): Promise<AuthStatusResponse> => ({
+      enabled: !auth.disabled,
+      setupRequired: auth.setupRequired(),
+      signedIn: auth.disabled || auth.isSignedIn(readSessionToken(request)),
+    }),
+  );
 
   app.post('/api/auth/setup', async (request, reply) => {
     const body = setupSchema.parse(request.body ?? {});

@@ -135,7 +135,12 @@ export class MetricRepository extends ClickHouseRepository {
     return rates;
   }
 
-  async utilizationSeries(scope: Scope, host: string, fromMs: number, stepSeconds: number): Promise<RawUtilizationPoint[]> {
+  async utilizationSeries(
+    scope: Scope,
+    host: string,
+    fromMs: number,
+    stepSeconds: number,
+  ): Promise<RawUtilizationPoint[]> {
     const rows = await this.query<{ t: Num; cpu: NullableNum; memory: NullableNum; disk: NullableNum }>(
       `SELECT
          intDiv(toUnixTimestamp(timestamp), {step:UInt32}) * {step:UInt32} AS t,
@@ -230,7 +235,10 @@ export class MetricRepository extends ClickHouseRepository {
   }
 
   /** One aggregated value per bucket and group. */
-  async aggregate(scope: Scope, query: MetricAggregateQuery): Promise<{ t: number; group: string; value: number | null }[]> {
+  async aggregate(
+    scope: Scope,
+    query: MetricAggregateQuery,
+  ): Promise<{ t: number; group: string; value: number | null }[]> {
     const rows = await this.query<{ t: Num; grp: string; value: NullableNum }>(
       `SELECT
          intDiv(toUnixTimestamp(timestamp), {step:UInt32}) * {step:UInt32} AS t,

@@ -1,6 +1,13 @@
 import type { Scope } from '../repositories/project-repository';
 import { toDateTime64 } from '../repositories/synthetic-result-repository';
-import { assertExportRequest, parseNanos, resourceContext, toAttributes, type KeyValue, type ResourceContext } from './otlp-common';
+import {
+  assertExportRequest,
+  parseNanos,
+  resourceContext,
+  toAttributes,
+  type KeyValue,
+  type ResourceContext,
+} from './otlp-common';
 
 /** Row shape of `metrics` as written with JSONEachRow. */
 export interface MetricRow extends ResourceContext {

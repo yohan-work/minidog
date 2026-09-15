@@ -7,13 +7,17 @@ export class AuthRepository {
   constructor(private readonly db: DatabaseSync) {}
 
   passwordHash(): string | null {
-    const row = this.db.prepare('SELECT value FROM settings WHERE key = ?').get(PASSWORD_KEY) as unknown as { value: string } | undefined;
+    const row = this.db.prepare('SELECT value FROM settings WHERE key = ?').get(PASSWORD_KEY) as unknown as
+      | { value: string }
+      | undefined;
     return row?.value ?? null;
   }
 
   /** First run: stores the password only if there is none yet. False when one already exists. */
   insertPasswordHash(hash: string): boolean {
-    const result = this.db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO NOTHING').run(PASSWORD_KEY, hash);
+    const result = this.db
+      .prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO NOTHING')
+      .run(PASSWORD_KEY, hash);
     return Number(result.changes) > 0;
   }
 
@@ -24,12 +28,16 @@ export class AuthRepository {
   }
 
   createSession(tokenHash: string, expiresAt: string): void {
-    this.db.prepare('INSERT INTO sessions (token_hash, created_at, expires_at) VALUES (?, ?, ?)').run(tokenHash, new Date().toISOString(), expiresAt);
+    this.db
+      .prepare('INSERT INTO sessions (token_hash, created_at, expires_at) VALUES (?, ?, ?)')
+      .run(tokenHash, new Date().toISOString(), expiresAt);
   }
 
   /** Expiry (ISO) of a session, or undefined when there is none. */
   sessionExpiry(tokenHash: string): string | undefined {
-    const row = this.db.prepare('SELECT expires_at FROM sessions WHERE token_hash = ?').get(tokenHash) as unknown as { expires_at: string } | undefined;
+    const row = this.db.prepare('SELECT expires_at FROM sessions WHERE token_hash = ?').get(tokenHash) as unknown as
+      | { expires_at: string }
+      | undefined;
     return row?.expires_at;
   }
 

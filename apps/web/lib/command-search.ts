@@ -81,6 +81,11 @@ export function queryCommands(query: string): CommandItem[] {
   }
   return [
     { id: 'search:logs', kind: 'search', label: `Search logs for “${text}”`, href: `/logs${toQuery({ q: text })}` },
-    { id: 'search:traces', kind: 'search', label: `Search traces for “${text}”`, href: `/traces${toQuery({ q: text })}` },
+    {
+      id: 'search:traces',
+      kind: 'search',
+      label: `Search traces for “${text}”`,
+      href: `/traces${toQuery({ q: text })}`,
+    },
   ];
 }

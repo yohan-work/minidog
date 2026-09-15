@@ -42,6 +42,7 @@ export function LiveTail({ filters, range, emptyAction }: LiveTailProps) {
   const filterKey = toQuery({ ...filters });
 
   // New filters start a new tail, running even if the previous one was paused.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: filterKey is not read; a new key resets the tail.
   useEffect(() => {
     bufferRef.current = [];
     setLogs([]);
@@ -51,6 +52,7 @@ export function LiveTail({ filters, range, emptyAction }: LiveTailProps) {
     sinceRef.current = null;
   }, [filterKey]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: filterKey stands for filters; attempt re-runs the poll after a retry.
   useEffect(() => {
     if (paused) return;
     const controller = new AbortController();
@@ -60,7 +62,9 @@ export function LiveTail({ filters, range, emptyAction }: LiveTailProps) {
       if (document.visibilityState === 'visible') {
         const since = sinceRef.current ?? Date.now() - TAIL_START_LOOKBACK_MS;
         try {
-          const data = await apiFetch<LogTailResponse>(`/logs/tail${toQuery({ ...filters, since })}`, { signal: controller.signal });
+          const data = await apiFetch<LogTailResponse>(`/logs/tail${toQuery({ ...filters, since })}`, {
+            signal: controller.signal,
+          });
           const buffer = bufferRef.current;
           bufferRef.current = mergeTail(buffer, data.logs, data.since, data.truncated);
           setLogs(bufferRef.current);
@@ -81,8 +85,6 @@ export function LiveTail({ filters, range, emptyAction }: LiveTailProps) {
       controller.abort();
       window.clearTimeout(timer);
     };
-    // `filterKey` stands for `filters`.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paused, filterKey, attempt]);
 
   const state = paused ? 'paused' : error ? 'error' : 'live';
@@ -109,7 +111,9 @@ export function LiveTail({ filters, range, emptyAction }: LiveTailProps) {
         </>
       }
     >
-      {skipped && !paused && <p className={styles.notice}>More than 500 records arrived at once; some older ones are not shown.</p>}
+      {skipped && !paused && (
+        <p className={styles.notice}>More than 500 records arrived at once; some older ones are not shown.</p>
+      )}
       {logs.length > 0 ? (
         <LogList logs={logs} range={range} />
       ) : error && !loaded ? (

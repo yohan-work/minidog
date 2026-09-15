@@ -15,7 +15,15 @@ const COLUMNS = [
 ] as const satisfies readonly ColumnSpec[];
 
 /** Dense list of requests; a row opens the trace with the listed span selected. */
-export function TraceTable({ traces, range, label }: { traces: readonly TraceSummary[]; range: TimeRange; label: string }) {
+export function TraceTable({
+  traces,
+  range,
+  label,
+}: {
+  traces: readonly TraceSummary[];
+  range: TimeRange;
+  label: string;
+}) {
   return (
     <Table aria-label={label}>
       <TableHead columns={COLUMNS} />

@@ -15,13 +15,23 @@ before(async () => {
 });
 after(() => server.close());
 
-const check = (url: string) => performHttpCheck({ url, method: 'GET', timeoutMs: 3000, expectedStatus: parseExpectedStatus('200-399')! });
+const check = (url: string) =>
+  performHttpCheck({ url, method: 'GET', timeoutMs: 3000, expectedStatus: parseExpectedStatus('200-399')! });
 
 test('metadata, link-local and reserved addresses are always blocked', () => {
-  for (const address of ['169.254.169.254', '0.0.0.0', '100.100.100.200', '255.255.255.255', 'fe80::1', '[fd00:ec2::254]', '::ffff:169.254.169.254']) {
+  for (const address of [
+    '169.254.169.254',
+    '0.0.0.0',
+    '100.100.100.200',
+    '255.255.255.255',
+    'fe80::1',
+    '[fd00:ec2::254]',
+    '::ffff:169.254.169.254',
+  ]) {
     assert.notEqual(blockedReason(address, false), null, address);
   }
-  for (const address of ['8.8.8.8', '2606:4700::1111', 'example.com']) assert.equal(blockedReason(address, true), null, address);
+  for (const address of ['8.8.8.8', '2606:4700::1111', 'example.com'])
+    assert.equal(blockedReason(address, true), null, address);
 });
 
 test('private and loopback networks are blocked only when asked', () => {
@@ -39,7 +49,7 @@ test('a synthetic check never reaches the cloud metadata service', async () => {
 });
 
 test('a webhook target that trickles bytes is cut off at the deadline', async () => {
-  const trickle = createServer((req, res) => {
+  const trickle = createServer((req) => {
     req.socket.write('HTTP/1.1 200 OK\r\nX-Slow: ');
     const drip = setInterval(() => req.socket.write('a'), 50);
     req.socket.on('close', () => clearInterval(drip));
@@ -47,7 +57,11 @@ test('a webhook target that trickles bytes is cut off at the deadline', async ()
   await new Promise<void>((resolve) => trickle.listen(0, '127.0.0.1', resolve));
   try {
     const started = Date.now();
-    const status = await sendWebhook(`http://127.0.0.1:${(trickle.address() as AddressInfo).port}/hook`, testWebhookPayload(), 300);
+    const status = await sendWebhook(
+      `http://127.0.0.1:${(trickle.address() as AddressInfo).port}/hook`,
+      testWebhookPayload(),
+      300,
+    );
     assert.equal(status, 'failed: timeout');
     assert.ok(Date.now() - started < 2000);
   } finally {
@@ -57,7 +71,10 @@ test('a webhook target that trickles bytes is cut off at the deadline', async ()
 });
 
 test('webhooks are refused for blocked addresses', async () => {
-  assert.match(await sendWebhook('http://169.254.169.254/hook', testWebhookPayload()), /^failed: Blocked 169\.254\.169\.254/);
+  assert.match(
+    await sendWebhook('http://169.254.169.254/hook', testWebhookPayload()),
+    /^failed: Blocked 169\.254\.169\.254/,
+  );
 });
 
 test('with BLOCK_PRIVATE_TARGETS, local names and addresses are refused after DNS too', async () => {
@@ -69,7 +86,10 @@ test('with BLOCK_PRIVATE_TARGETS, local names and addresses are refused after DN
     const named = await check(`http://localhost:${port}/`);
     assert.equal(named.status, 'down');
     assert.match(named.error, /^Blocked localhost \((127\.0\.0\.1|::1)\)/);
-    assert.match(await sendWebhook(`http://localhost:${port}/hook`, testWebhookPayload()), /^failed: Blocked localhost/);
+    assert.match(
+      await sendWebhook(`http://localhost:${port}/hook`, testWebhookPayload()),
+      /^failed: Blocked localhost/,
+    );
   } finally {
     networkPolicy.blockPrivate = false;
   }

@@ -37,13 +37,20 @@ const fields = {
     .refine((value) => parseExpectedStatus(value) !== null, 'Use status codes or ranges, e.g. 200-299,301.')
     .transform((value) => formatExpectedStatus(parseExpectedStatus(value)!)),
   followRedirects: z.boolean(),
-  bodyContains: z.string().trim().max(MONITOR_BODY_CONTAINS_MAX, `Use at most ${MONITOR_BODY_CONTAINS_MAX} characters.`),
+  bodyContains: z
+    .string()
+    .trim()
+    .max(MONITOR_BODY_CONTAINS_MAX, `Use at most ${MONITOR_BODY_CONTAINS_MAX} characters.`),
 };
 
 /** HEAD responses have no body to search. */
-const bodyCheckAllowed = (value: { method: string; bodyContains?: string }) => !(value.method === 'HEAD' && value.bodyContains);
+const bodyCheckAllowed = (value: { method: string; bodyContains?: string }) =>
+  !(value.method === 'HEAD' && value.bodyContains);
 // Issues are built per use: zod's refine() deletes `message` from the object it is given.
-const bodyCheckIssue = () => ({ message: 'A body check needs GET; HEAD responses have no body.', path: ['bodyContains'] });
+const bodyCheckIssue = () => ({
+  message: 'A body check needs GET; HEAD responses have no body.',
+  path: ['bodyContains'],
+});
 
 const timeoutWithinInterval = (value: { timeoutMs: number; intervalSeconds: number }) =>
   value.timeoutMs < value.intervalSeconds * 1000;

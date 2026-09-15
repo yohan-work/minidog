@@ -1,0 +1,46 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.13/schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    // Biome does not parse SCSS; stylesheets keep their current hand formatting.
+    "includes": ["**", "!**/dist", "!**/.next", "!**/*.scss"]
+  },
+  "formatter": {
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 120
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single"
+    }
+  },
+  "assist": {
+    "actions": {
+      "source": {
+        // Reordering imports can move side-effect imports such as stylesheets; keep the written order.
+        "organizeImports": "off"
+      }
+    }
+  },
+  "linter": {
+    "rules": {
+      "preset": "recommended",
+      "style": {
+        // Used after a check the type system cannot see, e.g. a Map lookup right after `has`.
+        "noNonNullAssertion": "off"
+      },
+      "a11y": {
+        "noLabelWithoutControl": {
+          "level": "error",
+          // components/ui wrappers that render a native <select> and <input>.
+          "options": { "inputComponents": ["Select", "Input"] }
+        }
+      }
+    }
+  }
+}

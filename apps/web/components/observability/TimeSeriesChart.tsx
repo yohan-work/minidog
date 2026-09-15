@@ -48,7 +48,12 @@ const TWO_DAYS = 2 * 24 * 60 * 60;
 const HALF_HOUR = 30 * 60;
 
 const tickTime = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
-const tickSeconds = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+const tickSeconds = new Intl.DateTimeFormat('en-GB', {
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hour12: false,
+});
 const tickDate = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
 
 /**
@@ -110,6 +115,7 @@ export function TimeSeriesChart({
   const dataRef = useRef(data);
   const configKey = series.map((item) => `${item.label}|${item.color}|${item.dashed ? 1 : 0}`).join(',');
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: rebuilds the plot only when its shape changes; configKey stands for series and themeVersion for the colours read from CSS. formatAxis must be stable (see its prop).
   useEffect(() => {
     const root = rootRef.current;
     const host = plotHostRef.current;
@@ -213,7 +219,11 @@ export function TimeSeriesChart({
             const { left, width } = plot.select;
             // A click is not a selection.
             if (width < 4) return;
-            const [fromSeconds, toSeconds] = snapToBuckets(plot.posToVal(left, 'x'), plot.posToVal(left + width, 'x'), plot.data[0]);
+            const [fromSeconds, toSeconds] = snapToBuckets(
+              plot.posToVal(left, 'x'),
+              plot.posToVal(left + width, 'x'),
+              plot.data[0],
+            );
             plot.setSelect({ left: 0, top: 0, width: 0, height: 0 }, false);
             selectRef.current?.(fromSeconds * 1000, toSeconds * 1000);
           },
@@ -244,8 +254,6 @@ export function TimeSeriesChart({
       plot.destroy();
       plotRef.current = null;
     };
-    // formatAxis is documented as stable; configKey captures series identity.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [configKey, height, yMax, selectable, themeVersion]);
 
   useEffect(() => {
@@ -255,10 +263,18 @@ export function TimeSeriesChart({
 
   const hoveredTime = hover ? timestamps[hover.index] : undefined;
   const chartLabel =
-    markers && markers.length > 0 ? `${ariaLabel} Deployments: ${markers.map((marker) => marker.label).join(', ')}.` : ariaLabel;
+    markers && markers.length > 0
+      ? `${ariaLabel} Deployments: ${markers.map((marker) => marker.label).join(', ')}.`
+      : ariaLabel;
 
   return (
-    <div ref={rootRef} className={styles.chart} role="img" aria-label={chartLabel} data-selectable={selectable || undefined}>
+    <div
+      ref={rootRef}
+      className={styles.chart}
+      role="img"
+      aria-label={chartLabel}
+      data-selectable={selectable || undefined}
+    >
       <div ref={plotHostRef} className={styles.plot} style={{ height }} />
       {hover && hoveredTime !== undefined && (
         <div className={styles.tooltip} style={{ left: hover.left }} data-flip={hover.flip || undefined} aria-hidden>
@@ -267,7 +283,11 @@ export function TimeSeriesChart({
             const value = item.values[hover.index];
             return (
               <p key={item.label} className={styles.tooltipRow}>
-                <span className={styles.swatch} style={{ background: `var(${item.color})` }} data-dashed={item.dashed || undefined} />
+                <span
+                  className={styles.swatch}
+                  style={{ background: `var(${item.color})` }}
+                  data-dashed={item.dashed || undefined}
+                />
                 <span className={styles.tooltipLabel}>{item.label}</span>
                 <span className={styles.tooltipValue}>{value == null ? 'No data' : formatValue(value)}</span>
               </p>
@@ -284,7 +304,11 @@ export function ChartLegend({ series }: { series: readonly Pick<ChartSeries, 'la
     <ul className={styles.legend}>
       {series.map((item) => (
         <li key={item.label} className={styles.legendItem}>
-          <span className={styles.swatch} style={{ background: `var(${item.color})` }} data-dashed={item.dashed || undefined} />
+          <span
+            className={styles.swatch}
+            style={{ background: `var(${item.color})` }}
+            data-dashed={item.dashed || undefined}
+          />
           {item.label}
         </li>
       ))}

@@ -15,7 +15,13 @@ export interface TimeWindowSelection {
   toMs: number;
 }
 
-const dayTime = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+const dayTime = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+});
 const time = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
 
 /** `Sep 15, 09:01 – 09:14`, or with both dates when the window crosses midnight. */
@@ -45,7 +51,12 @@ export interface DrilldownLink {
  * Where to look next for a window: its slowest and failed requests, error logs,
  * exceptions and database queries. The range is kept so clearing the window returns to it.
  */
-export function drilldownLinks(selection: TimeWindowSelection, range: TimeRange, service?: string, endpoint?: string): DrilldownLink[] {
+export function drilldownLinks(
+  selection: TimeWindowSelection,
+  range: TimeRange,
+  service?: string,
+  endpoint?: string,
+): DrilldownLink[] {
   const scope = { ...(service ? { service } : {}), ...windowParams(selection) };
   // Traces can be narrowed to the endpoint; logs, exceptions and queries are per service.
   const traceScope = { ...scope, ...(endpoint ? { endpoint } : {}) };

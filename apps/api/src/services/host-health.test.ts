@@ -19,7 +19,10 @@ test('healthy while every resource is under the thresholds', () => {
 });
 
 test('unknown when the host has not reported within the current window', () => {
-  assert.deepEqual(deriveHostHealth(input({ lastSeenAt: now - 6 * 60_000 })), { health: 'unknown', reason: 'Not reporting' });
+  assert.deepEqual(deriveHostHealth(input({ lastSeenAt: now - 6 * 60_000 })), {
+    health: 'unknown',
+    reason: 'Not reporting',
+  });
 });
 
 test('degraded at 85%, critical at 95%', () => {

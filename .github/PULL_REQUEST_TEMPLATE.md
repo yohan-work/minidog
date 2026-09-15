@@ -4,7 +4,7 @@
 
 ## How it was verified
 
-- [ ] `pnpm typecheck`, `pnpm test` and `pnpm build` pass
+- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test` and `pnpm build` pass
 - [ ] `pnpm check:deploy` passes (if `infra/` or `deploy/` changed)
 - [ ] Tests cover the new behaviour
 - [ ] Screenshots attached (if the UI changed)

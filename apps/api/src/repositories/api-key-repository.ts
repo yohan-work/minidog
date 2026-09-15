@@ -47,7 +47,15 @@ export class ApiKeyRepository {
         `INSERT INTO api_keys (id, project_id, environment, name, prefix, hash, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
       )
-      .run(id, scope.projectId, scope.environment, name, secret.slice(0, PREFIX_LENGTH), hashKey(secret), new Date().toISOString());
+      .run(
+        id,
+        scope.projectId,
+        scope.environment,
+        name,
+        secret.slice(0, PREFIX_LENGTH),
+        hashKey(secret),
+        new Date().toISOString(),
+      );
     return { apiKey: this.get(id)!, secret };
   }
 

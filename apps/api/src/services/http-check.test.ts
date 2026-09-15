@@ -110,7 +110,9 @@ test('without following, a redirect is judged as it is', async () => {
 });
 
 test('following redirects judges the final response', async () => {
-  const relative = await performHttpCheck(target('/redirect', { followRedirects: true, expectedStatus: parseExpectedStatus('200')! }));
+  const relative = await performHttpCheck(
+    target('/redirect', { followRedirects: true, expectedStatus: parseExpectedStatus('200')! }),
+  );
   assert.equal(relative.status, 'up');
   assert.equal(relative.statusCode, 200);
   assert.equal(relative.redirects, 1);

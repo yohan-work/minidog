@@ -55,7 +55,10 @@ export function serve(service: string, port: number, routes: readonly Route[], c
         }
         span.setAttribute('http.response.status_code', response.status);
         if (response.status >= 500) {
-          span.setStatus({ code: SpanStatusCode.ERROR, message: String((response.body as { error?: string } | null)?.error ?? '') });
+          span.setStatus({
+            code: SpanStatusCode.ERROR,
+            message: String((response.body as { error?: string } | null)?.error ?? ''),
+          });
         }
         res.writeHead(response.status, { 'content-type': 'application/json' }).end(JSON.stringify(response.body));
         span.end();

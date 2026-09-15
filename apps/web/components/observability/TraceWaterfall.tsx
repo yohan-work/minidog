@@ -21,7 +21,10 @@ interface TraceWaterfallProps {
  * each also labelled in text.
  */
 export function TraceWaterfall({ model, selectedSpanId, onSelect }: TraceWaterfallProps) {
-  const ticks = useMemo(() => TICKS.map((tick) => ({ tick, label: formatLatency(model.durationMs * tick) })), [model.durationMs]);
+  const ticks = useMemo(
+    () => TICKS.map((tick) => ({ tick, label: formatLatency(model.durationMs * tick) })),
+    [model.durationMs],
+  );
 
   return (
     <div className={styles.waterfall}>
@@ -64,7 +67,11 @@ export function TraceWaterfall({ model, selectedSpanId, onSelect }: TraceWaterfa
                 </span>
                 <span className={styles.duration}>{formatLatency(span.durationMs)}</span>
                 <span className={styles.track}>
-                  <span className={styles.bar} data-state={state} style={{ left: `${row.offsetPct}%`, width: `${row.widthPct}%` }} />
+                  <span
+                    className={styles.bar}
+                    data-state={state}
+                    style={{ left: `${row.offsetPct}%`, width: `${row.widthPct}%` }}
+                  />
                 </span>
               </button>
             </li>

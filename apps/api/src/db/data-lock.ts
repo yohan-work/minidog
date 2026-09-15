@@ -63,7 +63,8 @@ export function acquireDataLock(sqlitePath: string, now: () => number = Date.now
   return {
     release: () => {
       clearInterval(heartbeat);
-      if (readOwner(lockPath)?.pid === owner.pid && readOwner(lockPath)?.host === owner.host) rmSync(lockPath, { force: true });
+      if (readOwner(lockPath)?.pid === owner.pid && readOwner(lockPath)?.host === owner.host)
+        rmSync(lockPath, { force: true });
     },
   };
 }

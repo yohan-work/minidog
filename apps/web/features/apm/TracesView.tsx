@@ -62,8 +62,13 @@ export function TracesView() {
       : []),
   ];
 
-  const clear = () => set({ service: null, endpoint: null, status: null, minDurationMs: null, q: null, from: null, to: null });
-  const count = data && (data.truncated ? `${sort === 'slowest' ? 'Slowest' : 'Latest'} ${LIMIT}` : `${data.traces.length} trace${data.traces.length === 1 ? '' : 's'}`);
+  const clear = () =>
+    set({ service: null, endpoint: null, status: null, minDurationMs: null, q: null, from: null, to: null });
+  const count =
+    data &&
+    (data.truncated
+      ? `${sort === 'slowest' ? 'Slowest' : 'Latest'} ${LIMIT}`
+      : `${data.traces.length} trace${data.traces.length === 1 ? '' : 's'}`);
 
   return (
     <>
@@ -75,7 +80,12 @@ export function TracesView() {
           options={serviceOptions}
           onChange={(service) => set({ service, endpoint: null })}
         />
-        <FilterSelect label="Status" value={filters.status} options={STATUS_OPTIONS} onChange={(status) => set({ status })} />
+        <FilterSelect
+          label="Status"
+          value={filters.status}
+          options={STATUS_OPTIONS}
+          onChange={(status) => set({ status })}
+        />
         <FilterSelect
           label="Duration"
           value={filters.minDurationMs}
@@ -83,9 +93,18 @@ export function TracesView() {
           onChange={(minDurationMs) => set({ minDurationMs })}
         />
         <FilterSelect label="Sort" value={sort} options={SORT_OPTIONS} onChange={(next) => set({ sort: next })} />
-        {window && <FilterChip label="Window" value={formatWindow(window)} onClear={() => set({ from: null, to: null })} />}
-        {filters.endpoint && <FilterChip label="Endpoint" value={filters.endpoint} onClear={() => set({ endpoint: null })} />}
-        <SearchField label="Search traces" value={filters.q} placeholder="Trace id or name…" onChange={(q) => set({ q })} />
+        {window && (
+          <FilterChip label="Window" value={formatWindow(window)} onClear={() => set({ from: null, to: null })} />
+        )}
+        {filters.endpoint && (
+          <FilterChip label="Endpoint" value={filters.endpoint} onClear={() => set({ endpoint: null })} />
+        )}
+        <SearchField
+          label="Search traces"
+          value={filters.q}
+          placeholder="Trace id or name…"
+          onChange={(q) => set({ q })}
+        />
       </FilterBar>
       <StaleNotice error={data ? error : undefined} updatedAt={updatedAt} onRetry={refetch} />
 
@@ -96,7 +115,11 @@ export function TracesView() {
             {data && <span className={styles.count}>{data.traces.length}</span>}
           </>
         }
-        actions={<span className={styles.note}>{filters.service ? `Server spans of ${filters.service}` : 'One row per trace'}</span>}
+        actions={
+          <span className={styles.note}>
+            {filters.service ? `Server spans of ${filters.service}` : 'One row per trace'}
+          </span>
+        }
         flush
       >
         {isLoading ? (
@@ -108,7 +131,11 @@ export function TracesView() {
         ) : hasFilters ? (
           <EmptyState
             title="No traces match these filters"
-            description={window ? 'Nothing matched in the selected window. Widen it or remove a filter.' : 'Widen the time range or remove a filter.'}
+            description={
+              window
+                ? 'Nothing matched in the selected window. Widen it or remove a filter.'
+                : 'Widen the time range or remove a filter.'
+            }
             action={
               <Button size="sm" onClick={clear}>
                 Clear filters

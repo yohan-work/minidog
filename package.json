@@ -11,6 +11,8 @@
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
+    "lint": "biome check .",
+    "format": "biome format --write .",
     "demo": "pnpm --filter @minidog/demo-shop start",
     "auth:reset": "pnpm --filter @minidog/api exec tsx --disable-warning=ExperimentalWarning src/cli/reset-password.ts",
     "check:deploy": "node scripts/check-deploy-compose.mjs",
@@ -20,5 +22,8 @@
     "local:up": "mkdir -p apps/api/data && MINIDOG_INGEST_ENDPOINT=http://api:4000 docker compose -f infra/docker/compose.yaml --profile app up -d --build --wait",
     "local:down": "docker compose -f infra/docker/compose.yaml --profile app rm --stop --force api web && docker compose -f infra/docker/compose.yaml up -d --wait otel-collector",
     "local:logs": "docker compose -f infra/docker/compose.yaml --profile app logs -f api web"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.13"
   }
 }

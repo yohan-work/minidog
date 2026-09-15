@@ -56,7 +56,11 @@ export function Td({ align, hideBelow, mono, muted, className, ...rest }: TdProp
   );
 }
 
-export function Tr({ interactive, className, ...rest }: HTMLAttributes<HTMLTableRowElement> & { interactive?: boolean }) {
+export function Tr({
+  interactive,
+  className,
+  ...rest
+}: HTMLAttributes<HTMLTableRowElement> & { interactive?: boolean }) {
   return <tr className={cx(styles.tr, interactive && styles.interactive, className)} {...rest} />;
 }
 
@@ -94,6 +98,7 @@ export function TableSkeleton({
       <TableHead columns={columns} />
       <tbody>
         {Array.from({ length: rows }, (_, row) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: identical placeholder rows that never reorder.
           <Tr key={row}>
             {columns.map((column) => (
               <Td key={column.label} align={column.align} hideBelow={column.hideBelow}>

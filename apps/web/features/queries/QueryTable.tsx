@@ -32,11 +32,17 @@ export function QueryTable({
           <Tr key={`${query.service}\n${query.dbSystem}\n${query.statement}`} interactive>
             <Td>
               <span className={styles.query}>
-                <RowLink href={traceHref(query.slowestTraceId, range, query.slowestSpanId)} className={styles.statement} title={query.statement}>
+                <RowLink
+                  href={traceHref(query.slowestTraceId, range, query.slowestSpanId)}
+                  className={styles.statement}
+                  title={query.statement}
+                >
                   {query.statement}
                 </RowLink>
                 <span className={styles.meta}>
-                  {[showService ? query.service : null, query.dbSystem, query.collection || null].filter(Boolean).join(' · ')}
+                  {[showService ? query.service : null, query.dbSystem, query.collection || null]
+                    .filter(Boolean)
+                    .join(' · ')}
                 </span>
               </span>
             </Td>

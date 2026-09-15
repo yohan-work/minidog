@@ -82,7 +82,11 @@ export function toLevel(number: number, text: string): LogLevel {
 }
 
 /** Normalizes an OTLP ExportLogsServiceRequest (JSON encoding). */
-export function parseOtlpLogs(body: unknown, scope: Scope, now: number = Date.now()): { rows: LogRow[]; rejected: number } {
+export function parseOtlpLogs(
+  body: unknown,
+  scope: Scope,
+  now: number = Date.now(),
+): { rows: LogRow[]; rejected: number } {
   assertExportRequest(body, 'resourceLogs', 'ExportLogsServiceRequest');
 
   const rows: LogRow[] = [];

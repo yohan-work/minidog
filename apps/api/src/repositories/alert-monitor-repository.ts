@@ -67,7 +67,13 @@ export interface NewAlertMonitor {
 export type AlertMonitorPatch = Partial<
   Pick<
     NewAlertMonitor,
-    'name' | 'warningThreshold' | 'criticalThreshold' | 'windowMinutes' | 'webhookUrl' | 'alertAfterMinutes' | 'recoverAfterMinutes'
+    | 'name'
+    | 'warningThreshold'
+    | 'criticalThreshold'
+    | 'windowMinutes'
+    | 'webhookUrl'
+    | 'alertAfterMinutes'
+    | 'recoverAfterMinutes'
   > & { enabled: boolean; mutedUntil: string | null }
 >;
 
@@ -129,7 +135,11 @@ function toEvent(row: EventRow): AlertEvent {
 }
 
 /** Public shape without the scope columns. */
-export function publicMonitor({ projectId: _project, environment: _environment, ...monitor }: ScopedAlertMonitor): AlertMonitor {
+export function publicMonitor({
+  projectId: _project,
+  environment: _environment,
+  ...monitor
+}: ScopedAlertMonitor): AlertMonitor {
   return monitor;
 }
 
@@ -153,7 +163,9 @@ export class AlertMonitorRepository {
 
   list(scope: Scope): ScopedAlertMonitor[] {
     const rows = this.db
-      .prepare(`${MONITOR_SELECT} WHERE m.project_id = ? AND m.environment = ? ORDER BY m.name COLLATE NOCASE, m.created_at`)
+      .prepare(
+        `${MONITOR_SELECT} WHERE m.project_id = ? AND m.environment = ? ORDER BY m.name COLLATE NOCASE, m.created_at`,
+      )
       .all(scope.projectId, scope.environment) as unknown as MonitorRow[];
     return rows.map(toMonitor);
   }
@@ -171,7 +183,9 @@ export class AlertMonitorRepository {
 
   getInScope(scope: Scope, id: string): ScopedAlertMonitor | undefined {
     const monitor = this.get(id);
-    return monitor && monitor.projectId === scope.projectId && monitor.environment === scope.environment ? monitor : undefined;
+    return monitor && monitor.projectId === scope.projectId && monitor.environment === scope.environment
+      ? monitor
+      : undefined;
   }
 
   create(scope: Scope, input: NewAlertMonitor): ScopedAlertMonitor {
@@ -208,7 +222,10 @@ export class AlertMonitorRepository {
   update(id: string, patch: AlertMonitorPatch): ScopedAlertMonitor | undefined {
     const assignments: string[] = [];
     const values: (string | number | null)[] = [];
-    for (const [key, value] of Object.entries(patch) as [keyof AlertMonitorPatch, AlertMonitorPatch[keyof AlertMonitorPatch]][]) {
+    for (const [key, value] of Object.entries(patch) as [
+      keyof AlertMonitorPatch,
+      AlertMonitorPatch[keyof AlertMonitorPatch],
+    ][]) {
       if (value === undefined) continue;
       assignments.push(`${COLUMNS[key]} = ?`);
       values.push(typeof value === 'boolean' ? Number(value) : value);
@@ -266,7 +283,10 @@ export class AlertMonitorRepository {
       if (stored) {
         const next = applyTransitionDelay({
           stored: stored.state,
-          pending: stored.pending_state && stored.pending_since ? { state: stored.pending_state, since: stored.pending_since } : null,
+          pending:
+            stored.pending_state && stored.pending_since
+              ? { state: stored.pending_state, since: stored.pending_since }
+              : null,
           derived: result.state,
           at,
           alertAfterMinutes: stored.alert_after_minutes,
@@ -302,7 +322,17 @@ export class AlertMonitorRepository {
               `INSERT INTO alert_events (id, monitor_id, project_id, environment, from_state, to_state, value, message, created_at)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             )
-            .run(eventId, monitor.id, monitor.projectId, monitor.environment, stored.state, next.state, result.value, result.message, now);
+            .run(
+              eventId,
+              monitor.id,
+              monitor.projectId,
+              monitor.environment,
+              stored.state,
+              next.state,
+              result.value,
+              result.message,
+              now,
+            );
         }
       }
       this.db.exec('COMMIT');
@@ -361,7 +391,9 @@ export class AlertMonitorRepository {
 
   unreadCount(scope: Scope): number {
     const row = this.db
-      .prepare('SELECT count(*) AS count FROM alert_events WHERE project_id = ? AND environment = ? AND acknowledged = 0')
+      .prepare(
+        'SELECT count(*) AS count FROM alert_events WHERE project_id = ? AND environment = ? AND acknowledged = 0',
+      )
       .get(scope.projectId, scope.environment) as { count: number };
     return row.count;
   }

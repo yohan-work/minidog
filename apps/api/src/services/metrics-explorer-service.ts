@@ -50,7 +50,11 @@ export class MetricsExplorerService {
 
     // Largest groups first, by total magnitude over the range.
     const ranked = [...groups]
-      .map(([key, values]) => ({ key, values, weight: values.reduce<number>((sum, value) => sum + Math.abs(value ?? 0), 0) }))
+      .map(([key, values]) => ({
+        key,
+        values,
+        weight: values.reduce<number>((sum, value) => sum + Math.abs(value ?? 0), 0),
+      }))
       .sort((a, b) => b.weight - a.weight);
 
     return {

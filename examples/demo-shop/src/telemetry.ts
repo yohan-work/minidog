@@ -53,7 +53,11 @@ const SEVERITY = {
 } as const;
 
 /** Emitted inside the active span, so the record carries its trace and span id. */
-export function log(level: keyof typeof SEVERITY, message: string, attributes: Record<string, string | number> = {}): void {
+export function log(
+  level: keyof typeof SEVERITY,
+  message: string,
+  attributes: Record<string, string | number> = {},
+): void {
   logs.getLogger('demo-shop').emit({
     severityNumber: SEVERITY[level],
     severityText: level.toUpperCase(),

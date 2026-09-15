@@ -3,7 +3,13 @@ import { test } from 'node:test';
 import type { SpanDetail } from '@minidog/types';
 import { buildWaterfall, selfTime } from './waterfall';
 
-const span = (spanId: string, parentSpanId: string, startMs: number, durationMs: number, name = spanId): SpanDetail => ({
+const span = (
+  spanId: string,
+  parentSpanId: string,
+  startMs: number,
+  durationMs: number,
+  name = spanId,
+): SpanDetail => ({
   spanId,
   parentSpanId,
   service: 'api',

@@ -58,7 +58,11 @@ export function DashboardView({ id }: { id: string }) {
     return (
       <>
         <PageHeader title="Dashboard" back={back} />
-        {error ? <ErrorState title="Unable to load this dashboard." description={error.message} onRetry={refetch} /> : <Skeleton height="var(--chart-height)" />}
+        {error ? (
+          <ErrorState title="Unable to load this dashboard." description={error.message} onRetry={refetch} />
+        ) : (
+          <Skeleton height="var(--chart-height)" />
+        )}
       </>
     );
   }
@@ -81,15 +85,23 @@ export function DashboardView({ id }: { id: string }) {
     change({ widgets });
   };
   const resize = (index: number) =>
-    change({ widgets: current.widgets.map((widget, at) => (at === index ? { ...widget, size: widget.size === 'full' ? 'half' : 'full' } : widget)) });
+    change({
+      widgets: current.widgets.map((widget, at) =>
+        at === index ? { ...widget, size: widget.size === 'full' ? 'half' : 'full' } : widget,
+      ),
+    });
   const remove = (index: number) => change({ widgets: current.widgets.filter((_, at) => at !== index) });
-  const add = (widget: NewDashboardWidget) => change({ widgets: [...current.widgets, { ...widget, id: newWidgetId() } as DashboardWidget] });
+  const add = (widget: NewDashboardWidget) =>
+    change({ widgets: [...current.widgets, { ...widget, id: newWidgetId() } as DashboardWidget] });
 
   const save = async () => {
     setSaving(true);
     setFormError(null);
     try {
-      const response = await apiFetch<DashboardResponse>(`/dashboards/${id}`, { method: 'PUT', body: JSON.stringify(current) });
+      const response = await apiFetch<DashboardResponse>(`/dashboards/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(current),
+      });
       setSaved(response.dashboard);
       refetch();
       stopEditing();
@@ -102,7 +114,10 @@ export function DashboardView({ id }: { id: string }) {
   };
 
   const destroy = async () => {
-    if (!window.confirm(`Delete the dashboard "${dashboard.name}"? Its widgets are removed; the data they show is not.`)) return;
+    if (
+      !window.confirm(`Delete the dashboard "${dashboard.name}"? Its widgets are removed; the data they show is not.`)
+    )
+      return;
     try {
       await apiFetch(`/dashboards/${id}`, { method: 'DELETE' });
       router.push(back.href);
@@ -140,9 +155,16 @@ export function DashboardView({ id }: { id: string }) {
         <Section title="Edit dashboard">
           <div className={styles.form}>
             <Field id="dashboard-name" label="Name">
-              <Input id="dashboard-name" value={current.name} onChange={(event) => change({ name: event.target.value })} maxLength={100} />
+              <Input
+                id="dashboard-name"
+                value={current.name}
+                onChange={(event) => change({ name: event.target.value })}
+                maxLength={100}
+              />
             </Field>
-            <p className={`${styles.full} ${styles.note}`}>Move, resize or remove widgets with the buttons on each one, then Save.</p>
+            <p className={`${styles.full} ${styles.note}`}>
+              Move, resize or remove widgets with the buttons on each one, then Save.
+            </p>
             {formError && <p className={`${styles.full} ${styles.error}`}>{formError}</p>}
           </div>
           <AddWidgetForm range={range} full={current.widgets.length >= DASHBOARD_MAX_WIDGETS} onAdd={add} />
@@ -159,10 +181,22 @@ export function DashboardView({ id }: { id: string }) {
               controls={
                 editing && (
                   <>
-                    <Button size="sm" variant="ghost" aria-label="Move earlier" disabled={index === 0} onClick={() => move(index, -1)}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      aria-label="Move earlier"
+                      disabled={index === 0}
+                      onClick={() => move(index, -1)}
+                    >
                       ↑
                     </Button>
-                    <Button size="sm" variant="ghost" aria-label="Move later" disabled={index === current.widgets.length - 1} onClick={() => move(index, 1)}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      aria-label="Move later"
+                      disabled={index === current.widgets.length - 1}
+                      onClick={() => move(index, 1)}
+                    >
                       ↓
                     </Button>
                     <Button size="sm" variant="ghost" onClick={() => resize(index)}>
@@ -200,7 +234,15 @@ const KIND_LABELS: Record<DashboardWidgetKind, string> = {
   metric: 'Metric',
 };
 
-function AddWidgetForm({ range, full, onAdd }: { range: TimeRange; full: boolean; onAdd: (widget: NewDashboardWidget) => void }) {
+function AddWidgetForm({
+  range,
+  full,
+  onAdd,
+}: {
+  range: TimeRange;
+  full: boolean;
+  onAdd: (widget: NewDashboardWidget) => void;
+}) {
   const [kind, setKind] = useState<DashboardWidgetKind>('synthetic');
   const [monitorId, setMonitorId] = useState('');
   const [service, setService] = useState('');
@@ -218,14 +260,28 @@ function AddWidgetForm({ range, full, onAdd }: { range: TimeRange; full: boolean
   const widget: NewDashboardWidget | null =
     kind === 'synthetic'
       ? monitorId
-        ? { kind, monitorId, size: 'half', title: monitors.data?.monitors.find((item) => item.id === monitorId)?.name ?? '' }
+        ? {
+            kind,
+            monitorId,
+            size: 'half',
+            title: monitors.data?.monitors.find((item) => item.id === monitorId)?.name ?? '',
+          }
         : null
       : kind === 'service'
         ? service
           ? { kind, service, chart, size: 'half', title: '' }
           : null
         : metric
-          ? { kind, metric, aggregation: aggregation || defaultAggregation(entry), service: metricService, host, groupBy: '', size: 'half', title: '' }
+          ? {
+              kind,
+              metric,
+              aggregation: aggregation || defaultAggregation(entry),
+              service: metricService,
+              host,
+              groupBy: '',
+              size: 'half',
+              title: '',
+            }
           : null;
 
   const reset = () => {
@@ -242,7 +298,11 @@ function AddWidgetForm({ range, full, onAdd }: { range: TimeRange; full: boolean
       <h3 className={styles.subheading}>Add a widget</h3>
       <div className={styles.form}>
         <Field id="widget-kind" label="Shows">
-          <Select id="widget-kind" value={kind} onChange={(event) => setKind(event.target.value as DashboardWidgetKind)}>
+          <Select
+            id="widget-kind"
+            value={kind}
+            onChange={(event) => setKind(event.target.value as DashboardWidgetKind)}
+          >
             {(Object.keys(KIND_LABELS) as DashboardWidgetKind[]).map((value) => (
               <option key={value} value={value}>
                 {KIND_LABELS[value]}
@@ -277,7 +337,11 @@ function AddWidgetForm({ range, full, onAdd }: { range: TimeRange; full: boolean
               </Select>
             </Field>
             <Field id="widget-chart" label="Chart">
-              <Select id="widget-chart" value={chart} onChange={(event) => setChart(event.target.value as ServiceWidgetChart)}>
+              <Select
+                id="widget-chart"
+                value={chart}
+                onChange={(event) => setChart(event.target.value as ServiceWidgetChart)}
+              >
                 <option value="requests">Requests and errors</option>
                 <option value="latency">Latency (P50 / P95 / P99)</option>
               </Select>
@@ -287,7 +351,11 @@ function AddWidgetForm({ range, full, onAdd }: { range: TimeRange; full: boolean
 
         {kind === 'metric' && (
           <>
-            <Field id="widget-metric" label="Metric" hint="For grouping by an attribute, use Add to dashboard on the Metrics page.">
+            <Field
+              id="widget-metric"
+              label="Metric"
+              hint="For grouping by an attribute, use Add to dashboard on the Metrics page."
+            >
               <Select
                 id="widget-metric"
                 value={metric}
@@ -307,7 +375,11 @@ function AddWidgetForm({ range, full, onAdd }: { range: TimeRange; full: boolean
               </Select>
             </Field>
             <Field id="widget-aggregation" label="Aggregation">
-              <Select id="widget-aggregation" value={aggregation || defaultAggregation(entry)} onChange={(event) => setAggregation(event.target.value as MetricAggregation)}>
+              <Select
+                id="widget-aggregation"
+                value={aggregation || defaultAggregation(entry)}
+                onChange={(event) => setAggregation(event.target.value as MetricAggregation)}
+              >
                 {METRIC_AGGREGATIONS.map((value) => (
                   <option key={value} value={value}>
                     {AGGREGATION_LABELS[value]}
@@ -326,7 +398,11 @@ function AddWidgetForm({ range, full, onAdd }: { range: TimeRange; full: boolean
               </Select>
             </Field>
             <Field id="widget-metric-service" label="Service">
-              <Select id="widget-metric-service" value={metricService} onChange={(event) => setMetricService(event.target.value)}>
+              <Select
+                id="widget-metric-service"
+                value={metricService}
+                onChange={(event) => setMetricService(event.target.value)}
+              >
                 <option value="">All services</option>
                 {entry?.services.map((value) => (
                   <option key={value} value={value}>

@@ -7,7 +7,10 @@ test('healthy with few errors and fast responses', () => {
 });
 
 test('unknown without requests in the current window', () => {
-  assert.deepEqual(deriveServiceHealth({ requests: 0, errors: 0, p95Ms: null }), { health: 'unknown', reason: 'No recent requests' });
+  assert.deepEqual(deriveServiceHealth({ requests: 0, errors: 0, p95Ms: null }), {
+    health: 'unknown',
+    reason: 'No recent requests',
+  });
 });
 
 test('error rate: degraded from 2%, critical from 10%', () => {
@@ -22,8 +25,14 @@ test('error rate: degraded from 2%, critical from 10%', () => {
 });
 
 test('latency: degraded from 1 s, critical from 3 s', () => {
-  assert.deepEqual(deriveServiceHealth({ requests: 100, errors: 0, p95Ms: 1420 }), { health: 'degraded', reason: 'P95 1.42 s' });
-  assert.deepEqual(deriveServiceHealth({ requests: 100, errors: 0, p95Ms: 3200 }), { health: 'critical', reason: 'P95 3.20 s' });
+  assert.deepEqual(deriveServiceHealth({ requests: 100, errors: 0, p95Ms: 1420 }), {
+    health: 'degraded',
+    reason: 'P95 1.42 s',
+  });
+  assert.deepEqual(deriveServiceHealth({ requests: 100, errors: 0, p95Ms: 3200 }), {
+    health: 'critical',
+    reason: 'P95 3.20 s',
+  });
 });
 
 test('with few requests any failure is degraded rather than a rate', () => {

@@ -39,7 +39,8 @@ function applyScenario(body: unknown): Scenario {
   if (patch.dbDelayMs === null || typeof patch.dbDelayMs === 'number') {
     scenario.dbDelayMs = patch.dbDelayMs === null ? null : Math.max(patch.dbDelayMs, 0);
   }
-  if (typeof patch.paymentErrorRate === 'number') scenario.paymentErrorRate = Math.min(Math.max(patch.paymentErrorRate, 0), 1);
+  if (typeof patch.paymentErrorRate === 'number')
+    scenario.paymentErrorRate = Math.min(Math.max(patch.paymentErrorRate, 0), 1);
   return scenario;
 }
 
@@ -87,11 +88,16 @@ const ROUTES: Record<ServiceName, Route[]> = {
               ? between(520, 640)
               : between(20, 50);
         await dbQuery('INSERT INTO orders (id, items, total) VALUES ($1, $2, $3)', 'orders', insertMs);
-        if (insertMs > 400) log('warn', 'slow query on orders insert', { 'db.duration_ms': insertMs, 'order.id': orderId });
+        if (insertMs > 400)
+          log('warn', 'slow query on orders insert', { 'db.duration_ms': insertMs, 'order.id': orderId });
 
         const payment = await callService('payment', 'POST', url('payment', '/payment'), { orderId });
         if (payment.status >= 400) {
-          log('error', 'payment request failed', { 'order.id': orderId, route: '/checkout', 'payment.status': payment.status });
+          log('error', 'payment request failed', {
+            'order.id': orderId,
+            route: '/checkout',
+            'payment.status': payment.status,
+          });
           return { status: 500, body: { error: 'payment request failed' } };
         }
         ordersPlaced?.add(1);

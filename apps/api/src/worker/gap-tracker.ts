@@ -65,7 +65,8 @@ export class GapTracker {
     this.gaps.record(from, to, 'asleep');
     this.wokeAt = Math.max(this.wokeAt, to);
     this.beat(to);
-    if (!known) this.log.info({ since: new Date(from).toISOString() }, 'Measurement gap recorded: the machine was asleep');
+    if (!known)
+      this.log.info({ since: new Date(from).toISOString() }, 'Measurement gap recorded: the machine was asleep');
   }
 
   /** True shortly after waking, while the network may still be reconnecting. */

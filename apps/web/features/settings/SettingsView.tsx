@@ -115,7 +115,12 @@ export function SettingsView() {
                             {environment.name} · current
                           </Badge>
                         ) : (
-                          <Button key={environment.name} size="sm" variant="ghost" onClick={() => void switchTo(item.id, environment.name)}>
+                          <Button
+                            key={environment.name}
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => void switchTo(item.id, environment.name)}
+                          >
                             <span className={styles.mono}>{environment.name}</span>
                           </Button>
                         );
@@ -198,10 +203,22 @@ function NewProjectForm({ onCreated }: { onCreated: () => void }) {
   return (
     <form className={styles.form} onSubmit={onSubmit} noValidate>
       <Field id="project-name" label="Name" error={errors.name}>
-        <Input id="project-name" value={name} onChange={(event) => setName(event.target.value)} maxLength={100} invalid={Boolean(errors.name)} />
+        <Input
+          id="project-name"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          maxLength={100}
+          invalid={Boolean(errors.name)}
+        />
       </Field>
       <Field id="project-environment" label="First environment" error={errors.environment}>
-        <Input id="project-environment" value={environment} onChange={(event) => setEnvironment(event.target.value)} mono invalid={Boolean(errors.environment)} />
+        <Input
+          id="project-environment"
+          value={environment}
+          onChange={(event) => setEnvironment(event.target.value)}
+          mono
+          invalid={Boolean(errors.environment)}
+        />
       </Field>
       <div className={styles.actions}>
         <Button type="submit" loading={saving}>
@@ -236,11 +253,18 @@ function NewEnvironmentForm({ project, onCreated }: { project: ProjectInfo; onCr
   return (
     <form className={styles.form} onSubmit={onSubmit} noValidate>
       <p className={`${styles.full} ${styles.note}`}>
-        {project.environments.map((environment) => environment.name).join(', ')}. Telemetry names its environment with the{' '}
-        <code className={styles.mono}>deployment.environment.name</code> resource attribute or through an API key.
+        {project.environments.map((environment) => environment.name).join(', ')}. Telemetry names its environment with
+        the <code className={styles.mono}>deployment.environment.name</code> resource attribute or through an API key.
       </p>
       <Field id="environment-name" label="New environment" error={errors.name}>
-        <Input id="environment-name" value={name} onChange={(event) => setName(event.target.value)} mono placeholder="staging" invalid={Boolean(errors.name)} />
+        <Input
+          id="environment-name"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          mono
+          placeholder="staging"
+          invalid={Boolean(errors.name)}
+        />
       </Field>
       <div className={styles.actions}>
         <Button type="submit" loading={saving}>
@@ -302,7 +326,11 @@ function ApiKeysSection({ project }: { project: ProjectInfo }) {
 
       {created && (
         <div className={styles.secret}>
-          <Notice tone="info" title={`Key "${created.apiKey.name}" created.`} action={<CopyButton value={created.secret} />}>
+          <Notice
+            tone="info"
+            title={`Key "${created.apiKey.name}" created.`}
+            action={<CopyButton value={created.secret} />}
+          >
             Copy it now — it is not stored and cannot be shown again.
           </Notice>
           <pre className={styles.snippet}>
@@ -313,7 +341,14 @@ function ApiKeysSection({ project }: { project: ProjectInfo }) {
 
       <form className={styles.form} onSubmit={onSubmit} noValidate>
         <Field id="key-name" label="Name" error={errors.name}>
-          <Input id="key-name" value={name} onChange={(event) => setName(event.target.value)} placeholder="collector on web-1" maxLength={100} invalid={Boolean(errors.name)} />
+          <Input
+            id="key-name"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="collector on web-1"
+            maxLength={100}
+            invalid={Boolean(errors.name)}
+          />
         </Field>
         <Field id="key-environment" label="Environment" error={errors.environment}>
           <Select id="key-environment" value={environment} onChange={(event) => setEnvironment(event.target.value)}>
@@ -352,7 +387,12 @@ function ApiKeysSection({ project }: { project: ProjectInfo }) {
                       {key.revokedAt ? (
                         <span className={styles.note}>Revoked {formatDate(Date.parse(key.revokedAt))}</span>
                       ) : (
-                        <Button size="sm" variant="danger" loading={revoking === key.id} onClick={() => void revoke(key.id)}>
+                        <Button
+                          size="sm"
+                          variant="danger"
+                          loading={revoking === key.id}
+                          onClick={() => void revoke(key.id)}
+                        >
                           Revoke
                         </Button>
                       )}
@@ -388,11 +428,15 @@ function StorageSection() {
     const label = SIGNAL_LABELS[item.signal].toLowerCase();
     // An unknown current value may be longer, so it asks too.
     const shorter = item.retentionDays === null || days < item.retentionDays;
-    if (shorter && !window.confirm(`Keep ${label} for ${days} days? Older ${label} are deleted now, in every project.`)) return;
+    if (shorter && !window.confirm(`Keep ${label} for ${days} days? Older ${label} are deleted now, in every project.`))
+      return;
     setSaving(item.signal);
     setError(null);
     try {
-      await apiFetch<StorageResponse>('/storage/retention', { method: 'PUT', body: JSON.stringify({ signal: item.signal, days }) });
+      await apiFetch<StorageResponse>('/storage/retention', {
+        method: 'PUT',
+        body: JSON.stringify({ signal: item.signal, days }),
+      });
       storage.refetch();
     } catch (failure) {
       setError(toApiClientError(failure).message);
@@ -409,7 +453,8 @@ function StorageSection() {
       <p className={styles.note}>
         {data ? (
           <>
-            minidog uses <strong>{formatBytes(total)}</strong> on this machine, including {formatBytes(data.sqliteBytes)} of settings.{' '}
+            minidog uses <strong>{formatBytes(total)}</strong> on this machine, including{' '}
+            {formatBytes(data.sqliteBytes)} of settings.{' '}
           </>
         ) : null}
         Retention applies to every project; shortening it deletes older records right away.
@@ -431,9 +476,10 @@ function StorageSection() {
                       onChange={(event) => void change(item, Number(event.target.value))}
                     >
                       {item.retentionDays === null && <option value="">Not set</option>}
-                      {item.retentionDays !== null && !(RETENTION_DAYS as readonly number[]).includes(item.retentionDays) && (
-                        <option value={item.retentionDays}>{item.retentionDays} days</option>
-                      )}
+                      {item.retentionDays !== null &&
+                        !(RETENTION_DAYS as readonly number[]).includes(item.retentionDays) && (
+                          <option value={item.retentionDays}>{item.retentionDays} days</option>
+                        )}
                       {RETENTION_DAYS.map((days) => (
                         <option key={days} value={days}>
                           {days === 365 ? '1 year' : `${days} days`}
@@ -473,7 +519,11 @@ function SummarySection() {
       {summary.data ? (
         <SummaryForm data={summary.data} onSaved={summary.refetch} />
       ) : summary.error ? (
-        <ErrorState title="Unable to load summary settings." description={summary.error.message} onRetry={summary.refetch} />
+        <ErrorState
+          title="Unable to load summary settings."
+          description={summary.error.message}
+          onRetry={summary.refetch}
+        />
       ) : (
         <Skeleton height="calc(var(--row-height) * 4)" />
       )}
@@ -500,7 +550,10 @@ function SummaryForm({ data, onSaved }: { data: SummaryResponse; onSaved: () => 
     setSaving(true);
     setErrors({});
     try {
-      await apiFetch<SummaryResponse>('/summary', { method: 'PUT', body: JSON.stringify({ ...values, webhookUrl: values.webhookUrl.trim(), timeZone }) });
+      await apiFetch<SummaryResponse>('/summary', {
+        method: 'PUT',
+        body: JSON.stringify({ ...values, webhookUrl: values.webhookUrl.trim(), timeZone }),
+      });
       setResult('Saved.');
       onSaved();
     } catch (failure) {
@@ -530,16 +583,26 @@ function SummaryForm({ data, onSaved }: { data: SummaryResponse; onSaved: () => 
   return (
     <>
       <p className={styles.note}>
-        Uptime, response time and certificates of each synthetic monitor, alert changes and time not measured, once a day at the chosen
-        hour ({timeZone}). If this computer was off or asleep then, it goes out when minidog runs again.
+        Uptime, response time and certificates of each synthetic monitor, alert changes and time not measured, once a
+        day at the chosen hour ({timeZone}). If this computer was off or asleep then, it goes out when minidog runs
+        again.
       </p>
       <form className={styles.form} onSubmit={onSubmit} noValidate>
         <label className={`${styles.full} ${styles.checkbox}`}>
-          <input type="checkbox" checked={values.enabled} onChange={(event) => update({ enabled: event.target.checked })} />
+          <input
+            type="checkbox"
+            checked={values.enabled}
+            onChange={(event) => update({ enabled: event.target.checked })}
+          />
           <span>Send a daily summary</span>
         </label>
         <div className={styles.full}>
-          <Field id="summary-webhook" label="Webhook URL" hint="Slack, Discord, Telegram and ntfy.sh URLs get their own format." error={errors.webhookUrl}>
+          <Field
+            id="summary-webhook"
+            label="Webhook URL"
+            hint="Slack, Discord, Telegram and ntfy.sh URLs get their own format."
+            error={errors.webhookUrl}
+          >
             <Input
               id="summary-webhook"
               value={values.webhookUrl}
@@ -553,7 +616,11 @@ function SummaryForm({ data, onSaved }: { data: SummaryResponse; onSaved: () => 
           </Field>
         </div>
         <Field id="summary-hour" label="Send from">
-          <Select id="summary-hour" value={String(values.hour)} onChange={(event) => update({ hour: Number(event.target.value) })}>
+          <Select
+            id="summary-hour"
+            value={String(values.hour)}
+            onChange={(event) => update({ hour: Number(event.target.value) })}
+          >
             {HOURS.map((hour) => (
               <option key={hour} value={hour}>
                 {`${String(hour).padStart(2, '0')}:00`}
@@ -562,7 +629,11 @@ function SummaryForm({ data, onSaved }: { data: SummaryResponse; onSaved: () => 
           </Select>
         </Field>
         <label className={styles.checkbox}>
-          <input type="checkbox" checked={values.weekly} onChange={(event) => update({ weekly: event.target.checked })} />
+          <input
+            type="checkbox"
+            checked={values.weekly}
+            onChange={(event) => update({ weekly: event.target.checked })}
+          />
           <span>On Mondays, cover the last 7 days</span>
         </label>
         <div className={styles.actions}>
@@ -583,7 +654,8 @@ function SummaryForm({ data, onSaved }: { data: SummaryResponse; onSaved: () => 
       <p className={styles.note}>
         {data.lastFailedAt ? (
           <span className={styles.error}>
-            Last attempt {formatRelative(Date.parse(data.lastFailedAt))} failed ({data.lastStatus}); it is retried every 10 minutes.
+            Last attempt {formatRelative(Date.parse(data.lastFailedAt))} failed ({data.lastStatus}); it is retried every
+            10 minutes.
           </span>
         ) : data.lastSentAt ? (
           `Last scheduled summary ${formatRelative(Date.parse(data.lastSentAt))} · ${data.lastStatus}`
@@ -630,10 +702,24 @@ function PasswordForm() {
   return (
     <form className={styles.form} onSubmit={onSubmit} noValidate>
       <Field id="password-current" label="Current password" error={errors.current}>
-        <Input id="password-current" type="password" autoComplete="current-password" value={current} onChange={(event) => setCurrent(event.target.value)} invalid={Boolean(errors.current)} />
+        <Input
+          id="password-current"
+          type="password"
+          autoComplete="current-password"
+          value={current}
+          onChange={(event) => setCurrent(event.target.value)}
+          invalid={Boolean(errors.current)}
+        />
       </Field>
       <Field id="password-next" label="New password" hint="At least 8 characters." error={errors.next}>
-        <Input id="password-next" type="password" autoComplete="new-password" value={next} onChange={(event) => setNext(event.target.value)} invalid={Boolean(errors.next)} />
+        <Input
+          id="password-next"
+          type="password"
+          autoComplete="new-password"
+          value={next}
+          onChange={(event) => setNext(event.target.value)}
+          invalid={Boolean(errors.next)}
+        />
       </Field>
       <div className={styles.actions}>
         <Button type="submit" loading={saving}>

@@ -1,4 +1,5 @@
-import { RETENTION_MAX_DAYS,
+import {
+  RETENTION_MAX_DAYS,
   SERVICE_CURRENT_WINDOW_SECONDS,
   TIME_RANGES,
   type EndpointListResponse,
@@ -23,7 +24,13 @@ import { NotFoundError } from '../lib/errors';
 import { queryBounds, timeWindow, type TimeWindow } from '../lib/time-window';
 import type { LogRepository } from '../repositories/log-repository';
 import type { Scope } from '../repositories/project-repository';
-import type { RawEndpoint, RawRequestPoint, RawServiceStats, SpanRepository, TraceFilters } from '../repositories/span-repository';
+import type {
+  RawEndpoint,
+  RawRequestPoint,
+  RawServiceStats,
+  SpanRepository,
+  TraceFilters,
+} from '../repositories/span-repository';
 import { deriveDeployments, summarizeVersions } from './deployments';
 import { fillHistogram } from './histogram';
 import { deriveServiceHealth } from './service-health';
@@ -59,7 +66,10 @@ export class ApmService {
     private readonly scope: Scope,
   ) {}
 
-  async list(range: TimeRange, options: { deployments: boolean } = { deployments: false }): Promise<ServiceListResponse> {
+  async list(
+    range: TimeRange,
+    options: { deployments: boolean } = { deployments: false },
+  ): Promise<ServiceListResponse> {
     const now = Date.now();
     const window = timeWindow(range, now);
     const statsWindow = this.statsWindow(window, now);
@@ -87,7 +97,11 @@ export class ApmService {
     const now = Date.now();
     const window = timeWindow(range, now);
     const [[stats], points, endpoints, versions] = await Promise.all([
-      this.spans.serviceStats(this.scope, { ...this.statsWindow(window, now), lookbackFromMs: now - LOOKBACK_MS }, service),
+      this.spans.serviceStats(
+        this.scope,
+        { ...this.statsWindow(window, now), lookbackFromMs: now - LOOKBACK_MS },
+        service,
+      ),
       this.spans.requestSeries(this.scope, window.fromMs, window.stepSeconds, service),
       this.spans.endpoints(this.scope, window.fromMs, service),
       this.spans.versionStats(this.scope, { fromMs: window.fromMs, lookbackFromMs: now - LOOKBACK_MS, service }),
@@ -154,7 +168,13 @@ export class ApmService {
       });
     }
 
-    const edge = (raw: { source: string; target: string; calls: number; errors: number; p95Ms: number | null }): ServiceMapEdge => ({
+    const edge = (raw: {
+      source: string;
+      target: string;
+      calls: number;
+      errors: number;
+      p95Ms: number | null;
+    }): ServiceMapEdge => ({
       source: raw.source,
       target: raw.target,
       calls: raw.calls,
@@ -183,7 +203,15 @@ export class ApmService {
     for (const item of edges) {
       for (const id of [item.source, item.target]) {
         if (!nodes.has(id)) {
-          nodes.set(id, { id, kind: 'service', name: id, health: 'unknown', requestsPerSecond: null, errorRate: null, p95Ms: null });
+          nodes.set(id, {
+            id,
+            kind: 'service',
+            name: id,
+            health: 'unknown',
+            requestsPerSecond: null,
+            errorRate: null,
+            p95Ms: null,
+          });
         }
       }
     }

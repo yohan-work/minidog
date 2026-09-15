@@ -27,7 +27,13 @@ export function webhookPayload(monitor: AlertMonitor, event: AlertEvent, note?: 
   const suffix = note ? ` (${note})` : '';
   return {
     text: `[${event.toState.toUpperCase()}] ${monitor.name}: ${event.message}${suffix}`,
-    monitor: { id: monitor.id, name: monitor.name, type: monitor.type, target: monitor.target, targetLabel: monitor.targetLabel },
+    monitor: {
+      id: monitor.id,
+      name: monitor.name,
+      type: monitor.type,
+      target: monitor.target,
+      targetLabel: monitor.targetLabel,
+    },
     state: event.toState,
     previousState: event.fromState,
     value: event.value,
@@ -93,7 +99,10 @@ const NTFY_STYLES: Record<string, { priority: string; tags: string }> = {
 const NTFY_DEFAULT = { priority: '3', tags: 'bell' };
 const NTFY_SUMMARY = { priority: '3', tags: 'bar_chart' };
 
-export function webhookRequest(url: string, payload: WebhookPayload): { headers: Record<string, string>; body: string } {
+export function webhookRequest(
+  url: string,
+  payload: WebhookPayload,
+): { headers: Record<string, string>; body: string } {
   const json = (body: unknown) => ({
     headers: { 'content-type': 'application/json', 'user-agent': 'minidog-alerts' },
     body: JSON.stringify(body),
@@ -109,7 +118,11 @@ export function webhookRequest(url: string, payload: WebhookPayload): { headers:
         disable_web_page_preview: true,
       });
     case 'ntfy': {
-      const style = payload.test ? NTFY_DEFAULT : payload.summary ? NTFY_SUMMARY : (NTFY_STYLES[payload.state] ?? NTFY_DEFAULT);
+      const style = payload.test
+        ? NTFY_DEFAULT
+        : payload.summary
+          ? NTFY_SUMMARY
+          : (NTFY_STYLES[payload.state] ?? NTFY_DEFAULT);
       return {
         // Header values must be ASCII, so monitor names (which may not be) stay in the body.
         headers: {
@@ -128,13 +141,22 @@ export function webhookRequest(url: string, payload: WebhookPayload): { headers:
 }
 
 /** POSTs the payload; resolves to a short status such as `sent 200` or `failed: timeout`. Never throws. */
-export async function sendWebhook(url: string, payload: WebhookPayload, timeoutMs: number = TIMEOUT_MS): Promise<string> {
+export async function sendWebhook(
+  url: string,
+  payload: WebhookPayload,
+  timeoutMs: number = TIMEOUT_MS,
+): Promise<string> {
   try {
     const { headers, body } = webhookRequest(url, payload);
     const status = await post(new URL(url), headers, body, timeoutMs);
     return status >= 200 && status < 300 ? `sent ${status}` : `failed ${status}`;
   } catch (error) {
-    const reason = error instanceof Error && error.name === 'TimeoutError' ? 'timeout' : error instanceof Error ? error.message : 'error';
+    const reason =
+      error instanceof Error && error.name === 'TimeoutError'
+        ? 'timeout'
+        : error instanceof Error
+          ? error.message
+          : 'error';
     return `failed: ${reason}`;
   }
 }
@@ -146,13 +168,18 @@ export async function sendWebhook(url: string, payload: WebhookPayload, timeoutM
  */
 function post(url: URL, headers: Record<string, string>, body: string, timeoutMs: number): Promise<number> {
   return new Promise((resolve, reject) => {
-    if (url.protocol !== 'http:' && url.protocol !== 'https:') return reject(new Error(`Unsupported protocol ${url.protocol}`));
+    if (url.protocol !== 'http:' && url.protocol !== 'https:')
+      return reject(new Error(`Unsupported protocol ${url.protocol}`));
     const blocked = checkHost(url.hostname);
     if (blocked) return reject(blocked);
     const client = url.protocol === 'https:' ? https : http;
     const request = client.request(
       url,
-      { method: 'POST', headers: { ...headers, 'content-length': String(Buffer.byteLength(body)) }, lookup: guardedLookup },
+      {
+        method: 'POST',
+        headers: { ...headers, 'content-length': String(Buffer.byteLength(body)) },
+        lookup: guardedLookup,
+      },
       (response) => {
         clearTimeout(deadline);
         resolve(response.statusCode ?? 0);

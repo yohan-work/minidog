@@ -66,7 +66,10 @@ function defaultMetric(type: AlertMonitorType): string {
   return '';
 }
 
-function defaultsFor(type: AlertMonitorType, metric: string): Pick<FormValues, 'warningThreshold' | 'criticalThreshold' | 'windowMinutes'> {
+function defaultsFor(
+  type: AlertMonitorType,
+  metric: string,
+): Pick<FormValues, 'warningThreshold' | 'criticalThreshold' | 'windowMinutes'> {
   const defaults = alertDefaults(type, (metric || null) as AlertMetric | null);
   return {
     warningThreshold: defaults.warning === null ? '' : String(defaults.warning),
@@ -109,7 +112,9 @@ export function NewAlertMonitorView() {
   const services = useApi<ServiceListResponse>(!isHost && !isSynthetic ? '/services?range=24h' : null, 60_000);
   const hosts = useApi<HostListResponse>(isHost ? '/hosts?range=24h' : null, 60_000);
   const synthetics = useApi<MonitorListResponse>(isSynthetic ? '/monitors?range=1h' : null, 60_000);
-  const targets = isHost ? (hosts.data?.hosts.map((host) => host.host) ?? []) : (services.data?.services.map((service) => service.service) ?? []);
+  const targets = isHost
+    ? (hosts.data?.hosts.map((host) => host.host) ?? [])
+    : (services.data?.services.map((service) => service.service) ?? []);
   const checks = synthetics.data?.monitors ?? [];
 
   const update = (name: FieldName) => (event: { target: { value: string } }) => {
@@ -120,7 +125,8 @@ export function NewAlertMonitorView() {
         return { ...current, type: value, target: '', metric, ...defaultsFor(value, metric) };
       }
       // Each synthetic signal has its own unit, so its thresholds start from its defaults.
-      if (name === 'metric' && current.type === 'synthetic_check') return { ...current, metric: value, ...defaultsFor(current.type, value) };
+      if (name === 'metric' && current.type === 'synthetic_check')
+        return { ...current, metric: value, ...defaultsFor(current.type, value) };
       return { ...current, [name]: value };
     });
     setErrors((current) => ({ ...current, [name]: undefined }));
@@ -135,7 +141,8 @@ export function NewAlertMonitorView() {
       : targets.length > 0
         ? `${targets.length} ${isHost ? 'hosts' : 'services'} reported in the last 24 hours.`
         : `No ${isHost ? 'hosts' : 'services'} reported yet; type the name.`,
-    metric: isSynthetic && isSyntheticAlertMetric(values.metric) ? SYNTHETIC_METRIC_DESCRIPTIONS[values.metric] : undefined,
+    metric:
+      isSynthetic && isSyntheticAlertMetric(values.metric) ? SYNTHETIC_METRIC_DESCRIPTIONS[values.metric] : undefined,
     warningThreshold:
       values.type === 'service_down'
         ? 'Optional. Warn below this many requests.'
@@ -150,7 +157,8 @@ export function NewAlertMonitorView() {
           : `In ${unit}.`,
     alertAfterMinutes: 'Enter Warning or Critical only when the condition lasts this long.',
     recoverAfterMinutes: 'Report recovery only after it holds this long.',
-    webhookUrl: 'Optional. Slack, Discord, Telegram and ntfy.sh URLs get their own format; any other URL receives JSON.',
+    webhookUrl:
+      'Optional. Slack, Discord, Telegram and ntfy.sh URLs get their own format; any other URL receives JSON.',
     name: 'Defaults to the signal and target.',
   };
 
@@ -227,7 +235,12 @@ export function NewAlertMonitorView() {
                 </Select>
               </Field>
             </div>
-            <Field id="target" label={isSynthetic ? 'Synthetic monitor' : isHost ? 'Host' : 'Service'} hint={hints.target} error={errors.target}>
+            <Field
+              id="target"
+              label={isSynthetic ? 'Synthetic monitor' : isHost ? 'Host' : 'Service'}
+              hint={hints.target}
+              error={errors.target}
+            >
               {isSynthetic ? (
                 <Select {...control('target')} required>
                   <option value="">Choose a monitor</option>
@@ -275,10 +288,20 @@ export function NewAlertMonitorView() {
             ) : (
               windowField
             )}
-            <Field id="warningThreshold" label={`Warning (${unit})`} hint={hints.warningThreshold} error={errors.warningThreshold}>
+            <Field
+              id="warningThreshold"
+              label={`Warning (${unit})`}
+              hint={hints.warningThreshold}
+              error={errors.warningThreshold}
+            >
               <Input {...control('warningThreshold')} type="number" inputMode="decimal" mono min={0} />
             </Field>
-            <Field id="criticalThreshold" label={`Critical (${unit})`} hint={hints.criticalThreshold} error={errors.criticalThreshold}>
+            <Field
+              id="criticalThreshold"
+              label={`Critical (${unit})`}
+              hint={hints.criticalThreshold}
+              error={errors.criticalThreshold}
+            >
               <Input {...control('criticalThreshold')} type="number" inputMode="decimal" mono min={0} required />
             </Field>
             {(isHost || isSynthetic) && showWindow && windowField}
@@ -287,12 +310,22 @@ export function NewAlertMonitorView() {
 
         <Section title="Notifications">
           <div className={styles.form}>
-            <Field id="alertAfterMinutes" label="Alert after" hint={hints.alertAfterMinutes} error={errors.alertAfterMinutes}>
+            <Field
+              id="alertAfterMinutes"
+              label="Alert after"
+              hint={hints.alertAfterMinutes}
+              error={errors.alertAfterMinutes}
+            >
               <Select {...control('alertAfterMinutes')}>
                 <DelayOptions />
               </Select>
             </Field>
-            <Field id="recoverAfterMinutes" label="Recover after" hint={hints.recoverAfterMinutes} error={errors.recoverAfterMinutes}>
+            <Field
+              id="recoverAfterMinutes"
+              label="Recover after"
+              hint={hints.recoverAfterMinutes}
+              error={errors.recoverAfterMinutes}
+            >
               <Select {...control('recoverAfterMinutes')}>
                 <DelayOptions />
               </Select>

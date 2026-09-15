@@ -39,7 +39,9 @@ export function registerSettingsRoutes(app: FastifyInstance, ctx: AppContext): v
 
   const requireEnvironment = (projectId: string, environment: string, field: string) => {
     if (!projects.hasEnvironment(projectId, environment)) {
-      throw new z.ZodError([{ code: 'custom', input: environment, path: [field], message: 'This environment does not exist.' }]);
+      throw new z.ZodError([
+        { code: 'custom', input: environment, path: [field], message: 'This environment does not exist.' },
+      ]);
     }
   };
 
@@ -54,7 +56,8 @@ export function registerSettingsRoutes(app: FastifyInstance, ctx: AppContext): v
     const { id } = idParamsSchema.parse(request.params);
     const { name } = environmentSchema.parse(request.body ?? {});
     requireProject(id);
-    if (projects.hasEnvironment(id, name)) throw new HttpError(409, 'environment_exists', `The environment "${name}" already exists.`);
+    if (projects.hasEnvironment(id, name))
+      throw new HttpError(409, 'environment_exists', `The environment "${name}" already exists.`);
     return reply.status(201).send({ project: projects.addEnvironment(id, name) });
   });
 

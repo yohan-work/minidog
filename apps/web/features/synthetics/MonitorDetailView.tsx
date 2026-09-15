@@ -1,6 +1,12 @@
 'use client';
 
-import type { MonitorChecksResponse, MonitorResponse, MonitorWithSummary, RunCheckResponse, Series } from '@minidog/types';
+import type {
+  MonitorChecksResponse,
+  MonitorResponse,
+  MonitorWithSummary,
+  RunCheckResponse,
+  Series,
+} from '@minidog/types';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -81,7 +87,8 @@ export function MonitorDetailView({ id }: { id: string }) {
   const runCheck = () =>
     perform('run', async () => {
       const result = await apiFetch<RunCheckResponse>(`/monitors/${id}/run`, { method: 'POST' });
-      if (!result.persisted) setActionError('The check ran but its result could not be saved. ClickHouse did not respond.');
+      if (!result.persisted)
+        setActionError('The check ran but its result could not be saved. ClickHouse did not respond.');
       refreshAll();
     });
 
@@ -118,7 +125,13 @@ export function MonitorDetailView({ id }: { id: string }) {
             </>
           )
         }
-        meta={monitor ? <MonitorMeta monitor={monitor} /> : <Skeleton width="calc(var(--space-16) * 6)" height="var(--text-secondary)" />}
+        meta={
+          monitor ? (
+            <MonitorMeta monitor={monitor} />
+          ) : (
+            <Skeleton width="calc(var(--space-16) * 6)" height="var(--text-secondary)" />
+          )
+        }
         actions={
           monitor &&
           (confirmingDelete ? (
@@ -133,7 +146,10 @@ export function MonitorDetailView({ id }: { id: string }) {
             </>
           ) : (
             <>
-              <ButtonLink size="sm" href={withRange(`/monitors/new?type=synthetic_check&target=${encodeURIComponent(id)}`, range)}>
+              <ButtonLink
+                size="sm"
+                href={withRange(`/monitors/new?type=synthetic_check&target=${encodeURIComponent(id)}`, range)}
+              >
                 Create alert
               </ButtonLink>
               {runButton}
@@ -153,8 +169,16 @@ export function MonitorDetailView({ id }: { id: string }) {
         }
       />
 
-      {actionError && <Notice tone="error" title="Action failed.">{actionError}</Notice>}
-      <StaleNotice error={monitorQuery.data ? monitorQuery.error : undefined} updatedAt={monitorQuery.updatedAt} onRetry={refreshAll} />
+      {actionError && (
+        <Notice tone="error" title="Action failed.">
+          {actionError}
+        </Notice>
+      )}
+      <StaleNotice
+        error={monitorQuery.data ? monitorQuery.error : undefined}
+        updatedAt={monitorQuery.updatedAt}
+        onRetry={refreshAll}
+      />
       <ResultsNotice error={monitorQuery.data?.resultsError} onRetry={refreshAll} />
       {monitor?.enabled && monitor.summary.lastStatus === 'down' && (
         <Notice tone="error" title="Latest check failed.">
@@ -173,7 +197,12 @@ export function MonitorDetailView({ id }: { id: string }) {
             {seriesQuery.data ? (
               <LatencyChart series={seriesQuery.data} subject={monitor?.name ?? 'monitor'} emptyAction={runButton} />
             ) : seriesQuery.error ? (
-              <ErrorState fill="chart" title="Unable to query response time." description={seriesQuery.error.message} onRetry={seriesQuery.refetch} />
+              <ErrorState
+                fill="chart"
+                title="Unable to query response time."
+                description={seriesQuery.error.message}
+                onRetry={seriesQuery.refetch}
+              />
             ) : (
               <Skeleton height="var(--chart-height)" />
             )}
@@ -181,7 +210,11 @@ export function MonitorDetailView({ id }: { id: string }) {
 
           <Section title="Availability">
             {seriesQuery.data ? (
-              <AvailabilityBar points={seriesQuery.data.points} stepSeconds={seriesQuery.data.stepSeconds} gaps={seriesQuery.data.gaps} />
+              <AvailabilityBar
+                points={seriesQuery.data.points}
+                stepSeconds={seriesQuery.data.stepSeconds}
+                gaps={seriesQuery.data.gaps}
+              />
             ) : seriesQuery.error ? (
               <p className={styles.reason}>Availability timeline unavailable.</p>
             ) : (
@@ -201,7 +234,11 @@ export function MonitorDetailView({ id }: { id: string }) {
                 />
               )
             ) : checksQuery.error ? (
-              <ErrorState title="Unable to query recent checks." description={checksQuery.error.message} onRetry={checksQuery.refetch} />
+              <ErrorState
+                title="Unable to query recent checks."
+                description={checksQuery.error.message}
+                onRetry={checksQuery.refetch}
+              />
             ) : (
               <RecentChecksSkeleton />
             )}
@@ -275,7 +312,9 @@ function SummaryMetrics({
         loading={loading}
         value={formatPercent(summary?.availability)}
         tone={summary?.availability != null && summary.availability < 1 ? 'warning' : undefined}
-        meta={unavailable ?? (summary && `${formatCount(summary.checks)} checks · ${formatCount(summary.failures)} failed`)}
+        meta={
+          unavailable ?? (summary && `${formatCount(summary.checks)} checks · ${formatCount(summary.failures)} failed`)
+        }
       />
       <Metric
         label="P95 latency"

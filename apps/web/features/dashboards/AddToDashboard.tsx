@@ -28,16 +28,28 @@ export function AddToDashboard({ widget }: { widget: NewDashboardWidget }) {
     setBusy(true);
     setResult(null);
     try {
-      let dashboard = list.data?.dashboards.find((item) => item.id === target) ?? (created?.id === target ? created : undefined);
+      let dashboard =
+        list.data?.dashboards.find((item) => item.id === target) ?? (created?.id === target ? created : undefined);
       if (!dashboard) {
-        const response = await apiFetch<DashboardResponse>('/dashboards', { method: 'POST', body: JSON.stringify({ name: 'My dashboard' }) });
-        dashboard = { id: response.dashboard.id, name: response.dashboard.name, widgetCount: 0, updatedAt: response.dashboard.updatedAt };
+        const response = await apiFetch<DashboardResponse>('/dashboards', {
+          method: 'POST',
+          body: JSON.stringify({ name: 'My dashboard' }),
+        });
+        dashboard = {
+          id: response.dashboard.id,
+          name: response.dashboard.name,
+          widgetCount: 0,
+          updatedAt: response.dashboard.updatedAt,
+        };
         // Chosen at once: if adding the widget fails, a retry adds to this one instead of creating another.
         setCreated(dashboard);
         setChoice(dashboard.id);
         list.refetch();
       }
-      await apiFetch<DashboardResponse>(`/dashboards/${dashboard.id}/widgets`, { method: 'POST', body: JSON.stringify({ widget }) });
+      await apiFetch<DashboardResponse>(`/dashboards/${dashboard.id}/widgets`, {
+        method: 'POST',
+        body: JSON.stringify({ widget }),
+      });
       setResult({ text: `Added to ${dashboard.name}`, href: withRange(`/dashboards/${dashboard.id}`, range) });
       setChoice(dashboard.id);
       list.refetch();
@@ -56,7 +68,9 @@ export function AddToDashboard({ widget }: { widget: NewDashboardWidget }) {
             {item.name}
           </option>
         ))}
-        {created && !list.data?.dashboards.some((item) => item.id === created.id) && <option value={created.id}>{created.name}</option>}
+        {created && !list.data?.dashboards.some((item) => item.id === created.id) && (
+          <option value={created.id}>{created.name}</option>
+        )}
         <option value={NEW}>New dashboard</option>
       </Select>
       {/* Until the list arrives, "New dashboard" would be picked by default and duplicate existing ones. */}

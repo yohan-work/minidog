@@ -81,7 +81,11 @@ export class SyntheticResultRepository extends ClickHouseRepository {
     }
   }
 
-  async summaries(scope: Scope, monitorIds: readonly string[], fromMs: number): Promise<Map<string, RawMonitorSummary>> {
+  async summaries(
+    scope: Scope,
+    monitorIds: readonly string[],
+    fromMs: number,
+  ): Promise<Map<string, RawMonitorSummary>> {
     if (monitorIds.length === 0) return new Map();
 
     const rows = await this.query<{
@@ -140,7 +144,12 @@ export class SyntheticResultRepository extends ClickHouseRepository {
     );
   }
 
-  async series(scope: Scope, monitorIds: readonly string[], fromMs: number, stepSeconds: number): Promise<SeriesPoint[]> {
+  async series(
+    scope: Scope,
+    monitorIds: readonly string[],
+    fromMs: number,
+    stepSeconds: number,
+  ): Promise<SeriesPoint[]> {
     if (monitorIds.length === 0) return [];
 
     const rows = await this.query<{
@@ -176,7 +185,12 @@ export class SyntheticResultRepository extends ClickHouseRepository {
   async totals(scope: Scope, monitorIds: readonly string[], fromMs: number): Promise<Totals> {
     if (monitorIds.length === 0) return { checks: 0, failures: 0, p95LatencyMs: null, avgLatencyMs: null };
 
-    const [row] = await this.query<{ checks: Num; failures: Num; p95_latency_ms: NullableNum; avg_latency_ms: NullableNum }>(
+    const [row] = await this.query<{
+      checks: Num;
+      failures: Num;
+      p95_latency_ms: NullableNum;
+      avg_latency_ms: NullableNum;
+    }>(
       `SELECT
          count() AS checks,
          countIf(status = 'down') AS failures,

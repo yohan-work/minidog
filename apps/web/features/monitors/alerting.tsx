@@ -58,7 +58,8 @@ export const TYPE_DESCRIPTIONS: Record<AlertMonitorType, string> = {
   error_rate: 'Alerts when the share of failed requests reaches a percentage.',
   latency: 'Alerts when the P95 of server spans reaches a duration.',
   host_resource: 'Alerts when CPU, memory or disk utilization of a host reaches a percentage.',
-  synthetic_check: 'Alerts when a URL check from Synthetics fails, slows down or its SSL certificate is about to expire.',
+  synthetic_check:
+    'Alerts when a URL check from Synthetics fails, slows down or its SSL certificate is about to expire.',
 };
 
 export const RESOURCE_LABELS: Record<HostResourceMetric, string> = { cpu: 'CPU', memory: 'Memory', disk: 'Disk' };
@@ -91,7 +92,11 @@ export function thresholdUnit({ type, metric }: AlertSignal): string {
 export function signalLabel({ type, metric }: AlertSignal): string {
   if (type === 'host_resource') return RESOURCE_LABELS[isHostResourceMetric(metric) ? metric : 'cpu'];
   if (type === 'synthetic_check') {
-    const labels: Record<SyntheticAlertMetric, string> = { failure_rate: 'Failed checks', response_time: 'Response time', ssl_days: 'SSL expiry' };
+    const labels: Record<SyntheticAlertMetric, string> = {
+      failure_rate: 'Failed checks',
+      response_time: 'Response time',
+      ssl_days: 'SSL expiry',
+    };
     return labels[isSyntheticAlertMetric(metric) ? metric : 'failure_rate'];
   }
   return { service_down: 'Requests', error_rate: 'Error rate', latency: 'P95' }[type];
@@ -118,7 +123,8 @@ export function formatAlertValue(signal: AlertSignal, value: number | null | und
 
 /** `P95 ≥ 1.00 s warning, ≥ 2.00 s critical · 5 min · for 5 min` */
 export function conditionText(
-  monitor: AlertSignal & Pick<AlertMonitor, 'warningThreshold' | 'criticalThreshold' | 'windowMinutes' | 'alertAfterMinutes'>,
+  monitor: AlertSignal &
+    Pick<AlertMonitor, 'warningThreshold' | 'criticalThreshold' | 'windowMinutes' | 'alertAfterMinutes'>,
 ): string {
   const format = (value: number) => formatAlertValue(monitor, value);
   const comparator = alertDirection(monitor.type, monitor.metric) === 'below' ? '<' : '≥';

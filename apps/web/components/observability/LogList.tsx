@@ -80,7 +80,11 @@ export function LogList({ logs, range, showService = true, showTrace = true }: L
                 aria-controls={detailsId}
                 onClick={() => toggle(key)}
               >
-                <time className={styles.time} dateTime={new Date(log.timestamp).toISOString()} title={formatDateTime(log.timestamp)}>
+                <time
+                  className={styles.time}
+                  dateTime={new Date(log.timestamp).toISOString()}
+                  title={formatDateTime(log.timestamp)}
+                >
                   {formatTimeMs(log.timestamp)}
                 </time>
                 <LevelLabel level={log.level} />

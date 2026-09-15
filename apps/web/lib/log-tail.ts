@@ -17,7 +17,12 @@ export const TAIL_BUFFER = 1_000;
  * `since` onward (or from its oldest record when it hit its limit), so it
  * replaces the buffer there; buffered records older than that are kept.
  */
-export function mergeTail(buffer: readonly LogEntry[], fresh: readonly LogEntry[], since: number, truncated: boolean): LogEntry[] {
+export function mergeTail(
+  buffer: readonly LogEntry[],
+  fresh: readonly LogEntry[],
+  since: number,
+  truncated: boolean,
+): LogEntry[] {
   const cutoff = truncated && fresh.length > 0 ? fresh[fresh.length - 1]!.timestamp : since;
   const older = buffer.filter((log) => log.timestamp < cutoff);
   return [...fresh, ...older].slice(0, TAIL_BUFFER);

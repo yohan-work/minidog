@@ -47,7 +47,7 @@ export function AlertEventTable({ events, range, types, showMonitor = true }: Al
               <Td>
                 <span className={styles.transition}>
                   <AlertStateIndicator state={event.fromState} />
-                  <span className={styles.arrow} aria-label="to">
+                  <span className={styles.arrow} role="img" aria-label="to">
                     →
                   </span>
                   <AlertStateIndicator state={event.toState} />
@@ -61,7 +61,12 @@ export function AlertEventTable({ events, range, types, showMonitor = true }: Al
                   {event.message}
                 </span>
               </Td>
-              <Td mono muted hideBelow="desktop" className={event.webhookStatus.startsWith('failed') ? styles.error : undefined}>
+              <Td
+                mono
+                muted
+                hideBelow="desktop"
+                className={event.webhookStatus.startsWith('failed') ? styles.error : undefined}
+              >
                 {event.webhookStatus || EMPTY}
               </Td>
             </Tr>

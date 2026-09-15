@@ -34,14 +34,23 @@ export class DashboardRepository {
 
   list(scope: Scope): DashboardSummary[] {
     const rows = this.db
-      .prepare('SELECT id, name, widgets, created_at, updated_at FROM dashboards WHERE project_id = ? AND environment = ? ORDER BY name COLLATE NOCASE')
+      .prepare(
+        'SELECT id, name, widgets, created_at, updated_at FROM dashboards WHERE project_id = ? AND environment = ? ORDER BY name COLLATE NOCASE',
+      )
       .all(scope.projectId, scope.environment) as unknown as DashboardRow[];
-    return rows.map((row) => ({ id: row.id, name: row.name, widgetCount: parseWidgets(row.widgets).length, updatedAt: row.updated_at }));
+    return rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      widgetCount: parseWidgets(row.widgets).length,
+      updatedAt: row.updated_at,
+    }));
   }
 
   get(scope: Scope, id: string): Dashboard | undefined {
     const row = this.db
-      .prepare('SELECT id, name, widgets, created_at, updated_at FROM dashboards WHERE id = ? AND project_id = ? AND environment = ?')
+      .prepare(
+        'SELECT id, name, widgets, created_at, updated_at FROM dashboards WHERE id = ? AND project_id = ? AND environment = ?',
+      )
       .get(id, scope.projectId, scope.environment) as unknown as DashboardRow | undefined;
     return row ? toDashboard(row) : undefined;
   }
@@ -50,7 +59,9 @@ export class DashboardRepository {
     const id = createId('dsh');
     const now = new Date().toISOString();
     this.db
-      .prepare('INSERT INTO dashboards (id, project_id, environment, name, widgets, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .prepare(
+        'INSERT INTO dashboards (id, project_id, environment, name, widgets, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      )
       .run(id, scope.projectId, scope.environment, name, JSON.stringify(widgets), now, now);
     return this.get(scope, id)!;
   }
@@ -58,7 +69,9 @@ export class DashboardRepository {
   /** Replaces the name and the whole widget list. */
   update(scope: Scope, id: string, name: string, widgets: readonly DashboardWidget[]): Dashboard | undefined {
     const result = this.db
-      .prepare('UPDATE dashboards SET name = ?, widgets = ?, updated_at = ? WHERE id = ? AND project_id = ? AND environment = ?')
+      .prepare(
+        'UPDATE dashboards SET name = ?, widgets = ?, updated_at = ? WHERE id = ? AND project_id = ? AND environment = ?',
+      )
       .run(name, JSON.stringify(widgets), new Date().toISOString(), id, scope.projectId, scope.environment);
     return Number(result.changes) > 0 ? this.get(scope, id) : undefined;
   }

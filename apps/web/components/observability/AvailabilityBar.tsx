@@ -13,7 +13,8 @@ interface Bucket {
 }
 
 function toBucket(point: SeriesPoint, stepSeconds: number, gaps: readonly MeasurementGap[]): Bucket {
-  if (point.checks > 0) return { point, state: point.failures === 0 ? 'up' : point.failures === point.checks ? 'down' : 'partial' };
+  if (point.checks > 0)
+    return { point, state: point.failures === 0 ? 'up' : point.failures === point.checks ? 'down' : 'partial' };
   const fromMs = point.t * 1000;
   const toMs = fromMs + stepSeconds * 1000;
   // Mostly unmeasured: nothing could have run, which is not the same as "no checks".

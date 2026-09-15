@@ -48,6 +48,7 @@ export function ThemeSwitcher() {
   return (
     <div className={styles.switcher} role="radiogroup" aria-label="Theme" onKeyDown={onKeyDown}>
       {THEME_PREFERENCES.map((option) => (
+        // biome-ignore lint/a11y/useSemanticElements: ARIA radios as buttons with roving tabindex and arrow keys (onKeyDown on the group), styled as a segmented control.
         <button
           key={option}
           type="button"

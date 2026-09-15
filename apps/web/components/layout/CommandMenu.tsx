@@ -58,6 +58,7 @@ export function CommandMenu() {
     };
   }, []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: navigating (a new pathname) closes the menu.
   useEffect(() => setOpen(false), [pathname]);
 
   return open ? <CommandDialog onClose={() => setOpen(false)} /> : null;
@@ -82,7 +83,12 @@ function CommandDialog({ onClose }: { onClose: () => void }) {
 
   const items = useMemo<CommandItem[]>(
     () => [
-      ...NAV_PAGES.map((page) => ({ id: `page:${page.href}`, kind: 'page' as const, label: page.label, href: withRange(page.href, range) })),
+      ...NAV_PAGES.map((page) => ({
+        id: `page:${page.href}`,
+        kind: 'page' as const,
+        label: page.label,
+        href: withRange(page.href, range),
+      })),
       ...(services.data?.services ?? []).map((service) => ({
         id: `service:${service.service}`,
         kind: 'service' as const,
@@ -123,7 +129,11 @@ function CommandDialog({ onClose }: { onClose: () => void }) {
   );
 
   const groups = useMemo(
-    () => searchCommands([...items, ...queryCommands(query).map((item) => ({ ...item, href: withRange(item.href, range) }))], query),
+    () =>
+      searchCommands(
+        [...items, ...queryCommands(query).map((item) => ({ ...item, href: withRange(item.href, range) }))],
+        query,
+      ),
     [items, query, range],
   );
   const flat = groups.flatMap((group) => group.items);
@@ -136,10 +146,9 @@ function CommandDialog({ onClose }: { onClose: () => void }) {
     return () => previous?.focus();
   }, []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: optionId is derived from the stable useId value.
   useEffect(() => {
     document.getElementById(optionId(activeIndex))?.scrollIntoView({ block: 'nearest' });
-    // optionId is derived from the stable useId value.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeIndex]);
 
   const open = (item: CommandItem) => {
@@ -175,6 +184,7 @@ function CommandDialog({ onClose }: { onClose: () => void }) {
 
   let index = -1;
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: clicking the backdrop is a mouse shortcut; Escape in the input closes it from the keyboard.
     <div
       className={styles.overlay}
       onMouseDown={(event) => {
@@ -207,6 +217,7 @@ function CommandDialog({ onClose }: { onClose: () => void }) {
 
         <div id={listId} role="listbox" aria-label="Results" className={styles.list}>
           {groups.map((group) => (
+            // biome-ignore lint/a11y/useSemanticElements: a group of options inside an ARIA listbox; a fieldset is not allowed there.
             <div key={group.kind} role="group" aria-label={group.label}>
               <p className={styles.groupLabel} aria-hidden>
                 {group.label}
@@ -215,6 +226,7 @@ function CommandDialog({ onClose }: { onClose: () => void }) {
                 index += 1;
                 const position = index;
                 return (
+                  // biome-ignore lint/a11y/useKeyWithClickEvents lint/a11y/useFocusableInteractive: combobox pattern; focus stays in the input, which moves aria-activedescendant and opens with Enter.
                   <div
                     key={item.id}
                     id={optionId(position)}
@@ -232,7 +244,9 @@ function CommandDialog({ onClose }: { onClose: () => void }) {
               })}
             </div>
           ))}
-          {flat.length === 0 && <p className={styles.empty}>{loading ? 'Loading…' : `Nothing matches “${query.trim()}”.`}</p>}
+          {flat.length === 0 && (
+            <p className={styles.empty}>{loading ? 'Loading…' : `Nothing matches “${query.trim()}”.`}</p>
+          )}
         </div>
 
         <div className={styles.footer}>
@@ -251,7 +265,12 @@ export function CommandMenuTrigger() {
   const [apple, setApple] = useState(false);
   useEffect(() => setApple(isApplePlatform()), []);
   return (
-    <button type="button" className={styles.trigger} onClick={openCommandMenu} aria-keyshortcuts={apple ? 'Meta+K' : 'Control+K'}>
+    <button
+      type="button"
+      className={styles.trigger}
+      onClick={openCommandMenu}
+      aria-keyshortcuts={apple ? 'Meta+K' : 'Control+K'}
+    >
       <Icon name="search" size={14} />
       <span className={styles.triggerLabel}>Search</span>
       <kbd className={styles.kbd}>{apple ? '⌘K' : 'Ctrl K'}</kbd>

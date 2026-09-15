@@ -43,7 +43,9 @@ export function QueriesView() {
   const serviceOptions = [
     { value: '', label: 'All services' },
     ...(services.data?.services.map((item) => ({ value: item.service, label: item.service })) ?? []),
-    ...(service && !services.data?.services.some((item) => item.service === service) ? [{ value: service, label: service }] : []),
+    ...(service && !services.data?.services.some((item) => item.service === service)
+      ? [{ value: service, label: service }]
+      : []),
   ];
   const clear = () => set({ service: null, from: null, to: null });
 
@@ -51,21 +53,31 @@ export function QueriesView() {
     <>
       <PageHeader title="Database queries" />
       <FilterBar
-        trailing={data && `${data.queries.length} statement${data.queries.length === 1 ? '' : 's'}${data.truncated ? ' (top 100)' : ''}`}
+        trailing={
+          data &&
+          `${data.queries.length} statement${data.queries.length === 1 ? '' : 's'}${data.truncated ? ' (top 100)' : ''}`
+        }
       >
-        <FilterSelect label="Service" value={service} options={serviceOptions} onChange={(next) => set({ service: next })} />
+        <FilterSelect
+          label="Service"
+          value={service}
+          options={serviceOptions}
+          onChange={(next) => set({ service: next })}
+        />
         <FilterSelect label="Sort" value={sort} options={SORT_OPTIONS} onChange={(next) => set({ sort: next })} />
-        {window && <FilterChip label="Window" value={formatWindow(window)} onClear={() => set({ from: null, to: null })} />}
+        {window && (
+          <FilterChip label="Window" value={formatWindow(window)} onClear={() => set({ from: null, to: null })} />
+        )}
       </FilterBar>
       <StaleNotice error={data ? error : undefined} updatedAt={updatedAt} onRetry={refetch} />
 
       <Section
-        title={
-          <>
-            Statements {data && <span className={styles.count}>{data.queries.length}</span>}
-          </>
+        title={<>Statements {data && <span className={styles.count}>{data.queries.length}</span>}</>}
+        actions={
+          <span className={styles.note}>
+            {SORT_NOTES[sort] ?? SORT_NOTES['']} · literals shown as ? · opens the slowest call
+          </span>
         }
-        actions={<span className={styles.note}>{SORT_NOTES[sort] ?? SORT_NOTES['']} · literals shown as ? · opens the slowest call</span>}
         flush
       >
         {isLoading ? (

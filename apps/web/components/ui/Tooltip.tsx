@@ -16,6 +16,7 @@ export function Tooltip({ content, children, side = 'top' }: TooltipProps) {
   const [open, setOpen] = useState(false);
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: listens to events bubbling from the focusable child; the wrapper itself is not interactive.
     <span
       className={styles.anchor}
       onPointerEnter={() => setOpen(true)}

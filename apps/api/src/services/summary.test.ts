@@ -31,12 +31,33 @@ test('the text lists monitors, alerts and time not measured', () => {
     now: MONDAY_0930_SEOUL,
     timeZone: 'Asia/Seoul',
     monitors: [
-      { name: 'example.com', checks: 1440, failures: 0, avgLatencyMs: 281.4, p95LatencyMs: 410, sslExpiresAt: MONDAY_0930_SEOUL + 59.5 * 86_400_000 },
+      {
+        name: 'example.com',
+        checks: 1440,
+        failures: 0,
+        avgLatencyMs: 281.4,
+        p95LatencyMs: 410,
+        sslExpiresAt: MONDAY_0930_SEOUL + 59.5 * 86_400_000,
+      },
       { name: 'api', checks: 1440, failures: 1, avgLatencyMs: 1234, p95LatencyMs: null, sslExpiresAt: null },
       { name: 'new', checks: 0, failures: 0, avgLatencyMs: null, p95LatencyMs: null, sslExpiresAt: null },
       { name: 'once', checks: 1, failures: 0, avgLatencyMs: 90, p95LatencyMs: null, sslExpiresAt: null },
-      { name: 'old-cert', checks: 2, failures: 2, avgLatencyMs: null, p95LatencyMs: null, sslExpiresAt: MONDAY_0930_SEOUL - 3 * 86_400_000 },
-      { name: 'last-day', checks: 2, failures: 0, avgLatencyMs: null, p95LatencyMs: null, sslExpiresAt: MONDAY_0930_SEOUL + 5 * 3_600_000 },
+      {
+        name: 'old-cert',
+        checks: 2,
+        failures: 2,
+        avgLatencyMs: null,
+        p95LatencyMs: null,
+        sslExpiresAt: MONDAY_0930_SEOUL - 3 * 86_400_000,
+      },
+      {
+        name: 'last-day',
+        checks: 2,
+        failures: 0,
+        avgLatencyMs: null,
+        p95LatencyMs: null,
+        sslExpiresAt: MONDAY_0930_SEOUL + 5 * 3_600_000,
+      },
     ],
     alertChanges: 3,
     criticalChanges: 1,
@@ -62,6 +83,17 @@ test('the text lists monitors, alerts and time not measured', () => {
 });
 
 test('a quiet week reads briefly', () => {
-  const text = summaryText({ days: 7, now: MONDAY_0930_SEOUL, timeZone: 'Asia/Seoul', monitors: [], alertChanges: 0, criticalChanges: 0, gaps: [] });
-  assert.equal(text, 'minidog weekly summary · Mon, Sep 14 (last 7 days)\nNo synthetic monitors are running.\nAlerts: no state changes');
+  const text = summaryText({
+    days: 7,
+    now: MONDAY_0930_SEOUL,
+    timeZone: 'Asia/Seoul',
+    monitors: [],
+    alertChanges: 0,
+    criticalChanges: 0,
+    gaps: [],
+  });
+  assert.equal(
+    text,
+    'minidog weekly summary · Mon, Sep 14 (last 7 days)\nNo synthetic monitors are running.\nAlerts: no state changes',
+  );
 });

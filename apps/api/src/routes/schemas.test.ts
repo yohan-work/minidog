@@ -20,7 +20,13 @@ test('a body check needs GET', () => {
 
 test('issues used after a failed parse still carry their message', () => {
   // zod's refine() deletes `message` from the params object it keeps.
-  createMonitorSchema.safeParse({ url: 'https://example.com', intervalSeconds: 30, timeoutMs: 30_000, method: 'HEAD', bodyContains: 'x' });
+  createMonitorSchema.safeParse({
+    url: 'https://example.com',
+    intervalSeconds: 30,
+    timeoutMs: 30_000,
+    method: 'HEAD',
+    bodyContains: 'x',
+  });
   assert.equal(timeoutIssue().message, 'Timeout must be shorter than the interval.');
   assert.equal(bodyCheckIssue().message, 'A body check needs GET; HEAD responses have no body.');
 });

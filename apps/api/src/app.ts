@@ -105,7 +105,9 @@ export async function buildApp(config: Config, options: BuildAppOptions = {}): P
   const alertMonitors = new AlertMonitorRepository(sqlite);
   const summary = new SummaryService(new SummaryRepository(sqlite), monitors, results, alertMonitors, gaps);
   // Summaries go out where checks run, alongside the scheduler.
-  const summaryScheduler = config.WORKER_ENABLED ? new SummaryScheduler(summary, app.log, gapTracker ?? undefined) : null;
+  const summaryScheduler = config.WORKER_ENABLED
+    ? new SummaryScheduler(summary, app.log, gapTracker ?? undefined)
+    : null;
   const evaluator = new AlertEvaluator({
     monitors: alertMonitors,
     spans,
@@ -117,7 +119,13 @@ export async function buildApp(config: Config, options: BuildAppOptions = {}): P
     gaps: gapTracker ?? undefined,
   });
   const scheduler = config.WORKER_ENABLED
-    ? new SyntheticScheduler({ monitors, writer, log: app.log, concurrency: config.WORKER_CONCURRENCY, gaps: gapTracker ?? undefined })
+    ? new SyntheticScheduler({
+        monitors,
+        writer,
+        log: app.log,
+        concurrency: config.WORKER_CONCURRENCY,
+        gaps: gapTracker ?? undefined,
+      })
     : null;
 
   const ctx: AppContext = {

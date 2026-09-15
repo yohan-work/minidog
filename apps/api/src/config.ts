@@ -1,8 +1,6 @@
 import { z } from 'zod';
 
-const booleanString = z
-  .enum(['true', 'false', '1', '0'])
-  .transform((value) => value === 'true' || value === '1');
+const booleanString = z.enum(['true', 'false', '1', '0']).transform((value) => value === 'true' || value === '1');
 
 const configSchema = z.object({
   HOST: z.string().default('127.0.0.1'),
@@ -14,7 +12,10 @@ const configSchema = z.object({
   CLICKHOUSE_URL: z.url().default('http://127.0.0.1:8123'),
   CLICKHOUSE_USER: z.string().default('minidog'),
   CLICKHOUSE_PASSWORD: z.string().default('minidog'),
-  CLICKHOUSE_DATABASE: z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/).default('minidog'),
+  CLICKHOUSE_DATABASE: z
+    .string()
+    .regex(/^[A-Za-z_][A-Za-z0-9_]*$/)
+    .default('minidog'),
 
   WORKER_ENABLED: booleanString.default(true),
   WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(64).default(8),
