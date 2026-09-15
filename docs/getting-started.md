@@ -114,7 +114,7 @@ Monitor
 Settings                 프로젝트 · 환경 · API key · 연결 정보
 ```
 
-상단 바에서 프로젝트/환경과 시간 범위를 바꾼다. 요청·지연 차트를 드래그하면 그 구간의 느린 트레이스 · 에러 트레이스 · 에러 로그 · 예외로 바로 이동한다. 경고·위험 모니터가 있으면 알림 표시가 나타난다.
+상단 바에서 프로젝트/환경과 시간 범위를 바꾼다. ⌘K(Ctrl+K)로 화면 · 서비스 · 엔드포인트 · 호스트 · 모니터를 찾고, trace id를 붙여 넣으면 바로 연다. 요청·지연 차트를 드래그하면 그 구간의 느린 트레이스 · 에러 트레이스 · 에러 로그 · 예외로 바로 이동한다. 경고·위험 모니터가 있으면 알림 표시가 나타난다.
 
 ## MVP 완료 기준 확인
 
@@ -129,6 +129,7 @@ Settings                 프로젝트 · 환경 · API key · 연결 정보
 | G. 배포 표시선 | `pnpm demo`를 끄고 `DEMO_VERSION=1.1.0 pnpm demo`로 다시 실행 → 서비스 차트에 `1.1.0` 세로선, 서비스 상세 Versions에 1.0.0 / 1.1.0 비교 |
 | H. 느린 DB 쿼리 | `pnpm demo` 후 `curl -X POST localhost:5100/__demo/scenario -d '{"dbDelayMs":300}'` → Queries에서 `INSERT INTO orders …`가 총 소요 시간 1위, 행을 누르면 가장 느린 호출의 트레이스 |
 | I. 엔드포인트 상세 | Services → `api` → Endpoints에서 `POST /checkout` → 응답시간 분포(2배마다 4칸인 로그 막대, 빨강 = 실패), P50/P95/P99 표시, 가장 느린 요청 |
+| J. 검색(⌘K) | 아무 화면에서 ⌘K → `checkout` 입력 → Enter로 `POST /checkout` 엔드포인트 상세. 32자리 trace id를 붙여 넣으면 그 트레이스, 그 밖의 글자는 Search logs / traces |
 
 ## 개발
 

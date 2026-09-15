@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { useApi } from '@/lib/use-api';
 import { useTimeRange } from '@/lib/time-range';
 import { AlertsIndicator } from './AlertsIndicator';
+import { CommandMenuTrigger } from './CommandMenu';
 import { ProjectSwitcher } from './ProjectSwitcher';
 import styles from './TopBar.module.scss';
 
@@ -55,6 +56,7 @@ export function TopBar() {
       }
       controls={
         <>
+        <CommandMenuTrigger />
         <AlertsIndicator />
         <label className={styles.range}>
           <span className={styles.visuallyHidden}>Time range</span>

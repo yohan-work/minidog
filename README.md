@@ -40,6 +40,7 @@ The goal is to reach the root cause in three screens or fewer, without first lea
 - **Monitors**: alerts for service down, error rate, latency, host resources and synthetic checks (failed checks, response time, SSL expiry), with Warning and Critical levels, state history and webhooks (Slack-compatible). Noise control: alert only after a condition lasts N minutes, delay recovery, and mute notifications during maintenance.
 - **Service Map**: a dependency graph built from span relationships.
 - **Projects**: projects, environments and ingest API keys.
+- **Search**: ⌘K / Ctrl+K from anywhere finds pages, services, endpoints, hosts and monitors, opens a pasted trace id, or searches logs and traces for the typed text.
 
 ## Quick start
 

@@ -1,0 +1,168 @@
+@use '../../styles/mixins' as *;
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 12vh var(--space-4) var(--space-4);
+  background: color-mix(in srgb, var(--background-primary) 70%, transparent);
+  animation: fade var(--duration-fast) var(--ease-out);
+}
+
+.dialog {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: calc(var(--space-16) * 10);
+  max-height: 70vh;
+  border: 1px solid var(--border-hover);
+  border-radius: var(--radius-lg);
+  background: var(--background-secondary);
+  box-shadow: var(--shadow-popover);
+  overflow: hidden;
+}
+
+.inputRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-inline: var(--space-4);
+  border-bottom: 1px solid var(--border-default);
+
+  &:focus-within {
+    box-shadow: inset 0 -2px 0 var(--focus-ring);
+  }
+}
+
+.searchIcon {
+  flex-shrink: 0;
+  color: var(--foreground-muted);
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  height: var(--space-12);
+  border: 0;
+  background: transparent;
+  font-size: var(--text-ui);
+  color: var(--foreground-primary);
+  outline: none;
+
+  // The row's underline is the focus mark; the global :focus-visible outline
+  // would draw a second box around the input.
+  &:focus-visible {
+    outline: none;
+  }
+
+  &::placeholder {
+    color: var(--foreground-muted);
+  }
+}
+
+.kbd {
+  flex-shrink: 0;
+  padding: 0 var(--space-1);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+  color: var(--foreground-muted);
+}
+
+.list {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-2);
+}
+
+.groupLabel {
+  padding: var(--space-2) var(--space-2) var(--space-1);
+  font-size: var(--text-meta);
+  font-weight: var(--weight-medium);
+  color: var(--foreground-muted);
+}
+
+.option {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.active {
+  background: var(--background-active);
+}
+
+.label {
+  font-size: var(--text-secondary);
+  color: var(--foreground-primary);
+  @include truncate;
+}
+
+.detail {
+  flex-shrink: 0;
+  max-width: 50%;
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+  color: var(--foreground-muted);
+  @include truncate;
+}
+
+.empty {
+  padding: var(--space-4) var(--space-2);
+  font-size: var(--text-secondary);
+  color: var(--foreground-secondary);
+}
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-4);
+  border-top: 1px solid var(--border-default);
+  font-size: var(--text-meta);
+  color: var(--foreground-muted);
+}
+
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: var(--control-height-sm);
+  padding-inline: var(--space-2);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: transparent;
+  font-size: var(--text-secondary);
+  color: var(--foreground-secondary);
+  cursor: pointer;
+  @include transition(background-color, border-color, color);
+
+  &:hover {
+    background: var(--background-hover);
+    border-color: var(--border-hover);
+    color: var(--foreground-primary);
+  }
+
+  &:focus-visible {
+    @include focus-ring;
+  }
+}
+
+.triggerLabel {
+  @include mobile {
+    display: none;
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}

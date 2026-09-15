@@ -40,6 +40,11 @@ const NAV: NavGroup[] = [
   { items: [{ label: 'Settings', href: '/settings' }] },
 ];
 
+/** Every page in the navigation, in its order — also offered by the command menu. */
+export const NAV_PAGES: readonly { label: string; href: string }[] = NAV.flatMap((group) =>
+  group.items.flatMap((item) => (item.href ? [{ label: item.label, href: item.href }] : [])),
+);
+
 function isActive(href: string, pathname: string | null): boolean {
   if (pathname === null) return false;
   return href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`);
