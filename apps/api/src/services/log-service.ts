@@ -1,10 +1,12 @@
-import type { LogLevel, LogListResponse, LogVolumePoint, TimeRange } from '@minidog/types';
+import type { LogLevel, LogListResponse, LogTailResponse, LogVolumePoint, TimeRange } from '@minidog/types';
 import { customWindow, timeWindow, type TimeWindow } from '../lib/time-window';
 import type { LogRepository } from '../repositories/log-repository';
 import type { Scope } from '../repositories/project-repository';
 
 /** Logs of one trace are looked up across the whole retention, not the selected range. */
 const TRACE_LOOKBACK_MS = 14 * 24 * 60 * 60 * 1000;
+/** Live tail catches up at most this far back, e.g. after a long pause. */
+const TAIL_MAX_LOOKBACK_MS = 15 * 60 * 1000;
 
 export interface LogQuery {
   range: TimeRange;
@@ -15,6 +17,15 @@ export interface LogQuery {
   minLevel?: LogLevel;
   query?: string;
   traceId?: string;
+  limit: number;
+}
+
+export interface LogTailQuery {
+  /** Epoch ms. */
+  since: number;
+  service?: string;
+  minLevel?: LogLevel;
+  query?: string;
   limit: number;
 }
 
@@ -46,6 +57,14 @@ export class LogService {
       series: { stepSeconds: window.stepSeconds, points: filters.traceId ? [] : fillVolume(window, points) },
       services,
     };
+  }
+
+  /** Records from `since` on, for live tail; no volume or service list, so it is cheap to poll. */
+  async tail({ since, limit, ...filters }: LogTailQuery): Promise<LogTailResponse> {
+    const now = Date.now();
+    const fromMs = Math.max(since, now - TAIL_MAX_LOOKBACK_MS);
+    const logs = await this.logs.search(this.scope, { ...filters, fromMs, limit });
+    return { logs, truncated: logs.length >= limit, since: fromMs, now };
   }
 }
 

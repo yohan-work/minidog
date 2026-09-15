@@ -873,3 +873,14 @@ export interface LogListResponse {
   /** Services with logs in the range, for the service filter. */
   services: string[];
 }
+
+/** `GET /api/logs/tail`: records from `since` on, newest first. */
+export interface LogTailResponse {
+  logs: LogEntry[];
+  /** True when the result hit the limit: older records from `since` on are missing. */
+  truncated: boolean;
+  /** Epoch ms the records start from (a request's `since`, clamped to the last 15 minutes). */
+  since: number;
+  /** Server clock at query time, epoch ms. */
+  now: number;
+}

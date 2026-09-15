@@ -16,6 +16,7 @@ import { toQuery, useQueryParams } from '@/lib/query-params';
 import { useTimeRange } from '@/lib/time-range';
 import { useApi } from '@/lib/use-api';
 import { TelemetrySetup } from '../apm/TelemetrySetup';
+import { LiveTail } from './LiveTail';
 import styles from './Logs.module.scss';
 
 const LEVEL_OPTIONS = [
@@ -41,7 +42,10 @@ export function LogsView() {
   const window = parseWindow(get('from'), get('to'));
   const limit = Math.min(Number(get('limit')) || PAGE, MAX);
   const hasFilters = Object.values(filters).some(Boolean) || window !== null;
+  const live = get('live') === '1';
 
+  // Keeps loading while live tail runs: it feeds the service filter, and the
+  // records are ready when live tail stops.
   const { data, error, isLoading, updatedAt, refetch } = useApi<LogListResponse>(
     `/logs${toQuery({ range, limit, ...filters, ...(window ? windowParams(window) : {}) })}`,
   );
@@ -55,67 +59,94 @@ export function LogsView() {
   const clear = () => set({ service: null, level: null, q: null, traceId: null, limit: null, from: null, to: null });
   // Dragging on the volume chart narrows the records to that window.
   const selectWindow = (fromMs: number, toMs: number) => set({ ...windowParams({ fromMs, toMs }), limit: null });
+  // Live tail follows new records, so a fixed window, a trace or paging do not apply.
+  const toggleLive = () => set(live ? { live: null } : { live: '1', from: null, to: null, traceId: null, limit: null });
 
   return (
     <>
-      <PageHeader title="Logs" />
-      <FilterBar trailing={data && (data.truncated ? `Latest ${formatCount(limit)}` : `${formatCount(data.logs.length)} records`)}>
+      <PageHeader
+        title="Logs"
+        actions={
+          <Button size="sm" aria-pressed={live} onClick={toggleLive}>
+            {live ? 'Stop live tail' : 'Live tail'}
+          </Button>
+        }
+      />
+      <FilterBar trailing={!live && data && (data.truncated ? `Latest ${formatCount(limit)}` : `${formatCount(data.logs.length)} records`)}>
         <FilterSelect label="Service" value={filters.service} options={serviceOptions} onChange={(service) => set({ service })} />
         <FilterSelect label="Level" value={filters.level} options={LEVEL_OPTIONS} onChange={(level) => set({ level })} />
         {window && !filters.traceId && <FilterChip label="Window" value={formatWindow(window)} onClear={() => set({ from: null, to: null })} />}
         {filters.traceId && <FilterChip label="Trace" value={filters.traceId} onClear={() => set({ traceId: null })} />}
         <SearchField label="Search logs" value={filters.q} placeholder="Search logs…" onChange={(q) => set({ q })} />
       </FilterBar>
-      <StaleNotice error={data ? error : undefined} updatedAt={updatedAt} onRetry={refetch} />
-
-      {!filters.traceId && (
-        <Section
-          title="Volume"
-          actions={
-            <>
-              <SelectHint />
-              <ChartLegend series={VOLUME_SERIES} />
-            </>
-          }
-        >
-          {data ? <VolumeChart data={data} onSelectRange={selectWindow} /> : <Skeleton height="var(--chart-height)" />}
-        </Section>
-      )}
-
-      <Section title={filters.traceId ? 'Logs of this trace' : 'Records'} flush>
-        {isLoading ? (
-          <Skeleton height="calc(var(--row-height) * 8)" />
-        ) : !data ? (
-          <ErrorState title="Unable to query logs." description={error?.message} onRetry={refetch} />
-        ) : data.logs.length > 0 ? (
-          <>
-            <LogList logs={data.logs} range={range} showTrace={!filters.traceId} />
-            {data.truncated && limit < MAX && (
-              <div className={styles.more}>
-                <Button size="sm" onClick={() => set({ limit: String(limit + PAGE) })}>
-                  Show {PAGE} more
-                </Button>
-              </div>
-            )}
-          </>
-        ) : hasFilters ? (
-          <EmptyState
-            title="No logs match these filters"
-            description="Widen the time range or remove a filter."
-            action={
+      {live ? (
+        <LiveTail
+          filters={{ service: filters.service, level: filters.level, q: filters.q }}
+          range={range}
+          emptyAction={
+            hasFilters ? (
               <Button size="sm" onClick={clear}>
                 Clear filters
               </Button>
-            }
-          />
-        ) : (
-          <EmptyState
-            title="No logs yet"
-            description="Send logs with an OpenTelemetry SDK; records emitted inside a span link to their trace."
-            action={<TelemetrySetup />}
-          />
-        )}
-      </Section>
+            ) : (
+              <TelemetrySetup />
+            )
+          }
+        />
+      ) : (
+        <>
+          <StaleNotice error={data ? error : undefined} updatedAt={updatedAt} onRetry={refetch} />
+
+          {!filters.traceId && (
+            <Section
+              title="Volume"
+              actions={
+                <>
+                  <SelectHint />
+                  <ChartLegend series={VOLUME_SERIES} />
+                </>
+              }
+            >
+              {data ? <VolumeChart data={data} onSelectRange={selectWindow} /> : <Skeleton height="var(--chart-height)" />}
+            </Section>
+          )}
+
+          <Section title={filters.traceId ? 'Logs of this trace' : 'Records'} flush>
+            {isLoading ? (
+              <Skeleton height="calc(var(--row-height) * 8)" />
+            ) : !data ? (
+              <ErrorState title="Unable to query logs." description={error?.message} onRetry={refetch} />
+            ) : data.logs.length > 0 ? (
+              <>
+                <LogList logs={data.logs} range={range} showTrace={!filters.traceId} />
+                {data.truncated && limit < MAX && (
+                  <div className={styles.more}>
+                    <Button size="sm" onClick={() => set({ limit: String(limit + PAGE) })}>
+                      Show {PAGE} more
+                    </Button>
+                  </div>
+                )}
+              </>
+            ) : hasFilters ? (
+              <EmptyState
+                title="No logs match these filters"
+                description="Widen the time range or remove a filter."
+                action={
+                  <Button size="sm" onClick={clear}>
+                    Clear filters
+                  </Button>
+                }
+              />
+            ) : (
+              <EmptyState
+                title="No logs yet"
+                description="Send logs with an OpenTelemetry SDK; records emitted inside a span link to their trace."
+                action={<TelemetrySetup />}
+              />
+            )}
+          </Section>
+        </>
+      )}
     </>
   );
 }

@@ -16,9 +16,22 @@ const logQuerySchema = rangeQuerySchema
   })
   .superRefine(checkWindow);
 
+const tailQuerySchema = z.object({
+  since: z.coerce.number({ error: 'Give since as epoch milliseconds.' }).int().positive(),
+  service: optionalText(255),
+  level: emptyAsUndefined(z.enum(LOG_LEVELS).optional()),
+  q: optionalText(200),
+  limit: z.coerce.number().int().min(1).max(500).default(500),
+});
+
 export function registerLogRoutes(app: FastifyInstance, ctx: AppContext): void {
   app.get('/api/logs', async (request) => {
     const { level, q, traceId, ...query } = logQuerySchema.parse(request.query);
     return ctx.logSearch.search({ ...query, minLevel: level, query: q, traceId: traceId?.toLowerCase() });
+  });
+
+  app.get('/api/logs/tail', async (request) => {
+    const { level, q, ...query } = tailQuerySchema.parse(request.query);
+    return ctx.logSearch.tail({ ...query, minLevel: level, query: q });
   });
 }

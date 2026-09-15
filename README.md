@@ -30,7 +30,7 @@ The goal is to reach the root cause in three screens or fewer, without first lea
 
 - **Overview**: health of every service at a glance, with a *needs attention* list that points at the problem.
 - **APM**: requests, error rate and P50/P95/P99 for each service and endpoint, a trace explorer and a span waterfall. Deployments (a new `service.version`) are marked on the charts, with a per-version comparison on the service page. Each endpoint has its own page with a response-time distribution (logarithmic buckets) and its slowest requests.
-- **Logs**: search and filter by service and level. Log lines that carry a trace ID link to that trace.
+- **Logs**: search and filter by service and level. Log lines that carry a trace ID link to that trace; live tail streams new records as they arrive.
 - **Correlation**: trace → related logs and log → trace, carrying the time range and filters across pages. Drag across a request or latency chart to open that window's slowest traces, error traces, error logs or exceptions.
 - **Errors**: exceptions recorded on spans, grouped by type and message, with affected traces, endpoints, first and last seen.
 - **Database queries**: statements from database client spans ranked by time spent, P95 or calls, with literals replaced by `?`; each opens its slowest call.
