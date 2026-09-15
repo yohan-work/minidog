@@ -705,6 +705,38 @@ export interface WebhookTestResponse {
   status: string;
 }
 
+/** A short report sent to a webhook once a day (and weekly, if chosen). */
+export interface SummarySettings {
+  enabled: boolean;
+  webhookUrl: string;
+  /** Hour (0–23) in `timeZone` from which the day's summary goes out. */
+  hour: number;
+  /** On Mondays, cover the last 7 days instead of 24 hours. */
+  weekly: boolean;
+  /** IANA time zone, e.g. `Asia/Seoul`. */
+  timeZone: string;
+}
+
+export const SUMMARY_DEFAULTS: SummarySettings = { enabled: false, webhookUrl: '', hour: 9, weekly: false, timeZone: 'UTC' };
+
+/** `GET /api/summary` and `PUT /api/summary`. */
+export interface SummaryResponse {
+  settings: SummarySettings;
+  /** ISO time of the last scheduled summary; null before the first. */
+  lastSentAt: string | null;
+  /** e.g. `sent 200` or `failed 404`. */
+  lastStatus: string;
+  /** ISO time of a failed scheduled send still waiting to be retried; null otherwise. */
+  lastFailedAt: string | null;
+  /** Today's summary as it would be sent now. */
+  preview: string;
+}
+
+/** `POST /api/summary/send`. */
+export interface SendSummaryResponse {
+  status: string;
+}
+
 export interface AlertDefaults {
   warning: number | null;
   critical: number;

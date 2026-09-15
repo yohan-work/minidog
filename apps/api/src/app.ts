@@ -16,6 +16,7 @@ import { MonitorRepository } from './repositories/monitor-repository';
 import { ProjectRepository, type Scope } from './repositories/project-repository';
 import { SpanRepository } from './repositories/span-repository';
 import { StorageRepository } from './repositories/storage-repository';
+import { SummaryRepository } from './repositories/summary-repository';
 import { SyntheticResultRepository } from './repositories/synthetic-result-repository';
 import { registerAlertingRoutes } from './routes/alerting';
 import { registerApmRoutes } from './routes/apm';
@@ -26,6 +27,7 @@ import { registerMetricRoutes } from './routes/metrics';
 import { registerMonitorRoutes } from './routes/monitors';
 import { registerSettingsRoutes } from './routes/settings';
 import { registerStorageRoutes } from './routes/storage';
+import { registerSummaryRoutes } from './routes/summary';
 import { registerSystemRoutes } from './routes/system';
 import { AlertingService } from './services/alerting-service';
 import { ApmService } from './services/apm-service';
@@ -34,9 +36,11 @@ import { LogService } from './services/log-service';
 import { MetricsExplorerService } from './services/metrics-explorer-service';
 import { MonitorService } from './services/monitor-service';
 import { StorageService } from './services/storage-service';
+import { SummaryService } from './services/summary-service';
 import { AlertEvaluator } from './worker/alert-evaluator';
 import { GapTracker } from './worker/gap-tracker';
 import { ResultWriter } from './worker/result-writer';
+import { SummaryScheduler } from './worker/summary-scheduler';
 import { SyntheticScheduler } from './worker/synthetic-scheduler';
 
 export interface AppContext {
@@ -59,6 +63,7 @@ export interface AppContext {
   metricsExplorer: MetricsExplorerService;
   alerting: AlertingService;
   storage: StorageService;
+  summary: SummaryService;
   /** Null when WORKER_ENABLED=false. */
   scheduler: SyntheticScheduler | null;
 }
@@ -89,6 +94,9 @@ export async function buildApp(config: Config, options: BuildAppOptions = {}): P
   // Gaps matter where checks run, so the tracker runs with the scheduler.
   const gapTracker = config.WORKER_ENABLED ? new GapTracker(gaps, app.log) : null;
   const alertMonitors = new AlertMonitorRepository(sqlite);
+  const summary = new SummaryService(new SummaryRepository(sqlite), monitors, results, alertMonitors, gaps);
+  // Summaries go out where checks run, alongside the scheduler.
+  const summaryScheduler = config.WORKER_ENABLED ? new SummaryScheduler(summary, app.log, gapTracker ?? undefined) : null;
   const evaluator = new AlertEvaluator({
     monitors: alertMonitors,
     spans,
@@ -125,6 +133,7 @@ export async function buildApp(config: Config, options: BuildAppOptions = {}): P
     metricsExplorer: new MetricsExplorerService(metrics, scope),
     alerting: new AlertingService(alertMonitors, evaluator, scope, config.ALERTS_ENABLED, monitors),
     storage: new StorageService(new StorageRepository(clickhouse), config.SQLITE_PATH),
+    summary,
     scheduler,
   };
 
@@ -134,12 +143,14 @@ export async function buildApp(config: Config, options: BuildAppOptions = {}): P
     writer.start();
     gapTracker?.start();
     scheduler?.start();
+    summaryScheduler?.start();
     if (config.ALERTS_ENABLED) evaluator.start();
   });
   app.addHook('onClose', async () => {
     lifetime.abort();
     scheduler?.stop();
     gapTracker?.stop();
+    summaryScheduler?.stop();
     await evaluator.stop();
     await writer.stop();
     await clickhouse.close();
@@ -179,6 +190,7 @@ export async function buildApp(config: Config, options: BuildAppOptions = {}): P
     async (routes) => {
       registerSystemRoutes(routes, ctx);
       registerStorageRoutes(routes, ctx);
+      registerSummaryRoutes(routes, ctx);
       registerMonitorRoutes(routes, ctx);
       registerHostRoutes(routes, ctx);
       registerApmRoutes(routes, ctx);

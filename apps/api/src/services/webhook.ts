@@ -16,6 +16,8 @@ export interface WebhookPayload {
   note?: string;
   /** Set on notifications sent with "Send test". */
   test?: true;
+  /** Set on daily and weekly summaries. */
+  summary?: true;
 }
 
 export function webhookPayload(monitor: AlertMonitor, event: AlertEvent, note?: string): WebhookPayload {
@@ -42,6 +44,19 @@ export function testWebhookPayload(): WebhookPayload {
     message: 'Test notification',
     timestamp: new Date().toISOString(),
     test: true,
+  };
+}
+
+export function summaryPayload(text: string, days: 1 | 7): WebhookPayload {
+  return {
+    text,
+    monitor: null,
+    state: 'ok',
+    previousState: 'ok',
+    value: null,
+    message: days === 7 ? 'Weekly summary' : 'Daily summary',
+    timestamp: new Date().toISOString(),
+    summary: true,
   };
 }
 
@@ -73,6 +88,7 @@ const NTFY_STYLES: Record<string, { priority: string; tags: string }> = {
   ok: { priority: '3', tags: 'white_check_mark' },
 };
 const NTFY_DEFAULT = { priority: '3', tags: 'bell' };
+const NTFY_SUMMARY = { priority: '3', tags: 'bar_chart' };
 
 export function webhookRequest(url: string, payload: WebhookPayload): { headers: Record<string, string>; body: string } {
   const json = (body: unknown) => ({
@@ -90,13 +106,13 @@ export function webhookRequest(url: string, payload: WebhookPayload): { headers:
         disable_web_page_preview: true,
       });
     case 'ntfy': {
-      const style = payload.test ? NTFY_DEFAULT : (NTFY_STYLES[payload.state] ?? NTFY_DEFAULT);
+      const style = payload.test ? NTFY_DEFAULT : payload.summary ? NTFY_SUMMARY : (NTFY_STYLES[payload.state] ?? NTFY_DEFAULT);
       return {
         // Header values must be ASCII, so monitor names (which may not be) stay in the body.
         headers: {
           'content-type': 'text/plain; charset=utf-8',
           'user-agent': 'minidog-alerts',
-          title: payload.test ? 'minidog test' : `minidog ${payload.state}`,
+          title: payload.test ? 'minidog test' : payload.summary ? 'minidog summary' : `minidog ${payload.state}`,
           priority: style.priority,
           tags: style.tags,
         },
