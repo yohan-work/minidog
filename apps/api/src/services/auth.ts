@@ -7,8 +7,10 @@ export const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 export const PASSWORD_MIN_LENGTH = 8;
 
 const SCRYPT = { N: 16_384, r: 8, p: 1, keyLength: 64 };
-const MAX_FAILURES = 5;
-const FAILURE_WINDOW_MS = 5 * 60_000;
+/** Wrong passwords before sign-in slows down. */
+const FREE_FAILURES = 5;
+const FAILURE_WINDOW_MS = 15 * 60_000;
+const MAX_DELAY_MS = 5_000;
 
 function derive(password: string, salt: Buffer, params: { N: number; r: number; p: number; keyLength: number }): Promise<Buffer> {
   return new Promise((resolve, reject) =>
@@ -41,7 +43,10 @@ export const hashToken = (token: string): string => createHash('sha256').update(
  * keys). It is chosen on first run; sessions last 30 days.
  */
 export class AuthService {
-  private readonly failures = new Map<string, { count: number; firstAt: number }>();
+  /** Recent wrong passwords, for everyone: behind the dashboard's proxy every request has the same address. */
+  private failures: number[] = [];
+  /** Sign-in and setup run one at a time, so parallel requests cannot outrun the delay or race the first password. */
+  private queue: Promise<unknown> = Promise.resolve();
 
   constructor(
     private readonly store: AuthRepository,
@@ -60,22 +65,36 @@ export class AuthService {
   }
 
   /** First run: sets the password and signs in. */
-  async setup(password: string): Promise<string> {
-    if (this.store.passwordHash() !== null) throw new HttpError(409, 'already_set_up', 'A password is already set. Sign in instead.');
-    this.store.setPasswordHash(await hashPassword(password));
-    return this.startSession();
+  setup(password: string): Promise<string> {
+    return this.serialized(async () => {
+      if (this.store.passwordHash() !== null) throw new HttpError(409, 'already_set_up', 'A password is already set. Sign in instead.');
+      if (!this.store.insertPasswordHash(await hashPassword(password))) {
+        throw new HttpError(409, 'already_set_up', 'A password is already set. Sign in instead.');
+      }
+      return this.startSession();
+    });
   }
 
-  async signIn(password: string, client: string): Promise<string> {
-    this.checkThrottle(client);
-    const stored = this.store.passwordHash();
-    if (stored === null) throw new HttpError(409, 'setup_required', 'Set a password first.');
-    if (!(await verifyPassword(stored, password))) {
-      this.recordFailure(client);
-      throw new HttpError(401, 'invalid_password', 'That password is not right.');
-    }
-    this.failures.delete(client);
-    return this.startSession();
+  /**
+   * After a few wrong passwords each attempt waits longer (up to 5 s), for
+   * everyone. Nobody is locked out: the owner gets in after the wait.
+   */
+  signIn(password: string): Promise<string> {
+    return this.serialized(async () => {
+      const now = Date.now();
+      this.failures = this.failures.filter((at) => now - at < FAILURE_WINDOW_MS);
+      const extra = this.failures.length - FREE_FAILURES;
+      if (extra >= 0) await new Promise((resolve) => setTimeout(resolve, Math.min(MAX_DELAY_MS, 250 * 2 ** extra)));
+
+      const stored = this.store.passwordHash();
+      if (stored === null) throw new HttpError(409, 'setup_required', 'Set a password first.');
+      if (!(await verifyPassword(stored, password))) {
+        this.failures.push(Date.now());
+        throw new HttpError(401, 'invalid_password', 'That password is not right.');
+      }
+      this.failures = [];
+      return this.startSession();
+    });
   }
 
   signOut(token: string | undefined): void {
@@ -97,16 +116,9 @@ export class AuthService {
     return token;
   }
 
-  private checkThrottle(client: string): void {
-    const entry = this.failures.get(client);
-    if (!entry) return;
-    if (Date.now() - entry.firstAt > FAILURE_WINDOW_MS) this.failures.delete(client);
-    else if (entry.count >= MAX_FAILURES) throw new HttpError(429, 'too_many_attempts', 'Too many attempts. Try again in a few minutes.');
-  }
-
-  private recordFailure(client: string): void {
-    const entry = this.failures.get(client);
-    if (!entry || Date.now() - entry.firstAt > FAILURE_WINDOW_MS) this.failures.set(client, { count: 1, firstAt: Date.now() });
-    else entry.count += 1;
+  private serialized<T>(work: () => Promise<T>): Promise<T> {
+    const run = this.queue.then(work, work);
+    this.queue = run.catch(() => undefined);
+    return run;
   }
 }

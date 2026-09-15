@@ -66,7 +66,7 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
 
   app.post('/api/auth/login', async (request, reply) => {
     const body = loginSchema.parse(request.body ?? {});
-    setSessionCookie(request, reply, await auth.signIn(body.password, request.ip));
+    setSessionCookie(request, reply, await auth.signIn(body.password));
     return reply.status(204).send();
   });
 

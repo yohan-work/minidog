@@ -70,16 +70,39 @@ test('the Query API needs a password set on first run and a session afterwards',
   }
 });
 
-test('signing in is throttled after repeated wrong passwords', async () => {
+test('wrong passwords slow sign-in down without locking the owner out', async () => {
   const app = await start();
   try {
     await app.inject({ method: 'POST', url: '/api/auth/setup', headers: DASHBOARD, payload: { password: 'correct horse' } });
-    for (let attempt = 0; attempt < 5; attempt += 1) {
-      const wrong = await app.inject({ method: 'POST', url: '/api/auth/login', headers: DASHBOARD, payload: { password: 'nope nope' } });
-      assert.equal(wrong.statusCode, 401);
-    }
-    const blocked = await app.inject({ method: 'POST', url: '/api/auth/login', headers: DASHBOARD, payload: { password: 'correct horse' } });
-    assert.equal(blocked.statusCode, 429);
+    // A parallel burst is handled one at a time, so it cannot outrun the count.
+    const burst = await Promise.all(
+      Array.from({ length: 6 }, () => app.inject({ method: 'POST', url: '/api/auth/login', headers: DASHBOARD, payload: { password: 'nope nope' } })),
+    );
+    assert.deepEqual(burst.map((response) => response.statusCode), [401, 401, 401, 401, 401, 401]);
+
+    const started = Date.now();
+    const owner = await app.inject({ method: 'POST', url: '/api/auth/login', headers: DASHBOARD, payload: { password: 'correct horse' } });
+    assert.equal(owner.statusCode, 204);
+    assert.ok(Date.now() - started >= 450, 'waits after repeated failures');
+
+    const fast = Date.now();
+    await app.inject({ method: 'POST', url: '/api/auth/login', headers: DASHBOARD, payload: { password: 'correct horse' } });
+    assert.ok(Date.now() - fast < 400, 'a success clears the delay');
+  } finally {
+    await app.close();
+  }
+});
+
+test('two first-run setups cannot both set the password', async () => {
+  const app = await start();
+  try {
+    const [first, second] = await Promise.all([
+      app.inject({ method: 'POST', url: '/api/auth/setup', headers: DASHBOARD, payload: { password: 'owner password' } }),
+      app.inject({ method: 'POST', url: '/api/auth/setup', headers: DASHBOARD, payload: { password: 'someone else' } }),
+    ]);
+    assert.deepEqual([first.statusCode, second.statusCode], [204, 409]);
+    const login = await app.inject({ method: 'POST', url: '/api/auth/login', headers: DASHBOARD, payload: { password: 'owner password' } });
+    assert.equal(login.statusCode, 204);
   } finally {
     await app.close();
   }

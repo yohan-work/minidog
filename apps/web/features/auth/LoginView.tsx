@@ -12,9 +12,19 @@ import { apiFetch, toApiClientError } from '@/lib/api-client';
 import { useApi } from '@/lib/use-api';
 import styles from './Login.module.scss';
 
-/** Only paths on this site, so a crafted link cannot send you elsewhere after signing in. */
+/**
+ * Only pages of this site, so a crafted link cannot send you elsewhere after
+ * signing in. Resolved as a URL: browsers read `/\\evil.com` as `//evil.com`.
+ */
 function safeNext(value: string | null): string {
-  return value && value.startsWith('/') && !value.startsWith('//') && !value.startsWith('/login') ? value : '/';
+  if (!value || typeof window === 'undefined') return '/';
+  try {
+    const url = new URL(value, window.location.origin);
+    if (url.origin !== window.location.origin || url.pathname.startsWith('/login')) return '/';
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return '/';
+  }
 }
 
 export function LoginView() {

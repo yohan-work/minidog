@@ -11,6 +11,12 @@ export class AuthRepository {
     return row?.value ?? null;
   }
 
+  /** First run: stores the password only if there is none yet. False when one already exists. */
+  insertPasswordHash(hash: string): boolean {
+    const result = this.db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO NOTHING').run(PASSWORD_KEY, hash);
+    return Number(result.changes) > 0;
+  }
+
   setPasswordHash(hash: string): void {
     this.db
       .prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value')
