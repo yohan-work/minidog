@@ -7,12 +7,15 @@ export const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 export const PASSWORD_MIN_LENGTH = 8;
 
 const SCRYPT = { N: 16_384, r: 8, p: 1, keyLength: 64 };
-/** Wrong passwords before sign-in slows down. */
-const FREE_FAILURES = 5;
+/**
+ * Sign-in pauses for everyone after this many wrong passwords in the window.
+ * Requests reach the API through the dashboard's proxy, which does not pass
+ * on the client's address, so attempts cannot be told apart: this bounds
+ * guessing (about 1,000 a day) at the cost of letting a flood pause sign-in.
+ * Signed-in browsers keep working, and restarting minidog lifts the pause.
+ */
+const MAX_FAILURES = 10;
 const FAILURE_WINDOW_MS = 15 * 60_000;
-const MAX_DELAY_MS = 5_000;
-/** More simultaneous attempts than this are turned away until some finish. */
-const MAX_IN_FLIGHT = 10;
 
 function derive(password: string, salt: Buffer, params: { N: number; r: number; p: number; keyLength: number }): Promise<Buffer> {
   return new Promise((resolve, reject) =>
@@ -45,9 +48,9 @@ export const hashToken = (token: string): string => createHash('sha256').update(
  * keys). It is chosen on first run; sessions last 30 days.
  */
 export class AuthService {
-  /** Recent wrong passwords, for everyone: behind the dashboard's proxy every request has the same address. */
+  /** Wrong passwords in the window, for everyone (see MAX_FAILURES). */
   private failures: number[] = [];
-  /** Attempts still being checked; they count towards the delay, so a burst cannot outrun it. */
+  /** Attempts still being checked count too, so a parallel burst cannot get past the limit. */
   private inFlight = 0;
   /** First-run setup runs one at a time, so two requests cannot race the first password. */
   private queue: Promise<unknown> = Promise.resolve();
@@ -71,6 +74,7 @@ export class AuthService {
   /** First run: sets the password and signs in. */
   setup(password: string): Promise<string> {
     return this.serialized(async () => {
+      if (this.disabled) throw new HttpError(409, 'auth_disabled', 'Sign-in is turned off (AUTH_DISABLED).');
       if (this.store.passwordHash() !== null) throw new HttpError(409, 'already_set_up', 'A password is already set. Sign in instead.');
       if (!this.store.insertPasswordHash(await hashPassword(password))) {
         throw new HttpError(409, 'already_set_up', 'A password is already set. Sign in instead.');
@@ -79,19 +83,19 @@ export class AuthService {
     });
   }
 
-  /**
-   * After a few wrong passwords each attempt waits longer (up to 5 s), for
-   * everyone. Nobody is locked out: the owner gets in after at most the wait.
-   */
   async signIn(password: string): Promise<string> {
-    if (this.inFlight >= MAX_IN_FLIGHT) throw new HttpError(429, 'too_many_attempts', 'Too many sign-in attempts at once. Try again in a moment.');
+    const now = Date.now();
+    this.failures = this.failures.filter((at) => now - at < FAILURE_WINDOW_MS);
+    if (this.failures.length + this.inFlight >= MAX_FAILURES) {
+      const retryMinutes = Math.max(1, Math.ceil(((this.failures[0] ?? now) + FAILURE_WINDOW_MS - now) / 60_000));
+      throw new HttpError(
+        429,
+        'too_many_attempts',
+        `Sign-in is paused after too many wrong passwords. Try again in ${retryMinutes} min, or restart minidog.`,
+      );
+    }
     this.inFlight += 1;
     try {
-      const now = Date.now();
-      this.failures = this.failures.filter((at) => now - at < FAILURE_WINDOW_MS);
-      const extra = this.failures.length + (this.inFlight - 1) - FREE_FAILURES;
-      if (extra >= 0) await new Promise((resolve) => setTimeout(resolve, Math.min(MAX_DELAY_MS, 250 * 2 ** extra)));
-
       const stored = this.store.passwordHash();
       if (stored === null) throw new HttpError(409, 'setup_required', 'Set a password first.');
       if (!(await verifyPassword(stored, password))) {

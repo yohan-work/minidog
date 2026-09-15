@@ -81,24 +81,23 @@ test('the Query API needs a password set on first run and a session afterwards',
   }
 });
 
-test('wrong passwords slow sign-in down without locking the owner out', async () => {
+test('sign-in pauses after ten wrong passwords, and a burst cannot get past it', async () => {
   const app = await start();
   try {
-    await app.inject({ method: 'POST', url: '/api/auth/setup', headers: DASHBOARD, payload: { password: 'correct horse' } });
-    // A parallel burst is handled one at a time, so it cannot outrun the count.
+    const setup = await app.inject({ method: 'POST', url: '/api/auth/setup', headers: DASHBOARD, payload: { password: 'correct horse' } });
+    const cookie = cookieOf(setup);
     const burst = await Promise.all(
-      Array.from({ length: 6 }, () => app.inject({ method: 'POST', url: '/api/auth/login', headers: DASHBOARD, payload: { password: 'nope nope' } })),
+      Array.from({ length: 14 }, () => app.inject({ method: 'POST', url: '/api/auth/login', headers: DASHBOARD, payload: { password: 'nope nope' } })),
     );
-    assert.deepEqual(burst.map((response) => response.statusCode), [401, 401, 401, 401, 401, 401]);
+    const codes = burst.map((response) => response.statusCode);
+    assert.equal(codes.filter((code) => code === 401).length, 10);
+    assert.equal(codes.filter((code) => code === 429).length, 4);
 
-    const started = Date.now();
-    const owner = await app.inject({ method: 'POST', url: '/api/auth/login', headers: DASHBOARD, payload: { password: 'correct horse' } });
-    assert.equal(owner.statusCode, 204);
-    assert.ok(Date.now() - started >= 450, 'waits after repeated failures');
-
-    const fast = Date.now();
-    await app.inject({ method: 'POST', url: '/api/auth/login', headers: DASHBOARD, payload: { password: 'correct horse' } });
-    assert.ok(Date.now() - fast < 400, 'a success clears the delay');
+    const paused = await app.inject({ method: 'POST', url: '/api/auth/login', headers: DASHBOARD, payload: { password: 'correct horse' } });
+    assert.equal(paused.statusCode, 429);
+    assert.match(paused.json().error.message, /Try again in 15 min, or restart minidog/);
+    // Browsers that are already signed in keep working.
+    assert.equal((await app.inject({ url: '/api/dashboards', headers: { cookie } })).statusCode, 200);
   } finally {
     await app.close();
   }
@@ -146,6 +145,8 @@ test('AUTH_DISABLED opens the Query API but still needs the dashboard header for
     assert.equal((await app.inject({ url: '/api/dashboards' })).statusCode, 200);
     assert.deepEqual((await app.inject({ url: '/api/auth/status' })).json(), { enabled: false, setupRequired: false, signedIn: true });
     assert.equal((await app.inject({ method: 'POST', url: '/api/dashboards', headers: { 'content-type': 'application/json' }, payload: { name: 'x' } })).statusCode, 403);
+    // Nobody can plant a password while sign-in is off.
+    assert.equal((await app.inject({ method: 'POST', url: '/api/auth/setup', headers: DASHBOARD, payload: { password: 'planted pass' } })).statusCode, 409);
   } finally {
     await app.close();
   }

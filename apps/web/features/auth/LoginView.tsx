@@ -56,6 +56,8 @@ export function LoginView() {
     } catch (failure) {
       const apiError = toApiClientError(failure);
       setError(apiError.validationIssues[0]?.message ?? apiError.message);
+      // Set up meanwhile (another tab or person): show the sign-in form now, not after the next poll.
+      if (apiError.code === 'already_set_up') status.refetch();
       setBusy(false);
     }
   };

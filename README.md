@@ -179,7 +179,7 @@ The product and design spec is in [`docs/phase-01.md`](docs/phase-01.md).
 
 ## Security
 
-- **Sign-in:** the first visit asks you to set a password. After that every page and the Query API need a sign-in; sessions last 30 days and are stored only as hashes.
+- **Sign-in:** the first visit asks you to set a password. After that every page and the Query API need a sign-in; sessions last 30 days and are stored only as hashes. After 10 wrong passwords within 15 minutes, sign-in pauses for everyone for up to 15 minutes; browsers that are already signed in keep working, and restarting minidog lifts the pause.
 - **Ingest:** OTLP ingest is separate. Create API keys in Settings → API keys, and set `INGEST_REQUIRE_API_KEY=true` when anything outside this machine sends data.
 - **Network:** everything listens on 127.0.0.1 by default. Synthetic checks and webhooks never connect to link-local or cloud metadata addresses (such as 169.254.169.254); on a shared server, set `BLOCK_PRIVATE_TARGETS=true` to also keep them off private and loopback networks. Webhooks do not follow redirects, so use the final URL.
 - **Forgot the password?** Run `pnpm auth:reset`. In always-on mode, run `docker compose -f infra/docker/compose.yaml exec api node --import tsx src/cli/reset-password.ts`. The next visit sets a new one.
