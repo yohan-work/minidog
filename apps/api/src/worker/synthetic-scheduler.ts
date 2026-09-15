@@ -127,6 +127,13 @@ export class SyntheticScheduler {
       this.pending.delete(id);
       return;
     }
+    // Queued before the machine slept: wait for the network like timer-driven checks.
+    const gaps = this.deps.gaps;
+    if (gaps?.settling()) {
+      this.pending.delete(id);
+      this.schedule(id, gaps.settledAt() - Date.now() + Math.random() * MAX_STARTUP_JITTER_MS);
+      return;
+    }
 
     this.active += 1;
     const startedAt = Date.now();

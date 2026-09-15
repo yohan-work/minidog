@@ -49,10 +49,10 @@ export class MonitorService {
   }
 
   async series(id: string, range: TimeRange) {
-    this.get(id);
+    const monitor = this.get(id);
     const window = timeWindow(range);
     const rows = await this.results.series(this.scope, [id], window.fromMs, window.stepSeconds);
-    return { range, stepSeconds: window.stepSeconds, points: fillSeries(window, rows), gaps: this.gaps.list(window.fromMs, Date.now()) };
+    return { range, stepSeconds: window.stepSeconds, points: fillSeries(window, rows), gaps: this.gapsSince([monitor], window.fromMs) };
   }
 
   async checks(id: string, limit: number) {
@@ -95,10 +95,17 @@ export class MonitorService {
       availability: totals.checks > 0 ? (totals.checks - totals.failures) / totals.checks : null,
       p95LatencyMs: totals.p95LatencyMs,
       avgLatencyMs: totals.avgLatencyMs,
-      series: { range, stepSeconds: window.stepSeconds, points, gaps: this.gaps.list(window.fromMs, Date.now()) },
+      series: { range, stepSeconds: window.stepSeconds, points, gaps: this.gapsSince(monitors, window.fromMs) },
       monitors: withSummary,
       resultsError,
     };
+  }
+
+  /** Gaps since the oldest of these monitors existed; time before that was never going to be measured. */
+  private gapsSince(monitors: readonly SyntheticMonitor[], fromMs: number) {
+    if (monitors.length === 0) return [];
+    const created = Math.min(...monitors.map((monitor) => Date.parse(monitor.createdAt)));
+    return this.gaps.list(Math.max(fromMs, created), Date.now());
   }
 
   private async summarize(

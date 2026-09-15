@@ -9,6 +9,7 @@ import type { SpanRepository } from '../repositories/span-repository';
 import type { SyntheticResultRepository } from '../repositories/synthetic-result-repository';
 import { alertMessage, deriveAlertState, isAlerting, isMuted } from '../services/alert-state';
 import { sendWebhook, webhookPayload } from '../services/webhook';
+import { SLEEP_THRESHOLD_MS, type GapTracker } from './gap-tracker';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -22,7 +23,7 @@ export interface AlertEvaluatorDeps {
   log: FastifyBaseLogger;
   intervalMs: number;
   /** Right after the machine wakes, checks have not resumed yet; passes wait. */
-  gaps?: { settling(now?: number): boolean };
+  gaps?: Pick<GapTracker, 'noteSleep' | 'settling'>;
 }
 
 /**
@@ -35,6 +36,7 @@ export class AlertEvaluator {
   private running: Promise<void> | null = null;
   private unavailable = false;
   private readonly deliveries = new Set<Promise<void>>();
+  private lastPassAt = 0;
 
   constructor(private readonly deps: AlertEvaluatorDeps) {}
 
@@ -76,7 +78,13 @@ export class AlertEvaluator {
   }
 
   private async evaluateEnabled(): Promise<void> {
-    if (this.deps.gaps?.settling()) return;
+    const now = Date.now();
+    // A pass far behind schedule slept with the machine; the gap tracker may not have noticed yet.
+    if (this.lastPassAt > 0 && now - this.lastPassAt > this.deps.intervalMs + SLEEP_THRESHOLD_MS) {
+      this.deps.gaps?.noteSleep(this.lastPassAt, now);
+    }
+    this.lastPassAt = now;
+    if (this.deps.gaps?.settling(now)) return;
     for (const monitor of this.deps.monitors.listEnabled()) await this.evaluateQuietly(monitor);
   }
 
