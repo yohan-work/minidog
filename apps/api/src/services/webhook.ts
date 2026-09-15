@@ -1,4 +1,7 @@
+import http from 'node:http';
+import https from 'node:https';
 import type { AlertEvent, AlertMonitor, WebhookFormat } from '@minidog/types';
+import { checkHost, guardedLookup } from '../lib/network-guard';
 
 const TIMEOUT_MS = 5_000;
 
@@ -128,11 +131,35 @@ export function webhookRequest(url: string, payload: WebhookPayload): { headers:
 export async function sendWebhook(url: string, payload: WebhookPayload): Promise<string> {
   try {
     const { headers, body } = webhookRequest(url, payload);
-    const response = await fetch(url, { method: 'POST', headers, body, signal: AbortSignal.timeout(TIMEOUT_MS) });
-    await response.body?.cancel();
-    return response.ok ? `sent ${response.status}` : `failed ${response.status}`;
+    const status = await post(new URL(url), headers, body);
+    return status >= 200 && status < 300 ? `sent ${status}` : `failed ${status}`;
   } catch (error) {
     const reason = error instanceof Error && error.name === 'TimeoutError' ? 'timeout' : error instanceof Error ? error.message : 'error';
     return `failed: ${reason}`;
   }
+}
+
+/** One POST over a connection that refuses blocked addresses; redirects are not followed. */
+function post(url: URL, headers: Record<string, string>, body: string): Promise<number> {
+  return new Promise((resolve, reject) => {
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return reject(new Error(`Unsupported protocol ${url.protocol}`));
+    const blocked = checkHost(url.hostname);
+    if (blocked) return reject(blocked);
+    const client = url.protocol === 'https:' ? https : http;
+    const request = client.request(
+      url,
+      { method: 'POST', headers: { ...headers, 'content-length': String(Buffer.byteLength(body)) }, lookup: guardedLookup, timeout: TIMEOUT_MS },
+      (response) => {
+        response.resume();
+        resolve(response.statusCode ?? 0);
+      },
+    );
+    request.on('timeout', () => {
+      const error = new Error('timeout');
+      error.name = 'TimeoutError';
+      request.destroy(error);
+    });
+    request.on('error', reject);
+    request.end(body);
+  });
 }

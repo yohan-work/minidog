@@ -18,6 +18,9 @@ const configSchema = z.object({
 
   WORKER_ENABLED: booleanString.default(true),
   WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(64).default(8),
+  // Synthetic checks and webhooks never reach link-local or cloud metadata addresses;
+  // on a shared server, also keep them off private and loopback networks.
+  BLOCK_PRIVATE_TARGETS: booleanString.default(false),
 
   // Evaluates alert monitors in the API process.
   ALERTS_ENABLED: booleanString.default(true),
