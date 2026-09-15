@@ -77,7 +77,7 @@ export function ServicesView() {
 
           <Section title="Requests" actions={<><SelectHint /><RequestsLegend /></>}>
             {chart.selectionFor('requests') && (
-              <SelectionBar selection={chart.selectionFor('requests')!} links={drilldownLinks(chart.selectionFor('requests')!)} onClear={chart.clear} />
+              <SelectionBar selection={chart.selectionFor('requests')!} links={drilldownLinks(chart.selectionFor('requests')!, range)} onClear={chart.clear} />
             )}
             {data ? (
               <RequestsChart series={data.series} subject="all services" emptyAction={tracesLink} onSelectRange={chart.select('requests')} />
@@ -88,7 +88,7 @@ export function ServicesView() {
 
           <Section title="Latency" actions={<><SelectHint /><LatencyTrendLegend /></>}>
             {chart.selectionFor('latency') && (
-              <SelectionBar selection={chart.selectionFor('latency')!} links={drilldownLinks(chart.selectionFor('latency')!)} onClear={chart.clear} />
+              <SelectionBar selection={chart.selectionFor('latency')!} links={drilldownLinks(chart.selectionFor('latency')!, range)} onClear={chart.clear} />
             )}
             {data ? (
               <LatencyTrendChart series={data.series} subject="all services" emptyAction={tracesLink} onSelectRange={chart.select('latency')} />

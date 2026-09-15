@@ -1,10 +1,12 @@
 'use client';
 
+import type { TimeRange } from '@minidog/types';
 import Link from 'next/link';
 import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
 import { toQuery } from '@/lib/query-params';
+import { withRange } from '@/lib/range-href';
 import styles from './TimeSelection.module.scss';
 
 /** An absolute window, e.g. dragged on a chart. Epoch milliseconds. */
@@ -39,14 +41,17 @@ export interface DrilldownLink {
   href: string;
 }
 
-/** Where to look next for a window: its slowest and failed requests, error logs and exceptions. */
-export function drilldownLinks(selection: TimeWindowSelection, service?: string): DrilldownLink[] {
+/**
+ * Where to look next for a window: its slowest and failed requests, error logs
+ * and exceptions. The range is kept so clearing the window returns to it.
+ */
+export function drilldownLinks(selection: TimeWindowSelection, range: TimeRange, service?: string): DrilldownLink[] {
   const scope = { ...(service ? { service } : {}), ...windowParams(selection) };
   return [
-    { label: 'Slowest traces', href: `/traces${toQuery({ ...scope, sort: 'slowest' })}` },
-    { label: 'Error traces', href: `/traces${toQuery({ ...scope, status: 'error' })}` },
-    { label: 'Error logs', href: `/logs${toQuery({ ...scope, level: 'error' })}` },
-    { label: 'Exceptions', href: `/errors${toQuery(scope)}` },
+    { label: 'Slowest traces', href: withRange(`/traces${toQuery({ ...scope, sort: 'slowest' })}`, range) },
+    { label: 'Error traces', href: withRange(`/traces${toQuery({ ...scope, status: 'error' })}`, range) },
+    { label: 'Error logs', href: withRange(`/logs${toQuery({ ...scope, level: 'error' })}`, range) },
+    { label: 'Exceptions', href: withRange(`/errors${toQuery(scope)}`, range) },
   ];
 }
 

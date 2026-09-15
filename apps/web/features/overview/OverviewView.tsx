@@ -161,7 +161,7 @@ export function OverviewView() {
 
           <Section title="Request throughput" actions={<><SelectHint /><RequestsLegend /></>}>
             {chart.selectionFor('requests') && (
-              <SelectionBar selection={chart.selectionFor('requests')!} links={drilldownLinks(chart.selectionFor('requests')!)} onClear={chart.clear} />
+              <SelectionBar selection={chart.selectionFor('requests')!} links={drilldownLinks(chart.selectionFor('requests')!, range)} onClear={chart.clear} />
             )}
             {services.data ? (
               <RequestsChart
@@ -177,7 +177,7 @@ export function OverviewView() {
 
           <Section title="Latency" actions={<><SelectHint /><LatencyTrendLegend /></>}>
             {chart.selectionFor('latency') && (
-              <SelectionBar selection={chart.selectionFor('latency')!} links={drilldownLinks(chart.selectionFor('latency')!)} onClear={chart.clear} />
+              <SelectionBar selection={chart.selectionFor('latency')!} links={drilldownLinks(chart.selectionFor('latency')!, range)} onClear={chart.clear} />
             )}
             {services.data ? (
               <LatencyTrendChart

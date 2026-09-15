@@ -84,7 +84,7 @@ export function ServiceDetailView({ service }: { service: string }) {
 
           <Section title="Latency" actions={<><SelectHint /><LatencyTrendLegend /></>}>
             {chart.selectionFor('latency') && (
-              <SelectionBar selection={chart.selectionFor('latency')!} links={drilldownLinks(chart.selectionFor('latency')!, service)} onClear={chart.clear} />
+              <SelectionBar selection={chart.selectionFor('latency')!} links={drilldownLinks(chart.selectionFor('latency')!, range, service)} onClear={chart.clear} />
             )}
             {detail.data ? (
               <LatencyTrendChart series={detail.data.series} subject={service} emptyAction={tracesLink} onSelectRange={chart.select('latency')} />
@@ -95,7 +95,7 @@ export function ServiceDetailView({ service }: { service: string }) {
 
           <Section title="Requests" actions={<><SelectHint /><RequestsLegend /></>}>
             {chart.selectionFor('requests') && (
-              <SelectionBar selection={chart.selectionFor('requests')!} links={drilldownLinks(chart.selectionFor('requests')!, service)} onClear={chart.clear} />
+              <SelectionBar selection={chart.selectionFor('requests')!} links={drilldownLinks(chart.selectionFor('requests')!, range, service)} onClear={chart.clear} />
             )}
             {detail.data ? (
               <RequestsChart series={detail.data.series} subject={service} emptyAction={tracesLink} onSelectRange={chart.select('requests')} />

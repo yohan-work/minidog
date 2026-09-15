@@ -41,6 +41,18 @@ const tickTime = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-
 const tickSeconds = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
 const tickDate = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
 
+/**
+ * Each point starts a bucket that lasts until the next one, so a selection is
+ * widened to whole buckets: a tight drag across a spike covers that minute.
+ */
+export function snapToBuckets(from: number, to: number, starts: ArrayLike<number>): [number, number] {
+  if (starts.length < 2) return [from, to];
+  const first = starts[0]!;
+  const step = starts[1]! - first;
+  if (!(step > 0)) return [from, to];
+  return [first + Math.floor((from - first) / step) * step, first + (Math.floor((to - first) / step) + 1) * step];
+}
+
 interface Hover {
   index: number;
   left: number;
@@ -150,8 +162,7 @@ export function TimeSeriesChart({
             const { left, width } = plot.select;
             // A click is not a selection.
             if (width < 4) return;
-            const fromSeconds = plot.posToVal(left, 'x');
-            const toSeconds = plot.posToVal(left + width, 'x');
+            const [fromSeconds, toSeconds] = snapToBuckets(plot.posToVal(left, 'x'), plot.posToVal(left + width, 'x'), plot.data[0]);
             plot.setSelect({ left: 0, top: 0, width: 0, height: 0 }, false);
             selectRef.current?.(fromSeconds * 1000, toSeconds * 1000);
           },
