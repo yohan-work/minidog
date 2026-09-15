@@ -149,6 +149,19 @@ infra/
 docs/           Product and design spec
 ```
 
+## Resource use
+
+Measured on an Apple-silicon Mac with Docker Desktop and ClickHouse 26.3, using the settings in `infra/clickhouse/` (`low-memory.xml`):
+
+| | Memory after 1 minute | Image (compressed download) |
+|---|---|---|
+| Dashboard (`web`) | 42 MB | 68 MB |
+| API (`api`) | 45 MB | 57 MB |
+| ClickHouse | 300 MB, capped at 1 GiB | 234 MB |
+| OpenTelemetry Collector | 51 MB | — |
+
+That is about 440 MB in total. ClickHouse holds most of it, and it grows with data and queries up to its 1 GiB ceiling. On a fresh instance with 3 million rows and aggregate queries it used about 130 MB, compared with 260 MB on default settings. This is not a tiny agent: if you only need uptime checks, a single-binary tool will be lighter.
+
 ## Configuration
 
 Both apps work without any configuration; the defaults match `infra/docker/compose.yaml`. To override them, copy `apps/api/.env.example` and `apps/web/.env.example` to `.env`.
@@ -182,7 +195,7 @@ The product and design spec is in [`docs/phase-01.md`](docs/phase-01.md).
 - **Sign-in:** the first visit asks you to set a password. After that every page and the Query API need a sign-in; sessions last 30 days and are stored only as hashes. After 10 wrong passwords within 15 minutes, sign-in pauses for everyone for up to 15 minutes; browsers that are already signed in keep working, and restarting minidog lifts the pause.
 - **Ingest:** OTLP ingest is separate. Create API keys in Settings → API keys, and set `INGEST_REQUIRE_API_KEY=true` when anything outside this machine sends data.
 - **Network:** everything listens on 127.0.0.1 by default. Synthetic checks and webhooks never connect to link-local or cloud metadata addresses (such as 169.254.169.254); on a shared server, set `BLOCK_PRIVATE_TARGETS=true` to also keep them off private and loopback networks. Webhooks do not follow redirects, so use the final URL.
-- **Forgot the password?** Run `pnpm auth:reset`. In always-on mode, run `docker compose -f infra/docker/compose.yaml exec api node --import tsx src/cli/reset-password.ts`. The next visit sets a new one.
+- **Forgot the password?** Run `pnpm auth:reset`. In always-on mode, run `docker compose -f infra/docker/compose.yaml exec api node cli/reset-password.mjs`. The next visit sets a new one.
 - **Turning sign-in off:** `AUTH_DISABLED=true` does this; use it only on a machine nobody else can reach.
 - **Reporting a vulnerability:** open a private security advisory on GitHub.
 

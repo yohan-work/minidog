@@ -165,12 +165,25 @@ pnpm infra:down
 - [ ] Heartbeat / cron 모니터
 - [ ] 기준 비교 ("P95 ↑ 312% vs 지난주")
 
+## 자원 사용량
+
+Apple silicon Mac, Docker Desktop, ClickHouse 26.3에서 `infra/clickhouse/`의 설정(`low-memory.xml`)으로 잰 값입니다.
+
+| | 1분 뒤 메모리 | 이미지(압축, 내려받는 크기) |
+|---|---|---|
+| 대시보드 (`web`) | 42 MB | 68 MB |
+| API (`api`) | 45 MB | 57 MB |
+| ClickHouse | 300 MB (상한 1 GiB) | 234 MB |
+| OpenTelemetry Collector | 51 MB | — |
+
+합계는 약 440 MB입니다. 대부분은 ClickHouse가 차지하고, 데이터와 쿼리가 늘면 1 GiB 상한까지 커질 수 있습니다. 새 인스턴스에 300만 행을 넣고 집계 쿼리를 돌렸을 때는 약 130 MB였고, 기본 설정에서는 260 MB였습니다. 아주 작은 에이전트는 아니므로, 업타임 체크만 필요하다면 단일 바이너리 도구가 더 가볍습니다.
+
 ## 보안
 
 - **로그인:** 처음 접속하면 비밀번호를 정합니다. 그다음부터는 모든 화면과 Query API에 로그인이 필요합니다. 세션은 30일간 유지되고, 해시로만 저장됩니다. 15분 안에 비밀번호를 10번 틀리면 모든 사람의 로그인이 최대 15분 멈춥니다. 이미 로그인한 브라우저는 계속 쓸 수 있고, minidog을 다시 시작하면 풀립니다.
 - **데이터 수신:** OTLP 수신은 별도입니다. Settings → API keys에서 키를 만들고, 이 컴퓨터 밖에서 데이터를 보낸다면 `INGEST_REQUIRE_API_KEY=true`를 켜세요.
 - **네트워크:** 기본적으로 모든 서비스가 127.0.0.1에서만 열립니다. Synthetics 체크와 웹훅은 링크 로컬·클라우드 메타데이터 주소(169.254.169.254 등)에는 절대 연결하지 않습니다. 여러 사람이 쓰는 서버라면 `BLOCK_PRIVATE_TARGETS=true`로 사설망·로컬 주소도 막으세요. 웹훅은 리다이렉트를 따라가지 않으니 최종 URL을 넣으세요.
-- **비밀번호를 잊었다면:** `pnpm auth:reset`를 실행하세요. 항상 켜두기 모드에서는 `docker compose -f infra/docker/compose.yaml exec api node --import tsx src/cli/reset-password.ts`를 실행하세요. 다음 접속 때 새로 정합니다.
+- **비밀번호를 잊었다면:** `pnpm auth:reset`를 실행하세요. 항상 켜두기 모드에서는 `docker compose -f infra/docker/compose.yaml exec api node cli/reset-password.mjs`를 실행하세요. 다음 접속 때 새로 정합니다.
 - **로그인 끄기:** `AUTH_DISABLED=true`로 끌 수 있지만, 아무도 접근할 수 없는 컴퓨터에서만 쓰세요.
 - **취약점 제보:** GitHub의 비공개 보안 권고(Security advisory)로 알려주세요.
 

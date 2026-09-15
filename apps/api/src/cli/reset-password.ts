@@ -4,7 +4,7 @@
  * machine's owner can run it:
  *
  *   pnpm auth:reset                                   (pnpm dev)
- *   docker compose -f infra/docker/compose.yaml exec api node --import tsx src/cli/reset-password.ts
+ *   docker compose -f infra/docker/compose.yaml exec api node cli/reset-password.mjs
  */
 import { loadConfig } from '../config';
 import { openDatabase } from '../db/sqlite';

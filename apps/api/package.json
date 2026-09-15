@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "tsx watch --disable-warning=ExperimentalWarning src/index.ts",
     "start": "tsx --disable-warning=ExperimentalWarning src/index.ts",
+    "build": "esbuild src/index.ts src/cli/reset-password.ts --bundle --platform=node --target=node24 --format=esm --outbase=src --outdir=dist --out-extension:.js=.mjs --banner:js=\"import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\" --log-level=warning",
     "typecheck": "tsc --noEmit",
     "test": "tsx --disable-warning=ExperimentalWarning --test \"src/**/*.test.ts\""
   },
@@ -19,6 +20,7 @@
   "devDependencies": {
     "@minidog/config": "workspace:*",
     "@types/node": "^24.0.0",
+    "esbuild": "0.28.2",
     "tsx": "^4.23.13",
     "typescript": "~5.9.3"
   }
