@@ -5,7 +5,8 @@ import type { RawVersionRow } from '../repositories/span-repository';
  * A deployment is a version seen for the first time in the range that
  * replaces an earlier version of the same service. A service's very first
  * version is not a deployment, and a rollback to a version seen before is not
- * detected (its first span is older).
+ * detected as one (its first span is older). The version it replaced is the
+ * older one that served last, so a rollback in between is accounted for.
  */
 export function deriveDeployments(rows: readonly RawVersionRow[], fromMs: number): Deployment[] {
   const byService = new Map<string, RawVersionRow[]>();
@@ -15,10 +16,10 @@ export function deriveDeployments(rows: readonly RawVersionRow[], fromMs: number
   for (const [service, versions] of byService) {
     const ordered = [...versions].sort((a, b) => a.firstSeenAt - b.firstSeenAt);
     ordered.forEach((row, index) => {
-      const previous = ordered[index - 1];
-      if (previous && row.firstSeenAt >= fromMs) {
-        deployments.push({ service, version: row.version, previousVersion: previous.version, at: row.firstSeenAt });
-      }
+      if (index === 0 || row.firstSeenAt < fromMs) return;
+      // Ties (both still serving) go to the newer version.
+      const previous = ordered.slice(0, index).reduce((best, candidate) => (candidate.lastSeenAt >= best.lastSeenAt ? candidate : best));
+      deployments.push({ service, version: row.version, previousVersion: previous.version, at: row.firstSeenAt });
     });
   }
   return deployments.sort((a, b) => a.at - b.at);

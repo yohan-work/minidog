@@ -406,7 +406,7 @@ export interface ServiceListResponse {
   services: ServiceSummary[];
   totals: RequestTotals;
   series: RequestSeries;
-  /** Deployments of any service in the range, oldest first. */
+  /** Deployments of any service in the range, oldest first; empty unless requested with `?deployments=1`. */
   deployments: Deployment[];
 }
 

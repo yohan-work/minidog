@@ -21,7 +21,7 @@ import styles from './Apm.module.scss';
 
 export function ServicesView() {
   const range = useTimeRange();
-  const { data, error, isLoading, updatedAt, refetch } = useApi<ServiceListResponse>(`/services?range=${range}`);
+  const { data, error, isLoading, updatedAt, refetch } = useApi<ServiceListResponse>(`/services?range=${range}&deployments=1`);
   const loading = !data;
   const seconds = data ? data.series.points.length * data.series.stepSeconds : 1;
   const tracesLink = <ButtonLink href={tracesHref({}, range)}>View traces</ButtonLink>;

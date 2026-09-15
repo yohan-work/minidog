@@ -46,7 +46,7 @@ export class ApmService {
     private readonly scope: Scope,
   ) {}
 
-  async list(range: TimeRange): Promise<ServiceListResponse> {
+  async list(range: TimeRange, options: { deployments: boolean } = { deployments: false }): Promise<ServiceListResponse> {
     const now = Date.now();
     const window = timeWindow(range, now);
     const statsWindow = this.statsWindow(window, now);
@@ -54,7 +54,9 @@ export class ApmService {
       this.spans.serviceStats(this.scope, { ...statsWindow, lookbackFromMs: statsWindow.previousFromMs }),
       this.spans.totals(this.scope, window.fromMs),
       this.spans.requestSeries(this.scope, window.fromMs, window.stepSeconds),
-      this.spans.versionStats(this.scope, { fromMs: window.fromMs, lookbackFromMs: now - LOOKBACK_MS }),
+      options.deployments
+        ? this.spans.versionStats(this.scope, { fromMs: window.fromMs, lookbackFromMs: now - LOOKBACK_MS })
+        : Promise.resolve([]),
     ]);
 
     return {

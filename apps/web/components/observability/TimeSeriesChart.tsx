@@ -189,8 +189,10 @@ export function TimeSeriesChart({
             ctx.font = `${11 * ratio}px ${monoFamily}`;
             ctx.textBaseline = 'top';
             for (const marker of list) {
-              const x = Math.round(plot.valToPos(marker.t, 'x', true));
-              if (x < bbox.left || x > bbox.left + bbox.width) continue;
+              // The axis ends at the start of the last bucket; a deployment during that
+              // bucket (i.e. just now) is pinned to the right edge rather than dropped.
+              const x = Math.min(Math.round(plot.valToPos(marker.t, 'x', true)), bbox.left + bbox.width);
+              if (x < bbox.left) continue;
               ctx.beginPath();
               ctx.moveTo(x, bbox.top);
               ctx.lineTo(x, bbox.top + bbox.height);

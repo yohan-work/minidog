@@ -59,3 +59,12 @@ test('versions in range are listed newest first with an error rate', () => {
   );
   assert.equal(versions[0]?.errorRate, 0.1);
 });
+
+test('after a rollback, the next deployment replaces the version that was serving', () => {
+  const rows: RawVersionRow[] = [
+    { ...row('api', '1.0.0', now - 5 * HOUR), lastSeenAt: now - 25 * 60_000 },
+    { ...row('api', '1.1.0', now - 4 * HOUR), lastSeenAt: now - 3 * HOUR },
+    row('api', '1.2.0', now - 20 * 60_000),
+  ];
+  assert.deepEqual(deriveDeployments(rows, fromMs), [{ service: 'api', version: '1.2.0', previousVersion: '1.0.0', at: now - 20 * 60_000 }]);
+});

@@ -53,7 +53,7 @@ interface AttentionItem {
  */
 export function OverviewView() {
   const range = useTimeRange();
-  const services = useApi<ServiceListResponse>(`/services?range=${range}`);
+  const services = useApi<ServiceListResponse>(`/services?range=${range}&deployments=1`);
   const endpoints = useApi<EndpointListResponse>(`/endpoints?range=${range}`);
   const alerts = useApi<AlertSummaryResponse>('/alerting/summary');
   const hosts = useApi<HostListResponse>(`/hosts?range=${range}`);

@@ -15,15 +15,17 @@ const COLUMNS = [
 /** Versions side by side, so a deployment can be compared with the one before it. */
 export function VersionTable({ versions }: { versions: readonly VersionSummary[] }) {
   const now = Date.now();
+  // The version serving now, which is not the newest one after a rollback.
+  const current = versions.reduce<VersionSummary | null>((best, version) => (!best || version.lastSeenAt > best.lastSeenAt ? version : best), null);
   return (
     <Table aria-label="Versions">
       <TableHead columns={COLUMNS} />
       <tbody>
-        {versions.map((version, index) => (
+        {versions.map((version) => (
           <Tr key={version.version}>
             <Td mono>
               {version.version}
-              {index === 0 && <span className={styles.note}> latest</span>}
+              {version === current && <span className={styles.note}> current</span>}
             </Td>
             <Td mono muted>
               {formatDateTime(version.firstSeenAt)}

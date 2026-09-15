@@ -114,7 +114,7 @@ export function ServiceDetailView({ service }: { service: string }) {
                 Versions {detail.data && <span className={styles.count}>{detail.data.versions.length}</span>}
               </>
             }
-            actions={<span className={styles.note}>From the service.version resource attribute · newest first</span>}
+            actions={<span className={styles.note}>From the service.version resource attribute · newest first · current = serving now</span>}
             flush
           >
             {!detail.data ? (
