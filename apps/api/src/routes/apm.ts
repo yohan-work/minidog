@@ -1,4 +1,4 @@
-import { TRACE_SORTS } from '@minidog/types';
+import { DB_QUERY_SORTS, TRACE_SORTS } from '@minidog/types';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { AppContext } from '../app';
@@ -25,6 +25,15 @@ const traceQuerySchema = rangeQuerySchema
 const serviceListQuerySchema = rangeQuerySchema.extend({
   deployments: emptyAsUndefined(z.enum(['1', 'true']).optional()),
 });
+
+const queryListSchema = rangeQuerySchema
+  .extend({
+    ...windowFields,
+    service: optionalText(255),
+    sort: emptyAsUndefined(z.enum(DB_QUERY_SORTS).default('total')),
+    limit: z.coerce.number().int().min(1).max(500).default(100),
+  })
+  .superRefine(checkWindow);
 
 const errorQuerySchema = rangeQuerySchema
   .extend({
@@ -67,4 +76,6 @@ export function registerApmRoutes(app: FastifyInstance, ctx: AppContext): void {
   });
 
   app.get('/api/errors', async (request) => ctx.apm.errors(errorQuerySchema.parse(request.query)));
+
+  app.get('/api/queries', async (request) => ctx.apm.queries(queryListSchema.parse(request.query)));
 }

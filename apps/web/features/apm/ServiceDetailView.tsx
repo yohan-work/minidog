@@ -1,6 +1,6 @@
 'use client';
 
-import type { ServiceResponse, ServiceSummary, TimeRange, TraceListResponse } from '@minidog/types';
+import type { DbQueryListResponse, ServiceResponse, ServiceSummary, TimeRange, TraceListResponse } from '@minidog/types';
 import Link from 'next/link';
 import { useMemo } from 'react';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -13,6 +13,7 @@ import { ButtonLink } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { formatChange, formatCount, formatLatency, formatPercent, formatRate, formatRelative } from '@/lib/format';
 import { logsHref, metricsHref, tracesHref } from '@/lib/links';
+import { toQuery } from '@/lib/query-params';
 import { useTimeRange, withRange } from '@/lib/time-range';
 import { useApi } from '@/lib/use-api';
 import { hostHref } from '../infrastructure/host';
@@ -22,6 +23,7 @@ import { LatencyTrendChart, LatencyTrendLegend, RequestsChart, RequestsLegend } 
 import { errorRateTone, latencyTone } from './ServiceTable';
 import { TraceTable, TraceTableSkeleton } from './TraceTable';
 import { VersionTable } from './VersionTable';
+import { QueryTable } from '../queries/QueryTable';
 import styles from './Apm.module.scss';
 
 export function ServiceDetailView({ service }: { service: string }) {
@@ -29,6 +31,7 @@ export function ServiceDetailView({ service }: { service: string }) {
   const encoded = encodeURIComponent(service);
   const detail = useApi<ServiceResponse>(`/services/${encoded}?range=${range}`);
   const traces = useApi<TraceListResponse>(`/traces?range=${range}&service=${encoded}&limit=10`);
+  const queries = useApi<DbQueryListResponse>(`/queries?range=${range}&service=${encoded}&limit=5`);
   const backHref = withRange('/services', range);
   const back = { href: backHref, label: 'Services' };
   const summary = detail.data?.service;
@@ -107,6 +110,21 @@ export function ServiceDetailView({ service }: { service: string }) {
               <Skeleton height="var(--chart-height)" />
             )}
           </Section>
+
+          {/* Only services that talk to a database get this section. */}
+          {queries.data && queries.data.queries.length > 0 && (
+            <Section
+              title="Database queries"
+              actions={
+                <ButtonLink href={withRange(`/queries${toQuery({ service })}`, range)} variant="ghost" size="sm">
+                  View all
+                </ButtonLink>
+              }
+              flush
+            >
+              <QueryTable queries={queries.data.queries} range={range} showService={false} />
+            </Section>
+          )}
 
           <Section
             title={

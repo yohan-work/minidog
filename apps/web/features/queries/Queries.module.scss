@@ -1,0 +1,37 @@
+@use '../../styles/mixins' as *;
+
+.count {
+  @include mono-numeric;
+  font-size: var(--text-meta);
+  font-weight: var(--weight-regular);
+  color: var(--foreground-muted);
+}
+
+.note {
+  font-size: var(--text-meta);
+  color: var(--foreground-muted);
+}
+
+.query {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding-block: var(--space-2);
+}
+
+.statement {
+  display: block;
+  max-width: calc(var(--space-16) * 10);
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+  @include truncate;
+}
+
+.meta {
+  font-size: var(--text-meta);
+  color: var(--foreground-muted);
+}
+
+.error {
+  color: var(--status-error);
+}
