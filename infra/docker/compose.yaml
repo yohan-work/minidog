@@ -31,7 +31,7 @@ services:
     # Reported as host.name for the host metrics this collector scrapes.
     hostname: ${MINIDOG_HOST_NAME:-docker-host}
     environment:
-      # The API runs on the host (pnpm dev), outside this compose project.
+      # pnpm dev runs the API on the host; `pnpm local:up` sets http://api:4000.
       MINIDOG_INGEST_ENDPOINT: ${MINIDOG_INGEST_ENDPOINT:-http://host.docker.internal:4000}
       # Optional; without a key data goes to the default project.
       MINIDOG_API_KEY: ${MINIDOG_API_KEY:-}
@@ -43,6 +43,59 @@ services:
       - "127.0.0.1:4317:4317"
       - "127.0.0.1:4318:4318"
       - "127.0.0.1:13133:13133"
+    restart: unless-stopped
+
+  # Always-on mode (`pnpm local:up`): the API and dashboard in containers that
+  # come back whenever Docker starts, instead of `pnpm dev`. They use the same
+  # SQLite file and ClickHouse data as `pnpm dev`; run one or the other.
+  api:
+    profiles: [app]
+    build: &app-build
+      context: ../..
+      dockerfile: infra/docker/Dockerfile
+    image: minidog-app
+    init: true
+    # A regular user, so files it writes in the shared data directory stay
+    # writable for `pnpm dev` (uid 1000, the usual first user on Linux).
+    user: node
+    working_dir: /app/apps/api
+    command: ["node", "--import", "tsx", "--disable-warning=ExperimentalWarning", "src/index.ts"]
+    # Same settings as pnpm dev; the values below adapt it to the container.
+    env_file:
+      - path: ../../apps/api/.env
+        required: false
+    environment:
+      HOST: 0.0.0.0
+      PORT: 4000
+      SQLITE_PATH: /data/minidog.sqlite
+      CLICKHOUSE_URL: http://clickhouse:8123
+    volumes:
+      - ../../apps/api/data:/data
+    ports:
+      - "127.0.0.1:4000:4000"
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/api/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  web:
+    profiles: [app]
+    build: *app-build
+    image: minidog-app
+    init: true
+    user: node
+    working_dir: /app/apps/web
+    command: ["node_modules/.bin/next", "start", "--port", "3000"]
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:

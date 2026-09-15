@@ -12,7 +12,10 @@
     "test": "pnpm -r test",
     "demo": "pnpm --filter @minidog/demo-shop start",
     "infra:up": "docker compose -f infra/docker/compose.yaml up -d --wait",
-    "infra:down": "docker compose -f infra/docker/compose.yaml down",
-    "infra:logs": "docker compose -f infra/docker/compose.yaml logs -f"
+    "infra:down": "docker compose -f infra/docker/compose.yaml --profile app down",
+    "infra:logs": "docker compose -f infra/docker/compose.yaml logs -f",
+    "local:up": "mkdir -p apps/api/data && MINIDOG_INGEST_ENDPOINT=http://api:4000 docker compose -f infra/docker/compose.yaml --profile app up -d --build --wait",
+    "local:down": "docker compose -f infra/docker/compose.yaml --profile app rm --stop --force api web && docker compose -f infra/docker/compose.yaml up -d --wait otel-collector",
+    "local:logs": "docker compose -f infra/docker/compose.yaml --profile app logs -f api web"
   }
 }

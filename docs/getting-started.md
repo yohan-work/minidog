@@ -39,6 +39,20 @@ pnpm dev           # API :4000 + Web :3000
 
 `http://localhost:3000` 을 연다.
 
+### 항상 켜두기
+
+터미널 없이 계속 돌리려면 `pnpm dev` 대신 API·대시보드를 Docker로 띄운다.
+
+```bash
+pnpm local:up      # 빌드 후 실행, Docker가 켜질 때마다 자동 재시작
+pnpm local:logs    # API·대시보드 로그
+pnpm local:down    # 중지 (다시 pnpm dev를 쓸 때)
+```
+
+- `pnpm dev`와 같은 데이터(`apps/api/data`의 SQLite, ClickHouse 볼륨)와 같은 설정(`apps/api/.env`)을 쓴다. 둘 중 하나만 실행한다 — API가 데이터에 잠금(`minidog.sqlite.lock`)을 걸어서, 다른 쪽이 켜져 있으면 시작하지 않는다. 비정상 종료로 남은 잠금은 30초 뒤 풀린다.
+- 코드를 받은 뒤에는 `pnpm local:up`을 다시 실행해 새로 빌드한다.
+- 재부팅 후에도 켜지게 하려면 Docker Desktop 설정에서 *Start Docker Desktop when you sign in* 을 켠다. 맥이 잠자기 중이면 체크도 멈춘다.
+
 ### 샘플 데이터
 
 ```bash

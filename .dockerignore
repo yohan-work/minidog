@@ -1,0 +1,9 @@
+# Keeps the always-on image build (infra/docker/Dockerfile) small and free of local state.
+.git
+.claude
+**/node_modules
+**/.next
+**/.env
+**/.env.*
+!**/.env.example
+apps/api/data
