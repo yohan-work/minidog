@@ -108,6 +108,8 @@ Docker Desktop에서는 Docker VM의 지표가 보인다. 실제 서버를 보�
 
 그 밖의 주소에는 JSON(`text`, `monitor`, `state`, `message` …)을 POST 한다.
 
+**하루 요약**: Settings → Daily summary에서 같은 종류의 주소와 받을 시각을 정하면, 매일 모니터별 가용성·응답 시간·인증서 남은 날, 알림 상태 변화, 측정 못 한 시간을 한 번 보낸다. 그 시각에 맥이 꺼져 있었으면 minidog이 다시 켜질 때 보낸다. 월요일에는 7일 요약으로 받을 수도 있다.
+
 ## API 환경 변수
 
 | 변수 | 기본값 | 설명 |
@@ -162,6 +164,7 @@ Settings                 프로젝트 · 환경 · API key · 연결 정보
 | M. 휴대폰 알림 | 휴대폰에 ntfy 앱 → 토픽 구독 → Monitors → 모니터 Settings의 Webhook URL에 `https://ntfy.sh/<토픽>` → **Send test** → 휴대폰에 푸시 |
 | N. 디스크 관리 | Settings → Storage → 신호별 용량·가장 오래된 기록 확인 → Logs 보관 기간을 7 days로 → 확인 창 → 오래된 로그가 지워지고 용량이 줄어듦 |
 | O. 측정 공백 | minidog을 끄고 몇 분 뒤 다시 켬(또는 맥 잠자기) → Synthetics 모니터 상세의 Availability에 빗금 구간과 "not measured for …" → 막대에 마우스를 올리면 이유 표시. 깨어난 직후 45초는 체크·알림을 쉬어 가짜 Down이 없음 |
+| P. 하루 요약 | Settings → Daily summary → 켜기, Webhook URL에 `https://ntfy.sh/<토픽>`, 시각 선택 → Save → **Send now** 로 바로 받아보기, 아래 Preview에서 내용 확인 |
 
 ## 개발
 

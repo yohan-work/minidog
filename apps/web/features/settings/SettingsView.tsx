@@ -11,6 +11,9 @@ import {
   type RetentionSignal,
   type StorageResponse,
   type StorageSignal,
+  type SendSummaryResponse,
+  type SummaryResponse,
+  type SummarySettings,
 } from '@minidog/types';
 import { useState, type FormEvent } from 'react';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -27,6 +30,7 @@ import { Table, TableHead, Td, Tr, type ColumnSpec } from '@/components/ui/Table
 import { apiFetch, toApiClientError } from '@/lib/api-client';
 import { formatBytes, formatCount, formatDate, formatRelative } from '@/lib/format';
 import { useApi } from '@/lib/use-api';
+import { WebhookTestButton } from '@/features/monitors/WebhookTestButton';
 import styles from './Settings.module.scss';
 
 const PROJECT_COLUMNS = [
@@ -147,6 +151,8 @@ export function SettingsView() {
       </Section>
 
       <StorageSection />
+
+      <SummarySection />
     </>
   );
 }
@@ -449,6 +455,145 @@ function StorageSection() {
         )}
       </div>
     </Section>
+  );
+}
+
+const HOURS = Array.from({ length: 24 }, (_, hour) => hour);
+
+function SummarySection() {
+  const summary = useApi<SummaryResponse>('/summary', 60_000);
+  return (
+    <Section title="Daily summary">
+      {summary.data ? (
+        <SummaryForm data={summary.data} onSaved={summary.refetch} />
+      ) : summary.error ? (
+        <ErrorState title="Unable to load summary settings." description={summary.error.message} onRetry={summary.refetch} />
+      ) : (
+        <Skeleton height="calc(var(--row-height) * 4)" />
+      )}
+    </Section>
+  );
+}
+
+/** A short daily report to a phone or chat, sent at a chosen hour in this browser's time zone. */
+function SummaryForm({ data, onSaved }: { data: SummaryResponse; onSaved: () => void }) {
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const [values, setValues] = useState<SummarySettings>(data.settings);
+  const [saving, setSaving] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+  const { errors, setErrors, capture } = useFormErrors();
+
+  const update = (patch: Partial<SummarySettings>) => {
+    setValues((current) => ({ ...current, ...patch }));
+    setResult(null);
+  };
+
+  const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSaving(true);
+    setErrors({});
+    try {
+      await apiFetch<SummaryResponse>('/summary', { method: 'PUT', body: JSON.stringify({ ...values, webhookUrl: values.webhookUrl.trim(), timeZone }) });
+      setResult('Saved.');
+      onSaved();
+    } catch (failure) {
+      capture(failure);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const sendNow = async () => {
+    setSending(true);
+    setErrors({});
+    try {
+      // The URL in the field, like Send test, even before it is saved.
+      const { status } = await apiFetch<SendSummaryResponse>('/summary/send', {
+        method: 'POST',
+        body: JSON.stringify({ days: 1, webhookUrl: values.webhookUrl.trim() }),
+      });
+      setResult(`Sent now · ${status}`);
+    } catch (failure) {
+      capture(failure);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <>
+      <p className={styles.note}>
+        Uptime, response time and certificates of each synthetic monitor, alert changes and time not measured, once a day at the chosen
+        hour ({timeZone}). If this computer was off or asleep then, it goes out when minidog runs again.
+      </p>
+      <form className={styles.form} onSubmit={onSubmit} noValidate>
+        <label className={`${styles.full} ${styles.checkbox}`}>
+          <input type="checkbox" checked={values.enabled} onChange={(event) => update({ enabled: event.target.checked })} />
+          <span>Send a daily summary</span>
+        </label>
+        <div className={styles.full}>
+          <Field id="summary-webhook" label="Webhook URL" hint="Slack, Discord, Telegram and ntfy.sh URLs get their own format." error={errors.webhookUrl}>
+            <Input
+              id="summary-webhook"
+              value={values.webhookUrl}
+              onChange={(event) => update({ webhookUrl: event.target.value })}
+              type="url"
+              mono
+              placeholder="https://ntfy.sh/your-topic"
+              invalid={Boolean(errors.webhookUrl)}
+            />
+            <WebhookTestButton url={values.webhookUrl} />
+          </Field>
+        </div>
+        <Field id="summary-hour" label="Send from">
+          <Select id="summary-hour" value={String(values.hour)} onChange={(event) => update({ hour: Number(event.target.value) })}>
+            {HOURS.map((hour) => (
+              <option key={hour} value={hour}>
+                {`${String(hour).padStart(2, '0')}:00`}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <label className={styles.checkbox}>
+          <input type="checkbox" checked={values.weekly} onChange={(event) => update({ weekly: event.target.checked })} />
+          <span>On Mondays, cover the last 7 days</span>
+        </label>
+        <div className={styles.actions}>
+          <Button type="submit" variant="primary" loading={saving}>
+            Save
+          </Button>
+          <Button type="button" loading={sending} disabled={!values.webhookUrl.trim()} onClick={() => void sendNow()}>
+            Send now
+          </Button>
+          {result && (
+            <span role="status" className={result.includes('failed') ? styles.error : styles.note}>
+              {result}
+            </span>
+          )}
+          {errors.form && <span className={styles.error}>{errors.form}</span>}
+        </div>
+      </form>
+      <p className={styles.note}>
+        {data.lastFailedAt ? (
+          <span className={styles.error}>
+            Last attempt {formatRelative(Date.parse(data.lastFailedAt))} failed ({data.lastStatus}); it is retried every 10 minutes.
+          </span>
+        ) : data.lastSentAt ? (
+          `Last scheduled summary ${formatRelative(Date.parse(data.lastSentAt))} · ${data.lastStatus}`
+        ) : (
+          'No scheduled summary sent yet.'
+        )}
+      </p>
+      <div className={styles.snippetBlock}>
+        <div className={styles.snippetHead}>
+          <span className={styles.snippetTitle}>Preview (last 24 h)</span>
+        </div>
+        <pre className={styles.snippet}>
+          <code>{data.preview}</code>
+        </pre>
+      </div>
+    </>
   );
 }
 

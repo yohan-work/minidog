@@ -344,6 +344,14 @@ export class AlertMonitorRepository {
     return rows.map(toEvent);
   }
 
+  /** State changes in every project since `fromIso`, oldest first. */
+  eventsSince(fromIso: string): AlertEvent[] {
+    const rows = this.db
+      .prepare(`${EVENT_SELECT} WHERE e.created_at >= ? ORDER BY e.created_at`)
+      .all(fromIso) as unknown as EventRow[];
+    return rows.map(toEvent);
+  }
+
   recentEvents(scope: Scope, limit: number): AlertEvent[] {
     const rows = this.db
       .prepare(`${EVENT_SELECT} WHERE e.project_id = ? AND e.environment = ? ORDER BY e.created_at DESC LIMIT ?`)

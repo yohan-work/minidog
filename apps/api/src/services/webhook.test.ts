@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createServer, type IncomingHttpHeaders } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { after, before, test } from 'node:test';
-import { sendWebhook, testWebhookPayload, webhookFormat, webhookRequest, type WebhookPayload } from './webhook';
+import { sendWebhook, summaryPayload, testWebhookPayload, webhookFormat, webhookRequest, type WebhookPayload } from './webhook';
 
 const critical: WebhookPayload = {
   text: '[CRITICAL] 결제 API: Error rate 12% ≥ 5%',
@@ -46,6 +46,10 @@ test('ntfy gets plain text with ASCII headers', () => {
   assert.equal(headers.priority, '5');
   assert.equal(headers.tags, 'rotating_light');
   assert.equal(webhookRequest('https://ntfy.sh/my-alerts', testWebhookPayload()).headers.title, 'minidog test');
+  const summary = webhookRequest('https://ntfy.sh/my-alerts', summaryPayload('line 1\nline 2', 1));
+  assert.equal(summary.headers.title, 'minidog summary');
+  assert.equal(summary.headers.tags, 'bar_chart');
+  assert.equal(summary.body, 'line 1\nline 2');
 });
 
 test('other URLs get the JSON payload', () => {
