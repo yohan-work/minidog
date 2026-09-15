@@ -9,6 +9,7 @@ import { openDatabase } from './db/sqlite';
 import { errorBody, HttpError } from './lib/errors';
 import { AlertMonitorRepository } from './repositories/alert-monitor-repository';
 import { ApiKeyRepository } from './repositories/api-key-repository';
+import { GapRepository } from './repositories/gap-repository';
 import { LogRepository } from './repositories/log-repository';
 import { MetricRepository } from './repositories/metric-repository';
 import { MonitorRepository } from './repositories/monitor-repository';
@@ -34,6 +35,7 @@ import { MetricsExplorerService } from './services/metrics-explorer-service';
 import { MonitorService } from './services/monitor-service';
 import { StorageService } from './services/storage-service';
 import { AlertEvaluator } from './worker/alert-evaluator';
+import { GapTracker } from './worker/gap-tracker';
 import { ResultWriter } from './worker/result-writer';
 import { SyntheticScheduler } from './worker/synthetic-scheduler';
 
@@ -83,6 +85,9 @@ export async function buildApp(config: Config, options: BuildAppOptions = {}): P
   const spans = new SpanRepository(clickhouse);
   const logs = new LogRepository(clickhouse);
   const writer = new ResultWriter(results, app.log);
+  const gaps = new GapRepository(sqlite);
+  // Gaps matter where checks run, so the tracker runs with the scheduler.
+  const gapTracker = config.WORKER_ENABLED ? new GapTracker(gaps, app.log) : null;
   const alertMonitors = new AlertMonitorRepository(sqlite);
   const evaluator = new AlertEvaluator({
     monitors: alertMonitors,
@@ -92,9 +97,10 @@ export async function buildApp(config: Config, options: BuildAppOptions = {}): P
     syntheticResults: results,
     log: app.log,
     intervalMs: config.ALERT_INTERVAL_SECONDS * 1000,
+    gaps: gapTracker ?? undefined,
   });
   const scheduler = config.WORKER_ENABLED
-    ? new SyntheticScheduler({ monitors, writer, log: app.log, concurrency: config.WORKER_CONCURRENCY })
+    ? new SyntheticScheduler({ monitors, writer, log: app.log, concurrency: config.WORKER_CONCURRENCY, gaps: gapTracker ?? undefined })
     : null;
 
   const ctx: AppContext = {
@@ -109,7 +115,7 @@ export async function buildApp(config: Config, options: BuildAppOptions = {}): P
     },
     monitors,
     results,
-    service: new MonitorService(monitors, results, scope),
+    service: new MonitorService(monitors, results, scope, gaps),
     metrics,
     spans,
     logs,
@@ -126,12 +132,14 @@ export async function buildApp(config: Config, options: BuildAppOptions = {}): P
   app.addHook('onReady', async () => {
     void ensureClickHouseSchema(clickhouse, app.log, lifetime.signal);
     writer.start();
+    gapTracker?.start();
     scheduler?.start();
     if (config.ALERTS_ENABLED) evaluator.start();
   });
   app.addHook('onClose', async () => {
     lifetime.abort();
     scheduler?.stop();
+    gapTracker?.stop();
     await evaluator.stop();
     await writer.stop();
     await clickhouse.close();

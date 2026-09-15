@@ -36,7 +36,7 @@ The goal is to reach the root cause in three screens or fewer, without first lea
 - **Database queries**: statements from database client spans ranked by time spent, P95 or calls, with literals replaced by `?`; each opens its slowest call.
 - **Infrastructure**: host CPU, memory, disk and network through the OTel `hostmetrics` receiver.
 - **Metrics Explorer**: query any ingested metric with aggregation and filters.
-- **Synthetics**: HTTP checks with status, latency, availability and SSL expiry; they can follow redirects and require text in the response body.
+- **Synthetics**: HTTP checks with status, latency, availability and SSL expiry; they can follow redirects and require text in the response body. Time when minidog was not running or the computer was asleep shows as "not measured", not as downtime, and checks wait for the network after waking.
 - **Monitors**: alerts for service down, error rate, latency, host resources and synthetic checks (failed checks, response time, SSL expiry), with Warning and Critical levels, state history and webhooks (Slack-compatible). Noise control: alert only after a condition lasts N minutes, delay recovery, and mute notifications during maintenance. Notifications go to Slack, Discord, Telegram or an ntfy.sh topic (free phone push), each in its own format; "Send test" checks a URL before any alert fires.
 - **Service Map**: a dependency graph built from span relationships.
 - **Projects**: projects, environments and ingest API keys.

@@ -181,7 +181,7 @@ export function MonitorDetailView({ id }: { id: string }) {
 
           <Section title="Availability">
             {seriesQuery.data ? (
-              <AvailabilityBar points={seriesQuery.data.points} />
+              <AvailabilityBar points={seriesQuery.data.points} stepSeconds={seriesQuery.data.stepSeconds} gaps={seriesQuery.data.gaps} />
             ) : seriesQuery.error ? (
               <p className={styles.reason}>Availability timeline unavailable.</p>
             ) : (

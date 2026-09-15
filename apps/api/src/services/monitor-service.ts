@@ -10,6 +10,7 @@ import type {
 } from '@minidog/types';
 import { ClickHouseUnavailableError, NotFoundError } from '../lib/errors';
 import { fillSeries, timeWindow, type TimeWindow } from '../lib/time-window';
+import type { GapRepository } from '../repositories/gap-repository';
 import type { MonitorRepository } from '../repositories/monitor-repository';
 import type { Scope } from '../repositories/project-repository';
 import type { RawMonitorSummary, SyntheticResultRepository, Totals } from '../repositories/synthetic-result-repository';
@@ -25,6 +26,7 @@ export class MonitorService {
     private readonly monitors: MonitorRepository,
     private readonly results: SyntheticResultRepository,
     private readonly scope: Scope,
+    private readonly gaps: GapRepository,
   ) {}
 
   get(id: string): SyntheticMonitor {
@@ -47,10 +49,10 @@ export class MonitorService {
   }
 
   async series(id: string, range: TimeRange) {
-    this.get(id);
+    const monitor = this.get(id);
     const window = timeWindow(range);
     const rows = await this.results.series(this.scope, [id], window.fromMs, window.stepSeconds);
-    return { range, stepSeconds: window.stepSeconds, points: fillSeries(window, rows) };
+    return { range, stepSeconds: window.stepSeconds, points: fillSeries(window, rows), gaps: this.gapsSince([monitor], window.fromMs) };
   }
 
   async checks(id: string, limit: number) {
@@ -93,10 +95,17 @@ export class MonitorService {
       availability: totals.checks > 0 ? (totals.checks - totals.failures) / totals.checks : null,
       p95LatencyMs: totals.p95LatencyMs,
       avgLatencyMs: totals.avgLatencyMs,
-      series: { range, stepSeconds: window.stepSeconds, points },
+      series: { range, stepSeconds: window.stepSeconds, points, gaps: this.gapsSince(monitors, window.fromMs) },
       monitors: withSummary,
       resultsError,
     };
+  }
+
+  /** Gaps since the oldest of these monitors existed; time before that was never going to be measured. */
+  private gapsSince(monitors: readonly SyntheticMonitor[], fromMs: number) {
+    if (monitors.length === 0) return [];
+    const created = Math.min(...monitors.map((monitor) => Date.parse(monitor.createdAt)));
+    return this.gaps.list(Math.max(fromMs, created), Date.now());
   }
 
   private async summarize(

@@ -135,7 +135,7 @@ Observe
  ├ Queries               DB 쿼리 순위(총 소요 시간 · P95 · 호출 수, 값은 ? 로 묶음) · 가장 느린 호출의 트레이스로 이동
  └ Logs                  Log Explorer(서비스/레벨/검색/trace id) → Trace · 실시간 보기(Live tail)
 Monitor
- ├ Synthetics            URL 체크(상태 코드, 지연, 가용성, SSL 만료) · 리다이렉트 추종 · 응답 본문 문구 확인
+ ├ Synthetics            URL 체크(상태 코드, 지연, 가용성, SSL 만료) · 리다이렉트 추종 · 응답 본문 문구 확인 · 측정 공백(꺼짐·잠자기) 표시
  └ Monitors              Service down · Error rate · Latency · CPU/Memory · Synthetic check(실패율 · 응답 시간 · SSL 만료),
                          상태 이력, Webhook(Slack 호환), N분 지속 시 알림 · 해제 지연 · 음소거
 Settings                 프로젝트 · 환경 · API key · 연결 정보
@@ -161,6 +161,7 @@ Settings                 프로젝트 · 환경 · API key · 연결 정보
 | L. 로그 실시간 보기 | Logs → 오른쪽 위 **Live tail** → 새 로그가 2초마다 위에 쌓임(Level·Service·검색 필터 적용, Pause로 멈춤) → **Stop live tail**로 원래 목록 |
 | M. 휴대폰 알림 | 휴대폰에 ntfy 앱 → 토픽 구독 → Monitors → 모니터 Settings의 Webhook URL에 `https://ntfy.sh/<토픽>` → **Send test** → 휴대폰에 푸시 |
 | N. 디스크 관리 | Settings → Storage → 신호별 용량·가장 오래된 기록 확인 → Logs 보관 기간을 7 days로 → 확인 창 → 오래된 로그가 지워지고 용량이 줄어듦 |
+| O. 측정 공백 | minidog을 끄고 몇 분 뒤 다시 켬(또는 맥 잠자기) → Synthetics 모니터 상세의 Availability에 빗금 구간과 "not measured for …" → 막대에 마우스를 올리면 이유 표시. 깨어난 직후 45초는 체크·알림을 쉬어 가짜 Down이 없음 |
 
 ## 개발
 
