@@ -52,6 +52,12 @@
   color: var(--foreground-primary);
   outline: none;
 
+  // The row's underline is the focus mark; the global :focus-visible outline
+  // would draw a second box around the input.
+  &:focus-visible {
+    outline: none;
+  }
+
   &::placeholder {
     color: var(--foreground-muted);
   }
