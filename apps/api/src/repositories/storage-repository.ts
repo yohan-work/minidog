@@ -12,10 +12,19 @@ export const SIGNAL_TABLES: Record<RetentionSignal, string> = {
 };
 const TABLES = Object.values(SIGNAL_TABLES);
 
-/** Days in a table's TTL; ClickHouse prints `INTERVAL N DAY` as `toIntervalDay(N)`. */
+const UNIT_DAYS: Record<string, number> = { day: 1, week: 7, month: 30, year: 365 };
+
+/**
+ * Days in a table's TTL (months count as 30). ClickHouse prints `INTERVAL N DAY`
+ * as `toIntervalDay(N)`; a TTL in another form reads as null.
+ */
 export function parseRetentionDays(createTableQuery: string): number | null {
-  const match = /\bTTL\b.*?(?:toIntervalDay\((\d+)\)|INTERVAL (\d+) DAY)/is.exec(createTableQuery);
-  return match ? Number(match[1] ?? match[2]) : null;
+  const match =
+    /\bTTL\b.*?toInterval(Day|Week|Month|Year)\((\d+)\)/is.exec(createTableQuery) ??
+    /\bTTL\b.*?INTERVAL (\d+) (DAY|WEEK|MONTH|YEAR)\b/is.exec(createTableQuery);
+  if (!match) return null;
+  const [amount, unit] = /^\d+$/.test(match[1]!) ? [match[1]!, match[2]!] : [match[2]!, match[1]!];
+  return Number(amount) * UNIT_DAYS[unit.toLowerCase()]!;
 }
 
 export class StorageRepository extends ClickHouseRepository {

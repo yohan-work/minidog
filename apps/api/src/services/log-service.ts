@@ -1,10 +1,10 @@
-import type { LogLevel, LogListResponse, LogTailResponse, LogVolumePoint, TimeRange } from '@minidog/types';
+import { RETENTION_MAX_DAYS, type LogLevel, type LogListResponse, type LogTailResponse, type LogVolumePoint, type TimeRange } from '@minidog/types';
 import { customWindow, timeWindow, type TimeWindow } from '../lib/time-window';
 import type { LogRepository } from '../repositories/log-repository';
 import type { Scope } from '../repositories/project-repository';
 
 /** Logs of one trace are looked up across the whole retention, not the selected range. */
-const TRACE_LOOKBACK_MS = 14 * 24 * 60 * 60 * 1000;
+const TRACE_LOOKBACK_MS = RETENTION_MAX_DAYS * 24 * 60 * 60 * 1000;
 /** Live tail catches up at most this far back, e.g. after a long pause. */
 const TAIL_MAX_LOOKBACK_MS = 15 * 60 * 1000;
 

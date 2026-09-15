@@ -374,7 +374,8 @@ function StorageSection() {
 
   const change = async (item: StorageSignal, days: number) => {
     const label = SIGNAL_LABELS[item.signal].toLowerCase();
-    const shorter = item.retentionDays !== null && days < item.retentionDays;
+    // An unknown current value may be longer, so it asks too.
+    const shorter = item.retentionDays === null || days < item.retentionDays;
     if (shorter && !window.confirm(`Keep ${label} for ${days} days? Older ${label} are deleted now, in every project.`)) return;
     setSaving(item.signal);
     setError(null);
@@ -417,7 +418,7 @@ function StorageSection() {
                       disabled={saving !== null}
                       onChange={(event) => void change(item, Number(event.target.value))}
                     >
-                      {item.retentionDays === null && <option value="">No limit</option>}
+                      {item.retentionDays === null && <option value="">Not set</option>}
                       {item.retentionDays !== null && !(RETENTION_DAYS as readonly number[]).includes(item.retentionDays) && (
                         <option value={item.retentionDays}>{item.retentionDays} days</option>
                       )}
