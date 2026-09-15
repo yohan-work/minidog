@@ -103,6 +103,23 @@ test('sign-in pauses after ten wrong passwords, and a burst cannot get past it',
   }
 });
 
+test('guessing the current password in Settings counts towards the same limit', async () => {
+  const app = await start();
+  try {
+    const cookie = cookieOf(await app.inject({ method: 'POST', url: '/api/auth/setup', headers: DASHBOARD, payload: { password: 'correct horse' } }));
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      const wrong = await app.inject({ method: 'POST', url: '/api/auth/password', headers: { ...DASHBOARD, cookie }, payload: { current: `guess ${attempt}`, next: 'battery staple' } });
+      assert.equal(wrong.statusCode, 401);
+    }
+    const paused = await app.inject({ method: 'POST', url: '/api/auth/password', headers: { ...DASHBOARD, cookie }, payload: { current: 'correct horse', next: 'battery staple' } });
+    assert.equal(paused.statusCode, 429);
+    const login = await app.inject({ method: 'POST', url: '/api/auth/login', headers: DASHBOARD, payload: { password: 'correct horse' } });
+    assert.equal(login.statusCode, 429);
+  } finally {
+    await app.close();
+  }
+});
+
 test('two first-run setups cannot both set the password', async () => {
   const app = await start();
   try {

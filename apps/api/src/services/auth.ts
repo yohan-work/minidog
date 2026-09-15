@@ -84,6 +84,16 @@ export class AuthService {
   }
 
   async signIn(password: string): Promise<string> {
+    if (!(await this.checkPassword(password))) throw new HttpError(401, 'invalid_password', 'That password is not right.');
+    return this.startSession();
+  }
+
+  /**
+   * Checks a password against the stored one under the shared guessing limit
+   * (see MAX_FAILURES): sign-in and password changes count together, so a
+   * signed-in browser cannot be used to guess faster.
+   */
+  private async checkPassword(password: string): Promise<boolean> {
     const now = Date.now();
     this.failures = this.failures.filter((at) => now - at < FAILURE_WINDOW_MS);
     if (this.failures.length + this.inFlight >= MAX_FAILURES) {
@@ -100,10 +110,10 @@ export class AuthService {
       if (stored === null) throw new HttpError(409, 'setup_required', 'Set a password first.');
       if (!(await verifyPassword(stored, password))) {
         this.failures.push(Date.now());
-        throw new HttpError(401, 'invalid_password', 'That password is not right.');
+        return false;
       }
       this.failures = [];
-      return this.startSession();
+      return true;
     } finally {
       this.inFlight -= 1;
     }
@@ -115,8 +125,7 @@ export class AuthService {
 
   /** Signs out every other session. */
   async changePassword(current: string, next: string, token: string | undefined): Promise<void> {
-    const stored = this.store.passwordHash();
-    if (stored === null || !(await verifyPassword(stored, current))) throw new HttpError(401, 'invalid_password', 'The current password is not right.');
+    if (!(await this.checkPassword(current))) throw new HttpError(401, 'invalid_password', 'The current password is not right.');
     this.store.setPasswordHash(await hashPassword(next));
     this.store.deleteOtherSessions(token ? hashToken(token) : null);
   }
