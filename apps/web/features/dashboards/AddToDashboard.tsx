@@ -1,6 +1,6 @@
 'use client';
 
-import type { DashboardListResponse, DashboardResponse, NewDashboardWidget } from '@minidog/types';
+import type { DashboardListResponse, DashboardResponse, DashboardSummary, NewDashboardWidget } from '@minidog/types';
 import Link from 'next/link';
 import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
@@ -20,17 +20,20 @@ export function AddToDashboard({ widget }: { widget: NewDashboardWidget }) {
   const [choice, setChoice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ text: string; href?: string; failed?: boolean } | null>(null);
+  // Created here; used until the reloaded list includes it.
+  const [created, setCreated] = useState<DashboardSummary | null>(null);
   const target = choice ?? list.data?.dashboards[0]?.id ?? NEW;
 
   const add = async () => {
     setBusy(true);
     setResult(null);
     try {
-      let dashboard = list.data?.dashboards.find((item) => item.id === target);
+      let dashboard = list.data?.dashboards.find((item) => item.id === target) ?? (created?.id === target ? created : undefined);
       if (!dashboard) {
-        const created = await apiFetch<DashboardResponse>('/dashboards', { method: 'POST', body: JSON.stringify({ name: 'My dashboard' }) });
-        dashboard = { id: created.dashboard.id, name: created.dashboard.name, widgetCount: 0, updatedAt: created.dashboard.updatedAt };
+        const response = await apiFetch<DashboardResponse>('/dashboards', { method: 'POST', body: JSON.stringify({ name: 'My dashboard' }) });
+        dashboard = { id: response.dashboard.id, name: response.dashboard.name, widgetCount: 0, updatedAt: response.dashboard.updatedAt };
         // Chosen at once: if adding the widget fails, a retry adds to this one instead of creating another.
+        setCreated(dashboard);
         setChoice(dashboard.id);
         list.refetch();
       }
@@ -53,6 +56,7 @@ export function AddToDashboard({ widget }: { widget: NewDashboardWidget }) {
             {item.name}
           </option>
         ))}
+        {created && !list.data?.dashboards.some((item) => item.id === created.id) && <option value={created.id}>{created.name}</option>}
         <option value={NEW}>New dashboard</option>
       </Select>
       {/* Until the list arrives, "New dashboard" would be picked by default and duplicate existing ones. */}
