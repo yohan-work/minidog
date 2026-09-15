@@ -153,6 +153,12 @@ export function SettingsView() {
       <StorageSection />
 
       <SummarySection />
+
+      {context.data?.auth.enabled && (
+        <Section title="Password">
+          <PasswordForm />
+        </Section>
+      )}
     </>
   );
 }
@@ -594,6 +600,53 @@ function SummaryForm({ data, onSaved }: { data: SummaryResponse; onSaved: () => 
         </pre>
       </div>
     </>
+  );
+}
+
+function PasswordForm() {
+  const [current, setCurrent] = useState('');
+  const [next, setNext] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [done, setDone] = useState(false);
+  const { errors, setErrors, capture } = useFormErrors();
+
+  const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSaving(true);
+    setErrors({});
+    setDone(false);
+    try {
+      await apiFetch('/auth/password', { method: 'POST', body: JSON.stringify({ current, next }) });
+      setCurrent('');
+      setNext('');
+      setDone(true);
+    } catch (failure) {
+      capture(failure);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <form className={styles.form} onSubmit={onSubmit} noValidate>
+      <Field id="password-current" label="Current password" error={errors.current}>
+        <Input id="password-current" type="password" autoComplete="current-password" value={current} onChange={(event) => setCurrent(event.target.value)} invalid={Boolean(errors.current)} />
+      </Field>
+      <Field id="password-next" label="New password" hint="At least 8 characters." error={errors.next}>
+        <Input id="password-next" type="password" autoComplete="new-password" value={next} onChange={(event) => setNext(event.target.value)} invalid={Boolean(errors.next)} />
+      </Field>
+      <div className={styles.actions}>
+        <Button type="submit" loading={saving}>
+          Change password
+        </Button>
+        {done && (
+          <span role="status" className={styles.note}>
+            Changed. Other browsers were signed out.
+          </span>
+        )}
+        {errors.form && <span className={styles.error}>{errors.form}</span>}
+      </div>
+    </form>
   );
 }
 

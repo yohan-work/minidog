@@ -26,6 +26,9 @@ const configSchema = z.object({
   ALERTS_ENABLED: booleanString.default(true),
   ALERT_INTERVAL_SECONDS: z.coerce.number().int().min(5).max(3600).default(30),
 
+  // Dashboard sign-in. Only disable it on a machine nobody else can reach.
+  AUTH_DISABLED: booleanString.default(false),
+
   // Ingestion. Without a required key, unauthenticated data goes to the default project.
   INGEST_REQUIRE_API_KEY: booleanString.default(false),
   /** Shown as connection info in Settings. */

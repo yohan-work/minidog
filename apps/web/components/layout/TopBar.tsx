@@ -3,7 +3,9 @@
 import { DEFAULT_TIME_RANGE, TIME_RANGE_KEYS, TIME_RANGES, type ContextResponse, type TimeRange } from '@minidog/types';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { ChangeEvent, ReactNode } from 'react';
+import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Select';
+import { apiFetch } from '@/lib/api-client';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useApi } from '@/lib/use-api';
 import { useTimeRange } from '@/lib/time-range';
@@ -58,6 +60,15 @@ export function TopBar() {
         <>
         <CommandMenuTrigger />
         <AlertsIndicator />
+        {data?.auth.enabled && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => void apiFetch('/auth/logout', { method: 'POST' }).finally(() => window.location.assign('/login'))}
+          >
+            Sign out
+          </Button>
+        )}
         <label className={styles.range}>
           <span className={styles.visuallyHidden}>Time range</span>
           <Select controlSize="sm" value={range} onChange={onRangeChange}>

@@ -16,9 +16,20 @@ export class ApiClientError extends Error {
   }
 }
 
+let redirecting = false;
+
+/** Sends the browser to sign in, then back to where it was. */
+function redirectToLogin(): void {
+  if (typeof window === 'undefined' || redirecting || window.location.pathname === '/login') return;
+  redirecting = true;
+  window.location.assign(`/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+}
+
 export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
   if (init.body !== undefined && !headers.has('content-type')) headers.set('content-type', 'application/json');
+  // Marks requests as the dashboard's; the API refuses changes without it (cross-site forms cannot add it).
+  headers.set('x-minidog-request', '1');
 
   let response: Response;
   try {
@@ -33,6 +44,7 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
   const body: unknown = await response.json().catch(() => null);
   if (!response.ok) {
     const error = (body as Partial<ApiErrorResponse> | null)?.error;
+    if (response.status === 401 && error?.code === 'unauthenticated') redirectToLogin();
     if (error?.code) throw new ApiClientError(response.status, error.code, error.message, error.details);
     // The Next.js rewrite answers with a non-JSON 500 when the Query API is down.
     throw new ApiClientError(

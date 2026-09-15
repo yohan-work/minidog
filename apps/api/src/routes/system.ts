@@ -8,6 +8,7 @@ export function contextResponse(ctx: AppContext): ContextResponse {
     environment: ctx.scope.environment,
     worker: { enabled: ctx.scheduler !== null },
     ingest: ctx.ingest,
+    auth: { enabled: !ctx.auth.disabled },
   };
 }
 

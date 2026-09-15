@@ -134,6 +134,13 @@ const MIGRATIONS: readonly string[] = [
 
   CREATE INDEX dashboards_scope ON dashboards (project_id, environment);
   `,
+  /* 8 — dashboard sign-in: sessions by token hash (the password hash lives in settings) */ `
+  CREATE TABLE sessions (
+    token_hash  TEXT PRIMARY KEY,
+    created_at  TEXT NOT NULL,
+    expires_at  TEXT NOT NULL
+  );
+  `,
 ];
 
 export function openDatabase(path: string): DatabaseSync {
