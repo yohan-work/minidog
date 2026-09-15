@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { AppContext } from '../app';
 import { publicMonitor } from '../repositories/alert-monitor-repository';
+import { sendWebhook, testWebhookPayload, webhookFormat } from '../services/webhook';
 import { idParamsSchema } from './schemas';
 
 function isHttpUrl(value: string): boolean {
@@ -58,6 +59,8 @@ const updateSchema = z
   .partial()
   .strict();
 
+const webhookTestSchema = z.object({ url: webhookUrl.refine((value) => value !== '', 'Enter a webhook URL.') }).strict();
+
 const muteSchema = z.object({ minutes: oneOf(ALERT_MUTE_MINUTES, 'Unsupported mute duration.') }).strict();
 
 export function registerAlertingRoutes(app: FastifyInstance, ctx: AppContext): void {
@@ -103,6 +106,12 @@ export function registerAlertingRoutes(app: FastifyInstance, ctx: AppContext): v
   });
 
   app.get('/api/alerting/summary', async () => alerting.summary());
+
+  // Sends a sample notification so a URL can be checked before any alert fires.
+  app.post('/api/alerting/webhook-test', async (request) => {
+    const { url } = webhookTestSchema.parse(request.body ?? {});
+    return { format: webhookFormat(url), status: await sendWebhook(url, testWebhookPayload()) };
+  });
 
   app.post('/api/alerting/events/acknowledge', async (_request, reply) => {
     alerting.acknowledgeAll();

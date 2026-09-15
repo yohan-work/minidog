@@ -95,6 +95,19 @@ Docker Desktop에서는 Docker VM의 지표가 보인다. 실제 서버를 보�
 `/:/hostfs:ro` 를 마운트하고 `host_metrics.root_path: /hostfs`, `network_mode: host` 를 설정한다
 (`infra/otel/collector.yaml` 주석 참고).
 
+## 휴대폰으로 알림 받기 (무료)
+
+모니터의 **Webhook URL** 에 아래 주소 중 하나를 넣고 **Send test** 로 확인한다. 주소를 보고 서비스에 맞는 형식으로 보낸다.
+
+| 서비스 | 준비 | Webhook URL |
+|---|---|---|
+| ntfy (가입 없음) | 휴대폰에 ntfy 앱 설치 → 추측하기 어려운 토픽 이름 구독 (토픽은 공개라 이름이 곧 비밀번호) | `https://ntfy.sh/<토픽>` |
+| Discord | 채널 설정 → 연동 → 웹후크 만들기 → URL 복사 | `https://discord.com/api/webhooks/…` |
+| Telegram | @BotFather로 봇 생성 → 봇에게 메시지 → `getUpdates`로 chat id 확인 | `https://api.telegram.org/bot<토큰>/sendMessage?chat_id=<id>` |
+| Slack | Incoming Webhooks 앱 추가 | `https://hooks.slack.com/services/…` |
+
+그 밖의 주소에는 JSON(`text`, `monitor`, `state`, `message` …)을 POST 한다.
+
 ## API 환경 변수
 
 | 변수 | 기본값 | 설명 |
@@ -146,6 +159,7 @@ Settings                 프로젝트 · 환경 · API key · 연결 정보
 | J. 검색(⌘K) | 아무 화면에서 ⌘K → `checkout` 입력 → Enter로 `POST /checkout` 엔드포인트 상세. 32자리 trace id를 붙여 넣으면 그 트레이스, 그 밖의 글자는 Search logs / traces |
 | K. 리다이렉트 · 본문 확인 | Synthetics → New monitor → `http://example.com`(Follow redirects 기본 켜짐, Response must contain `Example Domain`) → 최근 체크에 ↪ 표시, 문구를 바꾸면 Down과 이유 |
 | L. 로그 실시간 보기 | Logs → 오른쪽 위 **Live tail** → 새 로그가 2초마다 위에 쌓임(Level·Service·검색 필터 적용, Pause로 멈춤) → **Stop live tail**로 원래 목록 |
+| M. 휴대폰 알림 | 휴대폰에 ntfy 앱 → 토픽 구독 → Monitors → 모니터 Settings의 Webhook URL에 `https://ntfy.sh/<토픽>` → **Send test** → 휴대폰에 푸시 |
 
 ## 개발
 
