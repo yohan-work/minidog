@@ -45,7 +45,7 @@ Open **http://localhost:3000** and set a password. Host metrics arrive within ab
 docker compose --profile demo up -d
 ```
 
-To update, run `docker compose pull && docker compose up -d`. To pin a release, set `MINIDOG_VERSION=0.1.0`.
+To update, run `docker compose pull && docker compose up -d`. To pin a release, set `MINIDOG_VERSION=0.2.0`.
 
 ## What you get
 

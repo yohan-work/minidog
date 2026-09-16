@@ -6,7 +6,7 @@
 #
 # Everything is published on 127.0.0.1 only. Data lives in the named volumes
 # at the bottom. Update with `docker compose pull && docker compose up -d`;
-# pin a release with MINIDOG_VERSION (e.g. MINIDOG_VERSION=0.1.0).
+# pin a release with MINIDOG_VERSION (e.g. MINIDOG_VERSION=0.2.0).
 #
 # The configs at the bottom are generated from infra/ in the repository
 # (scripts/check-deploy-compose.mjs keeps them in sync).

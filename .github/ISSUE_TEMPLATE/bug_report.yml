@@ -24,7 +24,7 @@ body:
     attributes:
       label: Version
       description: "For the published images: `docker image inspect --format '{{index .Config.Labels \"org.opencontainers.image.version\"}}' ghcr.io/yohan-work/minidog-api:latest`. From source: the commit (`git rev-parse --short HEAD`)."
-      placeholder: 0.1.0
+      placeholder: 0.2.0
     validations:
       required: true
   - type: dropdown

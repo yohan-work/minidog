@@ -20,7 +20,7 @@ curl -fsSLO https://raw.githubusercontent.com/yohan-work/minidog/main/deploy/com
 docker compose up -d                    # 샘플 트래픽까지 보려면 --profile demo 추가
 ```
 
-- 업데이트: `docker compose pull && docker compose up -d`. 특정 릴리스로 고정하려면 `MINIDOG_VERSION=0.1.0 docker compose up -d`.
+- 업데이트: `docker compose pull && docker compose up -d`. 특정 릴리스로 고정하려면 `MINIDOG_VERSION=0.2.0 docker compose up -d`.
 - 데이터는 `clickhouse-data`, `minidog-data` 볼륨에 있다. `docker compose down`은 데이터를 남기고, `docker compose down -v`는 지운다.
 - 비밀번호를 잊었다면 `docker compose exec api node cli/reset-password.mjs`를 실행한 뒤 대시보드를 열어 새로 정한다.
 

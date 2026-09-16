@@ -20,7 +20,7 @@ curl -fsSLO https://raw.githubusercontent.com/yohan-work/minidog/main/deploy/com
 docker compose up -d                    # add --profile demo for sample traffic
 ```
 
-- Update: `docker compose pull && docker compose up -d`. Pin a release with `MINIDOG_VERSION=0.1.0 docker compose up -d`.
+- Update: `docker compose pull && docker compose up -d`. Pin a release with `MINIDOG_VERSION=0.2.0 docker compose up -d`.
 - Data lives in the `clickhouse-data` and `minidog-data` volumes. `docker compose down` keeps them; `docker compose down -v` deletes them.
 - Forgot the password: `docker compose exec api node cli/reset-password.mjs`, then open the dashboard to set a new one.
 
