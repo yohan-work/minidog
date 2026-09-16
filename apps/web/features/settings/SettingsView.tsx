@@ -762,8 +762,11 @@ OTEL_EXPORTER_OTLP_HEADERS=${API_KEY_HEADER}=<api key>`;
       <CodeSnippet title="SDK → Ingestion API directly (OTLP/HTTP JSON)" code={direct} />
       <CodeSnippet title="Your own collector" code={collector} />
       <p className={styles.note}>
-        The bundled collector reads the key from <code className={styles.mono}>MINIDOG_API_KEY</code>:{' '}
-        <code className={styles.mono}>MINIDOG_API_KEY=&lt;api key&gt; pnpm infra:up</code>
+        The bundled collector reads the key from <code className={styles.mono}>MINIDOG_API_KEY</code>: set it on the{' '}
+        <code className={styles.mono}>otel-collector</code> service in <code className={styles.mono}>compose.yaml</code>{' '}
+        and run <code className={styles.mono}>docker compose up -d</code>, or{' '}
+        <code className={styles.mono}>MINIDOG_API_KEY=&lt;api key&gt; pnpm infra:up</code> when you run minidog from
+        source.
       </p>
     </div>
   );

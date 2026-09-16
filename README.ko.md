@@ -45,7 +45,7 @@ docker compose up -d
 docker compose --profile demo up -d
 ```
 
-업데이트는 `docker compose pull && docker compose up -d`로 합니다. 특정 릴리스로 고정하려면 `MINIDOG_VERSION=0.1.0`을 지정하세요.
+업데이트는 `docker compose pull && docker compose up -d`로 합니다. 특정 릴리스로 고정하려면 `MINIDOG_VERSION=0.2.0`을 지정하세요.
 
 ## 기능
 
