@@ -33,7 +33,7 @@ export function InfrastructureView() {
       ) : data.hosts.length === 0 ? (
         <EmptyState
           title="No hosts reporting"
-          description="Host metrics come from the OpenTelemetry Collector hostmetrics receiver. The collector that ships with minidog sends them on its own; any other collector can export OTLP/HTTP JSON to /v1/metrics."
+          description="Host metrics come from the OpenTelemetry Collector hostmetrics receiver. The collector that ships with minidog sends them on its own; any other collector can export OTLP/HTTP JSON to /v1/metrics, at an address it can reach."
           action={
             <CodeSnippet
               title="Your own collector"

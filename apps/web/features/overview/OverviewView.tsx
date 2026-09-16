@@ -90,8 +90,16 @@ export function OverviewView() {
         onRetry={services.refetch}
       />
 
-      {!services.data && !services.isLoading ? (
-        <ErrorState title="Unable to load overview." description={services.error?.message} onRetry={services.refetch} />
+      {/* Both counts decide whether to show setup instructions, so either one failing is a dead end. */}
+      {(!services.data && !services.isLoading) || (!synthetics.data && !synthetics.isLoading) ? (
+        <ErrorState
+          title="Unable to load overview."
+          description={(services.error ?? synthetics.error)?.message}
+          onRetry={() => {
+            services.refetch();
+            synthetics.refetch();
+          }}
+        />
       ) : nothingYet ? (
         <EmptyState
           title="Connect your first app"

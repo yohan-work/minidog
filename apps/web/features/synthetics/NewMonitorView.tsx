@@ -74,7 +74,7 @@ export function NewMonitorView() {
   const [submitting, setSubmitting] = useState(false);
   const [followRedirects, setFollowRedirects] = useState<boolean>(MONITOR_DEFAULTS.followRedirects);
   const [alertOnFailure, setAlertOnFailure] = useState(true);
-  /** Set when the check exists but its alert failed, so the check is never created twice. */
+  /** Set once the check exists, so submitting again only retries what is left. */
   const [createdId, setCreatedId] = useState<string | null>(null);
   const backHref = withRange('/synthetics', range);
 
@@ -92,37 +92,46 @@ export function NewMonitorView() {
     'aria-describedby': fieldDescription(name, { hint: HINTS[name], error: errors[name] }),
   });
 
+  /** What the server rejected belongs on the field; anything else goes above the form. */
+  const showError = (error: unknown) => {
+    const apiError = toApiClientError(error);
+    const fieldErrors: Partial<Record<FieldName, string>> = {};
+    for (const issue of apiError.validationIssues) {
+      if (issue.path in INITIAL) fieldErrors[issue.path as FieldName] ??= issue.message;
+    }
+    if (Object.keys(fieldErrors).length > 0) setErrors(fieldErrors);
+    else setFormError(apiError.message);
+  };
+
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSubmitting(true);
     setErrors({});
     setFormError(null);
-    let monitorId: string;
-    try {
-      const { monitor } = await apiFetch<{ monitor: SyntheticMonitor }>('/monitors', {
-        method: 'POST',
-        body: JSON.stringify({
-          url: values.url.trim(),
-          name: values.name.trim() || undefined,
-          method: values.method,
-          intervalSeconds: Number(values.intervalSeconds),
-          timeoutMs: Number(values.timeoutMs),
-          expectedStatus: values.expectedStatus.trim(),
-          followRedirects,
-          bodyContains: values.bodyContains.trim(),
-        }),
-      });
-      monitorId = monitor.id;
-    } catch (error) {
-      const apiError = toApiClientError(error);
-      const fieldErrors: Partial<Record<FieldName, string>> = {};
-      for (const issue of apiError.validationIssues) {
-        if (issue.path in INITIAL) fieldErrors[issue.path as FieldName] ??= issue.message;
+
+    let monitorId = createdId;
+    if (monitorId === null) {
+      try {
+        const { monitor } = await apiFetch<{ monitor: SyntheticMonitor }>('/monitors', {
+          method: 'POST',
+          body: JSON.stringify({
+            url: values.url.trim(),
+            name: values.name.trim() || undefined,
+            method: values.method,
+            intervalSeconds: Number(values.intervalSeconds),
+            timeoutMs: Number(values.timeoutMs),
+            expectedStatus: values.expectedStatus.trim(),
+            followRedirects,
+            bodyContains: values.bodyContains.trim(),
+          }),
+        });
+        monitorId = monitor.id;
+        setCreatedId(monitor.id);
+      } catch (error) {
+        showError(error);
+        setSubmitting(false);
+        return;
       }
-      if (Object.keys(fieldErrors).length > 0) setErrors(fieldErrors);
-      else setFormError(apiError.message);
-      setSubmitting(false);
-      return;
     }
 
     if (alertOnFailure) {
@@ -140,9 +149,8 @@ export function NewMonitorView() {
           }),
         });
       } catch (error) {
-        // The check is already running; say so instead of letting a retry create a second one.
-        setCreatedId(monitorId);
-        setFormError(toApiClientError(error).message);
+        // The check is already running: keep the form open to fix the alert, not to repeat the check.
+        showError(error);
         setSubmitting(false);
         return;
       }
@@ -154,34 +162,50 @@ export function NewMonitorView() {
   return (
     <>
       <PageHeader title="New monitor" back={{ href: backHref, label: 'Synthetics' }} />
-      {formError &&
-        (createdId ? (
-          <Notice tone="warning" title="The check was created, but its alert was not.">
-            {formError} The check is already running; add the alert from its page.
-          </Notice>
-        ) : (
-          <Notice tone="error" title="Unable to create monitor.">
+      {createdId ? (
+        <Notice tone="warning" title="The check is running, but its alert is not set up yet.">
+          {formError ? `${formError} ` : ''}
+          Correct the alert below and submit again, or open the check and add the alert there. The check itself is
+          already saved; edit it on its own page.
+        </Notice>
+      ) : (
+        formError && (
+          <Notice tone="error" title="Unable to create the check.">
             {formError}
           </Notice>
-        ))}
+        )
+      )}
       <Section title="HTTP check">
         <form className={styles.form} onSubmit={onSubmit} noValidate>
           <div className={styles.full}>
             <Field id="url" label="URL" hint={HINTS.url} error={errors.url}>
-              <Input {...control('url')} type="url" mono placeholder="https://example.com" autoFocus required />
+              <Input
+                {...control('url')}
+                type="url"
+                mono
+                placeholder="https://example.com"
+                autoFocus
+                required
+                readOnly={createdId !== null}
+              />
             </Field>
           </div>
           <Field id="name" label="Name" hint={HINTS.name} error={errors.name}>
-            <Input {...control('name')} placeholder={hostOf(values.url) ?? 'example.com'} maxLength={100} />
+            <Input
+              {...control('name')}
+              placeholder={hostOf(values.url) ?? 'example.com'}
+              maxLength={100}
+              readOnly={createdId !== null}
+            />
           </Field>
           <Field id="method" label="Method" error={errors.method}>
-            <Select {...control('method')}>
+            <Select {...control('method')} disabled={createdId !== null}>
               <option value="GET">GET</option>
               <option value="HEAD">HEAD</option>
             </Select>
           </Field>
           <Field id="intervalSeconds" label="Check every" error={errors.intervalSeconds}>
-            <Select {...control('intervalSeconds')}>
+            <Select {...control('intervalSeconds')} disabled={createdId !== null}>
               {MONITOR_INTERVALS_SECONDS.map((seconds) => (
                 <option key={seconds} value={seconds}>
                   {formatInterval(seconds)}
@@ -198,6 +222,7 @@ export function NewMonitorView() {
               min={MONITOR_TIMEOUT_MS.min}
               max={MONITOR_TIMEOUT_MS.max}
               step={500}
+              readOnly={createdId !== null}
             />
           </Field>
           <div className={styles.full}>
@@ -207,7 +232,7 @@ export function NewMonitorView() {
               hint={HINTS.expectedStatus}
               error={errors.expectedStatus}
             >
-              <Input {...control('expectedStatus')} mono />
+              <Input {...control('expectedStatus')} mono readOnly={createdId !== null} />
             </Field>
           </div>
           <div className={styles.full}>
@@ -215,6 +240,7 @@ export function NewMonitorView() {
               <input
                 type="checkbox"
                 checked={followRedirects}
+                disabled={createdId !== null}
                 onChange={(event) => setFollowRedirects(event.target.checked)}
               />
               <span>
@@ -229,7 +255,12 @@ export function NewMonitorView() {
               hint={HINTS.bodyContains}
               error={errors.bodyContains}
             >
-              <Input {...control('bodyContains')} maxLength={MONITOR_BODY_CONTAINS_MAX} placeholder="e.g. Welcome" />
+              <Input
+                {...control('bodyContains')}
+                maxLength={MONITOR_BODY_CONTAINS_MAX}
+                placeholder="e.g. Welcome"
+                readOnly={createdId !== null}
+              />
             </Field>
           </div>
           <div className={styles.full}>
@@ -255,17 +286,11 @@ export function NewMonitorView() {
             </div>
           )}
           <div className={styles.formActions}>
-            {createdId ? (
-              <ButtonLink href={withRange(`/synthetics/${createdId}`, range)} variant="primary">
-                Go to the check
-              </ButtonLink>
-            ) : (
-              <Button type="submit" variant="primary" loading={submitting}>
-                Create monitor
-              </Button>
-            )}
-            <ButtonLink href={backHref} variant="ghost">
-              Cancel
+            <Button type="submit" variant="primary" loading={submitting}>
+              {createdId ? 'Create alert' : 'Create monitor'}
+            </Button>
+            <ButtonLink href={createdId ? withRange(`/synthetics/${createdId}`, range) : backHref} variant="ghost">
+              {createdId ? 'Open the check' : 'Cancel'}
             </ButtonLink>
           </div>
         </form>
