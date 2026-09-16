@@ -54,6 +54,21 @@ test('overlapping reports of the same sleep become one gap', () => {
   assert.deepEqual(gaps.list(30_000, 40_000), [{ from: 30_000, to: 40_000, reason: 'asleep' }]);
 });
 
+test('a heartbeat that cannot be written is logged, not thrown', () => {
+  const gaps = new GapRepository(openDatabase(':memory:'));
+  gaps.setHeartbeat = () => {
+    throw new Error('SQLITE_FULL: database or disk is full');
+  };
+  const warnings: unknown[] = [];
+  const noisy = { info: () => {}, warn: (details: unknown) => warnings.push(details) } as never;
+  const tracker = new GapTracker(gaps, noisy, { now: () => 2_000_000 });
+
+  // A throw here would come from a timer and take the whole process down.
+  assert.doesNotThrow(() => tracker.tick());
+  assert.doesNotThrow(() => tracker.stop());
+  assert.equal(warnings.length, 2);
+});
+
 test('a gap for another reason starts where the previous one ends', () => {
   const gaps = new GapRepository(openDatabase(':memory:'));
   gaps.record(10_000, 20_000, 'asleep');

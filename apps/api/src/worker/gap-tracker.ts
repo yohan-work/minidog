@@ -48,15 +48,30 @@ export class GapTracker {
   stop(): void {
     clearInterval(this.timer);
     this.timer = undefined;
-    this.beat(this.now());
+    this.guard(() => this.beat(this.now()));
   }
 
   /** Runs every few seconds; public for tests. */
   tick(): void {
-    const now = this.now();
-    if (now - this.lastTick > TICK_MS + SLEEP_THRESHOLD_MS) this.noteSleep(this.lastTick, now);
-    this.lastTick = now;
-    if (now - this.lastHeartbeat >= HEARTBEAT_MS) this.beat(now);
+    this.guard(() => {
+      const now = this.now();
+      if (now - this.lastTick > TICK_MS + SLEEP_THRESHOLD_MS) this.noteSleep(this.lastTick, now);
+      this.lastTick = now;
+      if (now - this.lastHeartbeat >= HEARTBEAT_MS) this.beat(now);
+    });
+  }
+
+  /**
+   * Writing the heartbeat fails when the disk is full. Thrown from a timer that
+   * would end the process and start a restart loop, which helps nobody: the
+   * next tick writes again once there is room.
+   */
+  private guard(work: () => void): void {
+    try {
+      work();
+    } catch (error) {
+      this.log.warn({ err: error }, 'Could not record the measurement heartbeat');
+    }
   }
 
   /** The process was suspended between `from` and `to`; also reported by late scheduler timers. */

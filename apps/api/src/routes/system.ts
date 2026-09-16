@@ -13,10 +13,16 @@ export function contextResponse(ctx: AppContext): ContextResponse {
 }
 
 export function registerSystemRoutes(app: FastifyInstance, ctx: AppContext): void {
-  app.get('/api/health', async (_request, reply): Promise<HealthResponse> => {
+  /**
+   * Liveness, not readiness: 200 means this process is serving, and an
+   * unreachable ClickHouse is reported in the body instead. The API is built to
+   * keep working without it — sign-in, synthetic checks, alert state and every
+   * SQLite screen — and container healthchecks read this route, so failing it
+   * would stop the dashboard and the collector from starting at all.
+   */
+  app.get('/api/health', async (): Promise<HealthResponse> => {
     const clickhouse = (await ctx.results.ping()) ? 'ok' : 'unavailable';
-    const body: HealthResponse = { status: clickhouse === 'ok' ? 'ok' : 'degraded', sqlite: 'ok', clickhouse };
-    return reply.status(clickhouse === 'ok' ? 200 : 503).send(body);
+    return { status: clickhouse === 'ok' ? 'ok' : 'degraded', sqlite: 'ok', clickhouse };
   });
 
   app.get('/api/context', async (): Promise<ContextResponse> => contextResponse(ctx));

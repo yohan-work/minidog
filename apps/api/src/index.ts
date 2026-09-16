@@ -21,7 +21,16 @@ try {
   process.exit(1);
 }
 
-const app = await buildApp(config);
+// A failed migration or an unreadable database would otherwise surface as an
+// unhandled rejection, repeated forever by the container's restart policy.
+let app: Awaited<ReturnType<typeof buildApp>>;
+try {
+  app = await buildApp(config);
+} catch (error) {
+  console.error(`minidog could not start: ${error instanceof Error ? error.message : String(error)}`);
+  lock.release();
+  process.exit(1);
+}
 app.addHook('onClose', async () => lock.release());
 
 let closing = false;
