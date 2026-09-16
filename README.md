@@ -18,7 +18,7 @@ Uptime checks, traces, logs, metrics and phone alerts in one Docker Compose file
 
 ## Why
 
-You have a few side projects. You want to know when one goes down, and when it is slow, *why*. That usually means stitching together an uptime checker, a log viewer and a hosted APM with a free tier that runs out.
+You have a few side projects on a server you already run. You want to know when one goes down, and when it is slow, *why*. That usually means an uptime checker, a log viewer and a hosted APM — three tools that don't talk to each other, so you end up matching timestamps by hand. Not because free tiers run out (at hobby traffic they rarely do), but because one install can answer both questions, on hardware you control.
 
 minidog is one install that answers both questions:
 
@@ -26,7 +26,7 @@ minidog is one install that answers both questions:
 
 - **One file to install.** `docker compose up -d`, set a password, done. No agent per host, no account.
 - **OpenTelemetry in, no vendor SDK.** Anything that speaks OTLP works: Node, Python, Go, Java or a Collector you already run.
-- **Built for a laptop.** Time when your computer was asleep or minidog was off shows as *not measured*, not as downtime, so you don't get false alerts after opening the lid.
+- **Honest about gaps.** Time when minidog was off, or the machine asleep, is recorded and drawn as *not measured* on a check's availability rather than counted as downtime — and checks and alerts hold off for a moment after waking, so a box that sleeps doesn't produce a wall of false alerts.
 - **Alerts on your phone for free.** Slack, Discord, Telegram or an [ntfy](https://ntfy.sh) topic, plus an optional daily summary.
 
 ## Quick start
@@ -39,7 +39,7 @@ curl -fsSLO https://raw.githubusercontent.com/yohan-work/minidog/main/deploy/com
 docker compose up -d
 ```
 
-Open **http://localhost:3000** and set a password. Host metrics arrive within about 15 seconds. To see traces, logs and errors right away, start the demo shop, three services sending sample traffic:
+Open **http://localhost:3000** and set a password. Every port binds to localhost, so on a server you reach it through a tunnel — `ssh -N -L 3000:127.0.0.1:3000 you@your-server`, or see [running it on a server](docs/getting-started.md#running-it-on-a-server) for the alternatives. Host metrics arrive within about 15 seconds. To see traces, logs and errors right away, start the demo shop, three services sending sample traffic:
 
 ```bash
 docker compose --profile demo up -d
@@ -90,11 +90,13 @@ Measured on an Apple-silicon Mac with Docker Desktop, one minute after start, us
 | ClickHouse | 300 MB, capped at 1 GiB | 234 MB |
 | OpenTelemetry Collector | 51 MB | — |
 
-That is about 440 MB in total, and ClickHouse can grow to its 1 GiB ceiling as data and queries grow. This is not a tiny agent.
+That is about 440 MB in total, and ClickHouse can grow to its 1 GiB ceiling as data and queries grow. Give the machine **2 GB of RAM**: on a 1 GB VPS, ClickHouse is the process the kernel kills. This is not a tiny agent.
 
 ## Is it for you?
 
-minidog is for **one person watching a handful of projects**. It is not for teams: there are no users, roles or SSO. It is not meant to be exposed to the internet either; it listens on localhost by default. Better choices for other needs:
+minidog is for **one person watching a handful of projects from a small server that stays on** — a VPS, a NAS, a home box. It is not for teams: there are no users, roles or SSO. It is not meant to be exposed to the internet either; it listens on localhost by default.
+
+Run it on a laptop for development, where seeing your own traces and logs takes a few minutes to set up — but not as the thing that watches production. A monitor that sleeps when the lid closes cannot tell you your site went down at 3am; it can only say afterwards that nobody was looking. (That minidog itself stopped is something you can hear about: see [when minidog itself is down](docs/getting-started.md#when-minidog-itself-is-down).) Better choices for other needs:
 
 - **Only uptime checks:** [Uptime Kuma](https://github.com/louislam/uptime-kuma) is lighter and has far more notification types.
 - **Only server metrics:** [Beszel](https://github.com/henrygd/beszel) is a small agent and hub.

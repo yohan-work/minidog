@@ -50,7 +50,9 @@ pnpm local:down   # 중지 (다시 pnpm dev를 쓸 때)
 
 - `pnpm dev`와 같은 데이터(`apps/api/data`, ClickHouse 볼륨)와 설정(`apps/api/.env`)을 쓰므로 둘 중 하나만 실행한다. API가 데이터에 잠금(`minidog.sqlite.lock`)을 걸어서 다른 쪽이 켜져 있으면 시작하지 않는다. 비정상 종료로 남은 잠금은 30초 뒤 풀린다.
 - 코드를 받은 뒤에는 `pnpm local:up`을 다시 실행해 새로 빌드한다.
-- 재부팅 후에도 켜지게 하려면 Docker Desktop의 *Start Docker Desktop when you sign in*을 켠다. 맥이 잠자기 중이면 체크도 멈추고, 그 시간은 *not measured*로 표시된다.
+- 재부팅 후에도 켜지게 하려면 Docker Desktop의 *Start Docker Desktop when you sign in*을 켠다. 장비가 잠자기 중이면 체크도 멈추고, 그 시간은 *not measured*로 표시된다.
+
+이 절은 직접 빌드한 것을 돌릴 때를 위한 것이다. 서버에 공개 이미지로 설치했다면 Docker가 켜질 때 알아서 다시 시작하므로(`deploy/compose.yaml`의 `restart: unless-stopped`) 여기서 할 일은 없다.
 
 ## 데이터 보내기
 
@@ -204,6 +206,6 @@ curl -X POST localhost:5100/__demo/scenario -d '{"dbDelayMs":null,"slowDb":false
 | 배포 표시선 | 소스에서 `DEMO_VERSION=1.1.0 pnpm demo`로 다시 실행 → 서비스 차트에 `1.1.0` 세로선, Versions에서 1.0.0과 1.1.0 비교 |
 | 실시간 로그 | Logs → **Live tail**. 새 로그가 2초마다 쌓이고 필터도 적용된다 |
 | 휴대폰 알림 | 모니터 Webhook URL에 `https://ntfy.sh/<토픽>` → **Send test** |
-| 측정 공백 | minidog을 몇 분 끄거나 맥을 잠자기 → 모니터 가용성 막대에 빗금 친 *not measured* 구간 |
+| 측정 공백 | minidog을 몇 분 끄거나 장비를 잠자기 → 모니터 가용성 막대에 빗금 친 *not measured* 구간 |
 | 검색 | 아무 화면에서 ⌘K → `checkout`. 32자리 trace id를 붙여 넣으면 그 트레이스로 |
 | 대시보드 | Dashboards → New dashboard → 합성 모니터·서비스 차트·지표 추가. Metrics의 **Add to dashboard**로도 추가 |
