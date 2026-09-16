@@ -109,7 +109,7 @@ The first visit sets a password, and every page and the Query API require sign-i
 Your password, API keys, monitors and dashboards live in one small SQLite file; telemetry lives in ClickHouse and ages out on its own. Copy that file at any time, including while minidog is running:
 
 ```bash
-docker compose exec api node cli/backup.mjs /data/minidog-backup.sqlite
+docker compose exec api node cli/backup.mjs /data/minidog-$(date +%F).sqlite
 ```
 
 Details, and how to put it back, are in [Backing up](docs/getting-started.md#backing-up). Note that `docker compose down -v` deletes both volumes — everything, not just the telemetry.

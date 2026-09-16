@@ -139,7 +139,7 @@ Then, in `compose.yaml`:
 - `CLICKHOUSE_PASSWORD`: anything but the default.
 - Leave `4317` and `4318` on localhost unless something off the machine sends OTLP — and then require a key.
 
-The sign-in cookie is marked `Secure` when the proxy sets `X-Forwarded-Proto: https`, which Caddy and nginx do by default.
+The sign-in cookie is marked `Secure` when the proxy sets `X-Forwarded-Proto: https`. Caddy does that on its own; with nginx, add `proxy_set_header X-Forwarded-Proto $scheme;` to the location, or the cookie stays without it.
 
 ### When minidog itself is down
 
@@ -152,17 +152,22 @@ HEARTBEAT_INTERVAL_SECONDS: 300
 
 Set the other end to expect a ping a little less often than that — every 10 minutes for the 5-minute default — and it will tell you when minidog goes quiet.
 
+The watcher may sit on your own network (an Uptime Kuma push URL, say): this ping is allowed there even with `BLOCK_PRIVATE_TARGETS` set, because you configure it, unlike the URLs a check or a webhook points at. What it proves is that the minidog process is running — not that ClickHouse is reachable, which the dashboard shows separately.
+
 ## Backing up
 
 Two volumes hold everything. `minidog-data` is one small SQLite file: the password, sessions, API keys, projects, monitors, dashboards and alert history. `clickhouse-data` holds telemetry, which ages out on its own. The first is the one worth copying — losing it means setting everything up again and re-keying every sender.
 
 ```bash
-docker compose exec api node cli/backup.mjs /data/minidog-backup.sqlite   # published images
-docker cp minidog-api-1:/data/minidog-backup.sqlite .                     # copy it off the volume
-pnpm db:backup ./minidog-backup.sqlite                                    # from source
+day=$(date +%F)
+docker compose exec api node cli/backup.mjs /data/minidog-$day.sqlite   # published images
+docker cp minidog-api-1:/data/minidog-$day.sqlite .                     # copy it off the volume
+pnpm db:backup ./minidog-$day.sqlite                                    # from source
 ```
 
-This is safe while minidog runs: it writes a consistent snapshot, which copying a live SQLite file is not.
+Each backup needs a name of its own; the command refuses to overwrite a file, so a fixed name works once. Dating them also tells you how old one is.
+
+This is safe while minidog runs: it writes a consistent snapshot, which copying a live SQLite file is not. Run it where minidog runs — from source, that means inside the container when you use `pnpm local:up`, since a snapshot taken across a bind mount can be torn. The command checks and says so.
 
 To put a backup back, stop the API first. It holds a lock on the data, and the restore refuses while that lock is held:
 

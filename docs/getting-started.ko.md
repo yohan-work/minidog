@@ -139,7 +139,7 @@ minidog.example.com {
 - `CLICKHOUSE_PASSWORD` — 기본값이 아닌 값으로 바꾼다.
 - `4317`·`4318`은 외부에서 OTLP를 보낼 때만 열고, 열 때는 키를 필수로 한다.
 
-프록시가 `X-Forwarded-Proto: https`를 붙이면(Caddy·nginx는 기본으로 붙인다) 로그인 쿠키에 `Secure`가 적용된다.
+프록시가 `X-Forwarded-Proto: https`를 붙이면 로그인 쿠키에 `Secure`가 적용된다. Caddy는 알아서 붙이지만, nginx는 해당 location에 `proxy_set_header X-Forwarded-Proto $scheme;`를 직접 넣어야 한다. 넣지 않으면 쿠키에 `Secure`가 빠진다.
 
 ### minidog 자신이 죽었을 때
 
@@ -152,17 +152,22 @@ HEARTBEAT_INTERVAL_SECONDS: 300
 
 받는 쪽은 이 주기보다 조금 여유 있게(기본 5분이면 10분마다) 기대하도록 설정한다. 그러면 minidog이 조용해질 때 알려 준다.
 
+받는 쪽이 같은 네트워크 안에 있어도 된다(예: Uptime Kuma의 push URL). 이 신호는 `BLOCK_PRIVATE_TARGETS`를 켜 두어도 사설망으로 나갈 수 있다. 체크나 웹훅이 가리키는 주소와 달리 이 주소는 운영자가 직접 정하기 때문이다. 다만 이 신호가 증명하는 것은 minidog 프로세스가 살아 있다는 것까지이고, ClickHouse까지 정상인지는 대시보드에서 따로 확인한다.
+
 ## 백업하기
 
 볼륨 두 개에 모든 것이 들어 있다. `minidog-data`는 작은 SQLite 파일 하나로 비밀번호, 세션, API 키, 프로젝트, 모니터, 대시보드, 알림 이력이 들어 있다. `clickhouse-data`는 텔레메트리이고 보관 기간이 지나면 저절로 지워진다. 복사해 둘 가치가 있는 것은 앞의 것이다. 잃어버리면 전부 다시 설정하고 모든 발신처의 키를 새로 발급해야 한다.
 
 ```bash
-docker compose exec api node cli/backup.mjs /data/minidog-backup.sqlite   # 공개 이미지
-docker cp minidog-api-1:/data/minidog-backup.sqlite .                     # 볼륨 밖으로 꺼내기
-pnpm db:backup ./minidog-backup.sqlite                                    # 소스로 실행할 때
+day=$(date +%F)
+docker compose exec api node cli/backup.mjs /data/minidog-$day.sqlite   # 공개 이미지
+docker cp minidog-api-1:/data/minidog-$day.sqlite .                     # 볼륨 밖으로 꺼내기
+pnpm db:backup ./minidog-$day.sqlite                                    # 소스로 실행할 때
 ```
 
-minidog이 켜져 있어도 안전하다. 일관된 스냅샷으로 복사하기 때문이며, 실행 중인 SQLite 파일을 그냥 `cp`로 복사하는 것은 안전하지 않다.
+백업마다 이름이 달라야 한다. 이미 있는 파일은 덮어쓰지 않고 거부하므로 고정된 이름은 한 번만 쓸 수 있고, 날짜를 넣으면 언제 받은 백업인지도 알 수 있다.
+
+minidog이 켜져 있어도 안전하다. 일관된 스냅샷으로 복사하기 때문이며, 실행 중인 SQLite 파일을 그냥 `cp`로 복사하는 것은 안전하지 않다. 단, minidog이 도는 곳에서 실행해야 한다. 소스로 실행하면서 `pnpm local:up`을 쓴다면 컨테이너 안에서 받아야 한다. 바인드 마운트 건너편에서 뜬 스냅샷은 찢어질 수 있기 때문이며, 이 경우 명령이 확인하고 알려 준다.
 
 되돌릴 때는 API를 먼저 멈춘다. API가 데이터에 잠금을 걸고 있고, 잠금이 걸린 동안에는 복구가 거부된다.
 

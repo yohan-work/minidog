@@ -143,6 +143,9 @@ const MIGRATIONS: readonly string[] = [
   `,
 ];
 
+/** The schema this build knows: `user_version` equals it once every migration has run. */
+export const SCHEMA_VERSION = MIGRATIONS.length;
+
 export function openDatabase(path: string): DatabaseSync {
   if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true });
 

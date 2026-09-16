@@ -1,7 +1,7 @@
 import http from 'node:http';
 import https from 'node:https';
 import type { FastifyBaseLogger } from 'fastify';
-import { checkHost, guardedLookup } from '../lib/network-guard';
+import { checkHost, lookupGuardedBy } from '../lib/network-guard';
 
 const REQUEST_TIMEOUT_MS = 10_000;
 
@@ -48,15 +48,23 @@ export class HeartbeatPinger {
   }
 }
 
+/**
+ * Metadata and link-local addresses stay blocked, but a private one is allowed
+ * even under BLOCK_PRIVATE_TARGETS: the watcher is usually an Uptime Kuma on the
+ * same network, this URL comes from whoever runs minidog rather than from a
+ * browser, and a blocked ping would look exactly like minidog being down.
+ */
+const lookup = lookupGuardedBy(() => false);
+
 function send(url: URL): Promise<number> {
   return new Promise((resolve, reject) => {
     if (url.protocol !== 'http:' && url.protocol !== 'https:')
       return reject(new Error(`Unsupported protocol ${url.protocol}`));
-    const blocked = checkHost(url.hostname);
+    const blocked = checkHost(url.hostname, false);
     if (blocked) return reject(blocked);
 
     const client = url.protocol === 'https:' ? https : http;
-    const request = client.request(url, { method: 'GET', lookup: guardedLookup }, (response) => {
+    const request = client.request(url, { method: 'GET', lookup }, (response) => {
       clearTimeout(deadline);
       resolve(response.statusCode ?? 0);
       // Only the status matters; the body is not read.

@@ -109,7 +109,7 @@ minidog은 **한 사람이 프로젝트 몇 개를 지켜보는 용도**입니�
 비밀번호, API 키, 모니터, 대시보드는 작은 SQLite 파일 하나에 들어 있습니다(텔레메트리는 ClickHouse에 있고 보관 기간이 지나면 지워집니다). 이 파일은 minidog이 켜져 있어도 언제든 복사할 수 있습니다.
 
 ```bash
-docker compose exec api node cli/backup.mjs /data/minidog-backup.sqlite
+docker compose exec api node cli/backup.mjs /data/minidog-$(date +%F).sqlite
 ```
 
 되돌리는 방법을 포함한 자세한 내용은 [백업하기](docs/getting-started.ko.md#백업하기)에 있습니다. `docker compose down -v`는 볼륨을 모두 지우므로 텔레메트리뿐 아니라 설정도 사라집니다.

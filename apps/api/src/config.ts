@@ -32,7 +32,10 @@ const configSchema = z.object({
 
   // minidog cannot report its own downtime. With a URL set, it pings a service
   // that notices silence (healthchecks.io, an Uptime Kuma push URL) while it runs.
-  HEARTBEAT_URL: z.url().optional(),
+  HEARTBEAT_URL: z
+    .url()
+    .refine((value) => value.startsWith('http://') || value.startsWith('https://'), 'Use an http:// or https:// URL.')
+    .optional(),
   HEARTBEAT_INTERVAL_SECONDS: z.coerce.number().int().min(30).max(3600).default(300),
 
   // Ingestion. Without a required key, unauthenticated data goes to the default project.

@@ -69,6 +69,11 @@ export function acquireDataLock(sqlitePath: string, now: () => number = Date.now
   };
 }
 
+/** Who holds the data, if anyone: `null` when there is no lock or it is unreadable. */
+export function readLockOwner(sqlitePath: string): LockOwner | null {
+  return readOwner(`${sqlitePath}.lock`);
+}
+
 function readOwner(lockPath: string): LockOwner | null {
   try {
     return JSON.parse(readFileSync(lockPath, 'utf8')) as LockOwner;
