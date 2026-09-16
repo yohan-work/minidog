@@ -36,7 +36,7 @@ export class GapTracker {
     const now = this.now();
     const last = this.gaps.heartbeat();
     if (last !== null && now - last > STOPPED_THRESHOLD_MS) {
-      this.gaps.record(last, now, 'stopped');
+      this.write(() => this.gaps.record(last, now, 'stopped'), 'record the time minidog was not running');
       this.log.info({ since: new Date(last).toISOString() }, 'Measurement gap recorded: minidog was not running');
     }
     this.beat(now);
@@ -48,37 +48,25 @@ export class GapTracker {
   stop(): void {
     clearInterval(this.timer);
     this.timer = undefined;
-    this.guard(() => this.beat(this.now()));
+    this.beat(this.now());
   }
 
   /** Runs every few seconds; public for tests. */
   tick(): void {
-    this.guard(() => {
-      const now = this.now();
-      if (now - this.lastTick > TICK_MS + SLEEP_THRESHOLD_MS) this.noteSleep(this.lastTick, now);
-      this.lastTick = now;
-      if (now - this.lastHeartbeat >= HEARTBEAT_MS) this.beat(now);
-    });
-  }
-
-  /**
-   * Writing the heartbeat fails when the disk is full. Thrown from a timer that
-   * would end the process and start a restart loop, which helps nobody: the
-   * next tick writes again once there is room.
-   */
-  private guard(work: () => void): void {
-    try {
-      work();
-    } catch (error) {
-      this.log.warn({ err: error }, 'Could not record the measurement heartbeat');
-    }
+    const now = this.now();
+    if (now - this.lastTick > TICK_MS + SLEEP_THRESHOLD_MS) this.noteSleep(this.lastTick, now);
+    this.lastTick = now;
+    if (now - this.lastHeartbeat >= HEARTBEAT_MS) this.beat(now);
   }
 
   /** The process was suspended between `from` and `to`; also reported by late scheduler timers. */
   noteSleep(from: number, to: number): void {
     const known = from < this.wokeAt;
-    this.gaps.record(from, to, 'asleep');
+    // Before the write: the settle window is what keeps a just-woken machine
+    // from reporting its reconnecting network as downtime, and it must hold
+    // even when the gap itself could not be saved.
     this.wokeAt = Math.max(this.wokeAt, to);
+    this.write(() => this.gaps.record(from, to, 'asleep'), 'record a measurement gap');
     this.beat(to);
     if (!known)
       this.log.info({ since: new Date(from).toISOString() }, 'Measurement gap recorded: the machine was asleep');
@@ -95,8 +83,24 @@ export class GapTracker {
   }
 
   private beat(at: number): void {
-    this.gaps.setHeartbeat(at);
+    // Recorded as attempted either way: retrying a failing write every tick
+    // would fill the log with the same warning, and the heartbeat is advisory.
     this.lastHeartbeat = at;
+    this.write(() => this.gaps.setHeartbeat(at), 'save the heartbeat');
+  }
+
+  /**
+   * SQLite writes fail when the disk is full, and every caller here is a timer —
+   * the synthetic scheduler and the alert evaluator report late timers through
+   * `noteSleep` too. A throw from a timer ends the process, which the restart
+   * policy then repeats forever; the next write succeeds once there is room.
+   */
+  private write(work: () => void, what: string): void {
+    try {
+      work();
+    } catch (error) {
+      this.log.warn({ err: error }, `Could not ${what}`);
+    }
   }
 
   private now(): number {

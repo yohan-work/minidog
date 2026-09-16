@@ -21,15 +21,18 @@ try {
   process.exit(1);
 }
 
-// A failed migration or an unreadable database would otherwise surface as an
-// unhandled rejection, repeated forever by the container's restart policy.
+/** Says why, and lets go of the lock so the next start is not refused for 30 s. */
+function giveUp(error: unknown): never {
+  console.error('minidog could not start:', error);
+  lock.release();
+  process.exit(1);
+}
+
 let app: Awaited<ReturnType<typeof buildApp>>;
 try {
   app = await buildApp(config);
 } catch (error) {
-  console.error(`minidog could not start: ${error instanceof Error ? error.message : String(error)}`);
-  lock.release();
-  process.exit(1);
+  giveUp(error);
 }
 app.addHook('onClose', async () => lock.release());
 
@@ -45,4 +48,9 @@ async function shutdown(signal: NodeJS.Signals): Promise<void> {
 process.once('SIGINT', (signal) => void shutdown(signal));
 process.once('SIGTERM', (signal) => void shutdown(signal));
 
-await app.listen({ host: config.HOST, port: config.PORT });
+// The workers start from the onReady hook, so their failures land here too.
+try {
+  await app.listen({ host: config.HOST, port: config.PORT });
+} catch (error) {
+  giveUp(error);
+}

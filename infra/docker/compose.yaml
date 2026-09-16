@@ -1,7 +1,9 @@
 name: minidog
 
 # Docker keeps container logs forever by default, which fills a disk on a
-# machine left running for months. Every service below caps them.
+# machine left running for months. Every service below caps them. This also
+# pins the driver: on a host that sets its own (journald, local), drop the
+# `logging:` lines from the services to hand the logs back to it.
 x-logging: &logging
   driver: json-file
   options:

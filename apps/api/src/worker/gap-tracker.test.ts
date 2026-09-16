@@ -69,6 +69,29 @@ test('a heartbeat that cannot be written is logged, not thrown', () => {
   assert.equal(warnings.length, 2);
 });
 
+test('a gap that cannot be saved still holds checks off, and is not re-detected', () => {
+  const gaps = new GapRepository(openDatabase(':memory:'));
+  gaps.record = () => {
+    throw new Error('SQLITE_FULL: database or disk is full');
+  };
+  const warnings: unknown[] = [];
+  const noisy = { info: () => {}, warn: (details: unknown) => warnings.push(details) } as never;
+  let now = 3_000_000;
+  const tracker = new GapTracker(gaps, noisy, { now: () => now });
+  tracker.start();
+
+  now += 30 * MINUTE;
+  assert.doesNotThrow(() => tracker.tick());
+  // The write failed, but the machine did wake: checks must still wait.
+  assert.equal(tracker.settling(), true);
+
+  const afterFirst = warnings.length;
+  now += 10_000;
+  tracker.tick();
+  // The same sleep is not reported again, so the log does not fill up.
+  assert.equal(warnings.length, afterFirst);
+});
+
 test('a gap for another reason starts where the previous one ends', () => {
   const gaps = new GapRepository(openDatabase(':memory:'));
   gaps.record(10_000, 20_000, 'asleep');

@@ -38,6 +38,35 @@ test('health is ok when ClickHouse answers', async () => {
   }
 });
 
+test('a ClickHouse that never answers does not hold the route open', async () => {
+  const config = loadConfig({
+    SQLITE_PATH: ':memory:',
+    WORKER_ENABLED: 'false',
+    ALERTS_ENABLED: 'false',
+    LOG_LEVEL: 'silent',
+  });
+  const silent = {
+    ping: () => new Promise(() => {}),
+    command: async () => undefined,
+    close: async () => undefined,
+    query: async () => {
+      throw new Error('offline');
+    },
+    insert: async () => undefined,
+  } as unknown as ClickHouseClient;
+  const app = await buildApp(config, { sqlite: openDatabase(':memory:'), clickhouse: silent });
+  try {
+    const started = Date.now();
+    const response = await app.inject({ url: '/api/health' });
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.json().clickhouse, 'unavailable');
+    // The container healthcheck gives up after 5 s; answering must take less.
+    assert.ok(Date.now() - started < 4_000);
+  } finally {
+    await app.close();
+  }
+});
+
 test('an unreachable ClickHouse is degraded, not down: the API still answers 200', async () => {
   const app = await start(false);
   try {
