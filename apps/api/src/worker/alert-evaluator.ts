@@ -213,8 +213,10 @@ export class AlertEvaluator {
    * night, and an alert that cries wolf is an alert that gets switched off — so
    * when nothing arrived, the window before it decides whether that is news.
    *
-   * The rule stops applying once the monitor is alerting: a service that stays
-   * dead must stay Critical, not report a recovery when its quiet hours begin.
+   * The rule stops applying as soon as the monitor is heading for an alert, not
+   * only once it has arrived: during `alertAfterMinutes` the stored state is
+   * still ok, and dropping to no data there would throw the pending transition
+   * away — the silence would never be reported at all.
    */
   private async serviceDownValue(
     monitor: ScopedAlertMonitor,
@@ -222,10 +224,10 @@ export class AlertEvaluator {
     fromMs: number,
     requests: number,
   ): Promise<number | null> {
-    if (requests > 0 || isAlerting(monitor.state)) return requests;
+    if (requests > 0 || isAlerting(monitor.state) || isAlerting(monitor.pendingState)) return requests;
     const windowMs = monitor.windowMinutes * 60_000;
-    const previous = await this.deps.spans.windowStats(scope, monitor.target, fromMs - windowMs, fromMs);
-    return previous.requests > 0 ? requests : null;
+    const before = await this.deps.spans.requestCount(scope, monitor.target, fromMs - windowMs, fromMs);
+    return before > 0 ? requests : null;
   }
 
   /** Failed checks (%), P95 of passing checks (ms) or days until the certificate expires. */

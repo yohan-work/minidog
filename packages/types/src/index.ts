@@ -773,11 +773,12 @@ export interface AlertDefaults {
  * host_resource — percent; latency — P95 ms; synthetic_check — see
  * SYNTHETIC_ALERT_DEFAULTS (failure rate shown here).
  *
- * Service down waits ten minutes by default: traffic to a side project arrives
- * in bursts, and a gap between two visitors is not an outage.
+ * Service down waits before alerting: traffic to a side project arrives in
+ * bursts, and a gap between two visitors is not an outage. With the default
+ * window that means silence is reported ten minutes after it starts.
  */
 export const ALERT_MONITOR_DEFAULTS: Record<AlertMonitorType, AlertDefaults> = {
-  service_down: { warning: null, critical: 1, windowMinutes: 5, alertAfterMinutes: 10 },
+  service_down: { warning: null, critical: 1, windowMinutes: 5, alertAfterMinutes: 5 },
   error_rate: { warning: 2, critical: 10, windowMinutes: 5, alertAfterMinutes: 0 },
   latency: { warning: 1_000, critical: 2_000, windowMinutes: 5, alertAfterMinutes: 0 },
   host_resource: { warning: 85, critical: 95, windowMinutes: 5, alertAfterMinutes: 0 },

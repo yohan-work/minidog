@@ -1,5 +1,4 @@
 import type { DatabaseSync } from 'node:sqlite';
-import { alertDefaults } from '@minidog/types';
 import type { AlertEvent, AlertMetric, AlertMonitor, AlertMonitorType, AlertState } from '@minidog/types';
 import { createId } from '../lib/id';
 import { applyTransitionDelay } from '../services/alert-state';
@@ -212,8 +211,7 @@ export class AlertMonitorRepository {
         input.criticalThreshold,
         input.windowMinutes,
         input.webhookUrl,
-        // Service down waits by default; bursty traffic is not an outage.
-        input.alertAfterMinutes ?? alertDefaults(input.type, input.metric ?? null).alertAfterMinutes,
+        input.alertAfterMinutes ?? 0,
         input.recoverAfterMinutes ?? 0,
         now,
         now,
