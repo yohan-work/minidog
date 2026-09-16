@@ -12,6 +12,16 @@
 # (scripts/check-deploy-compose.mjs keeps them in sync).
 name: minidog
 
+# Docker keeps container logs forever by default, which fills a disk on a
+# machine left running for months. Every service below caps them. This also
+# pins the driver: on a host that sets its own (journald, local), drop the
+# `logging:` lines from the services to hand the logs back to it.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   clickhouse:
     image: clickhouse/clickhouse-server:26.3
@@ -38,6 +48,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 30
+    logging: *logging
     restart: unless-stopped
 
   api:
@@ -63,6 +74,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
+    logging: *logging
     restart: unless-stopped
 
   web:
@@ -75,6 +87,7 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    logging: *logging
     restart: unless-stopped
 
   otel-collector:
@@ -95,6 +108,7 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    logging: *logging
     restart: unless-stopped
 
   demo:
@@ -105,6 +119,7 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     depends_on:
       - otel-collector
+    logging: *logging
     restart: unless-stopped
 
 volumes:

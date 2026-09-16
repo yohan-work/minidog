@@ -21,7 +21,19 @@ try {
   process.exit(1);
 }
 
-const app = await buildApp(config);
+/** Says why, and lets go of the lock so the next start is not refused for 30 s. */
+function giveUp(error: unknown): never {
+  console.error('minidog could not start:', error);
+  lock.release();
+  process.exit(1);
+}
+
+let app: Awaited<ReturnType<typeof buildApp>>;
+try {
+  app = await buildApp(config);
+} catch (error) {
+  giveUp(error);
+}
 app.addHook('onClose', async () => lock.release());
 
 let closing = false;
@@ -36,4 +48,9 @@ async function shutdown(signal: NodeJS.Signals): Promise<void> {
 process.once('SIGINT', (signal) => void shutdown(signal));
 process.once('SIGTERM', (signal) => void shutdown(signal));
 
-await app.listen({ host: config.HOST, port: config.PORT });
+// The workers start from the onReady hook, so their failures land here too.
+try {
+  await app.listen({ host: config.HOST, port: config.PORT });
+} catch (error) {
+  giveUp(error);
+}

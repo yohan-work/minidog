@@ -156,6 +156,14 @@ export function openDatabase(path: string): DatabaseSync {
 
 function migrate(db: DatabaseSync): void {
   const row = db.prepare('PRAGMA user_version').get() as { user_version: number };
+  // Going back to an older image would otherwise start quietly against a schema
+  // this build does not know, and write rows the newer one cannot read.
+  if (row.user_version > MIGRATIONS.length) {
+    throw new Error(
+      `This data was written by a newer minidog: it is at schema ${row.user_version}, and this build knows ${MIGRATIONS.length}. ` +
+        'Run the newer version again, or restore the data from before the upgrade.',
+    );
+  }
   for (let version = row.user_version; version < MIGRATIONS.length; version += 1) {
     db.exec('BEGIN');
     try {
