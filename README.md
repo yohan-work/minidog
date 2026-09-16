@@ -18,7 +18,7 @@ Uptime checks, traces, logs, metrics and phone alerts in one Docker Compose file
 
 ## Why
 
-You have a few side projects. You want to know when one goes down, and when it is slow, *why*. That usually means stitching together an uptime checker, a log viewer and a hosted APM with a free tier that runs out.
+You have a few side projects on a server you already pay for. You want to know when one goes down, and when it is slow, *why*. That usually means an uptime checker, a log viewer and a hosted APM — three tools that don't talk to each other, so you end up matching timestamps by hand. Not because free tiers run out (at hobby traffic they rarely do), but because one install can answer both questions, on hardware you control.
 
 minidog is one install that answers both questions:
 
@@ -26,7 +26,7 @@ minidog is one install that answers both questions:
 
 - **One file to install.** `docker compose up -d`, set a password, done. No agent per host, no account.
 - **OpenTelemetry in, no vendor SDK.** Anything that speaks OTLP works: Node, Python, Go, Java or a Collector you already run.
-- **Built for a laptop.** Time when your computer was asleep or minidog was off shows as *not measured*, not as downtime, so you don't get false alerts after opening the lid.
+- **Honest about gaps.** Time when minidog was off, or the machine asleep, shows as *not measured* rather than downtime — so a box that sleeps, or a laptop you develop on, doesn't produce a wall of false alerts when it wakes.
 - **Alerts on your phone for free.** Slack, Discord, Telegram or an [ntfy](https://ntfy.sh) topic, plus an optional daily summary.
 
 ## Quick start
@@ -94,7 +94,9 @@ That is about 440 MB in total, and ClickHouse can grow to its 1 GiB ceiling as d
 
 ## Is it for you?
 
-minidog is for **one person watching a handful of projects**. It is not for teams: there are no users, roles or SSO. It is not meant to be exposed to the internet either; it listens on localhost by default. Better choices for other needs:
+minidog is for **one person watching a handful of projects from a small server that stays on** — a VPS, a NAS, a home box. It is not for teams: there are no users, roles or SSO. It is not meant to be exposed to the internet either; it listens on localhost by default.
+
+Run it on a laptop for development, where seeing your own traces and logs takes a minute to set up — but not as the thing that watches production. A monitor that sleeps when the lid closes cannot tell you your site went down at 3am; it can only say afterwards that nobody was looking. Better choices for other needs:
 
 - **Only uptime checks:** [Uptime Kuma](https://github.com/louislam/uptime-kuma) is lighter and has far more notification types.
 - **Only server metrics:** [Beszel](https://github.com/henrygd/beszel) is a small agent and hub.
