@@ -102,7 +102,17 @@ minidog은 **한 사람이 프로젝트 몇 개를 지켜보는 용도**입니�
 
 ## 보안
 
-처음 접속할 때 비밀번호를 정하고, 그다음부터 모든 화면과 Query API에 로그인이 필요합니다. 모든 포트는 127.0.0.1에만 열립니다. 체크와 웹훅은 링크 로컬·클라우드 메타데이터 주소에 절대 연결하지 않습니다. 비밀번호를 잊었다면 `docker compose exec api node cli/reset-password.mjs`를 실행하세요. 보안 모델과 취약점 제보 방법은 [SECURITY.md](SECURITY.md)에 있습니다.
+처음 접속할 때 비밀번호를 정하고, 그다음부터 모든 화면과 Query API에 로그인이 필요합니다. 모든 포트는 127.0.0.1에만 열립니다. 체크와 웹훅은 링크 로컬·클라우드 메타데이터 주소에 절대 연결하지 않습니다. 비밀번호를 잊었다면 `docker compose exec api node cli/reset-password.mjs`를 실행하세요. 보안 모델과 취약점 제보 방법은 [SECURITY.md](SECURITY.md)에, 인터넷에 열지 않고 다른 기기에서 접속하는 방법은 [서버에서 운영하기](docs/getting-started.ko.md#서버에서-운영하기)에 있습니다.
+
+## 백업
+
+비밀번호, API 키, 모니터, 대시보드는 작은 SQLite 파일 하나에 들어 있습니다(텔레메트리는 ClickHouse에 있고 보관 기간이 지나면 지워집니다). 이 파일은 minidog이 켜져 있어도 언제든 복사할 수 있습니다.
+
+```bash
+docker compose exec api node cli/backup.mjs /data/minidog-backup.sqlite
+```
+
+되돌리는 방법을 포함한 자세한 내용은 [백업하기](docs/getting-started.ko.md#백업하기)에 있습니다. `docker compose down -v`는 볼륨을 모두 지우므로 텔레메트리뿐 아니라 설정도 사라집니다.
 
 ## 문서
 
