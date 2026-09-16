@@ -21,6 +21,7 @@ import { Section } from '@/components/layout/Section';
 import { EmptyState, ErrorState } from '@/components/observability/States';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { CodeSnippet, CopyButton } from '@/components/ui/CodeSnippet';
 import { Field } from '@/components/ui/Field';
 import { Input } from '@/components/ui/Input';
 import { Notice } from '@/components/ui/Notice';
@@ -757,45 +758,13 @@ OTEL_EXPORTER_OTLP_HEADERS=${API_KEY_HEADER}=<api key>`;
           ? 'This server requires an API key on every OTLP request.'
           : 'Requests without an API key are stored in the default project.'}
       </p>
-      <Snippet title="SDK → bundled collector" code={sdk} />
-      <Snippet title="SDK → Ingestion API directly (OTLP/HTTP JSON)" code={direct} />
-      <Snippet title="Your own collector" code={collector} />
+      <CodeSnippet title="SDK → bundled collector" code={sdk} />
+      <CodeSnippet title="SDK → Ingestion API directly (OTLP/HTTP JSON)" code={direct} />
+      <CodeSnippet title="Your own collector" code={collector} />
       <p className={styles.note}>
         The bundled collector reads the key from <code className={styles.mono}>MINIDOG_API_KEY</code>:{' '}
         <code className={styles.mono}>MINIDOG_API_KEY=&lt;api key&gt; pnpm infra:up</code>
       </p>
     </div>
-  );
-}
-
-function Snippet({ title, code }: { title: string; code: string }) {
-  return (
-    <div className={styles.snippetBlock}>
-      <div className={styles.snippetHead}>
-        <span className={styles.snippetTitle}>{title}</span>
-        <CopyButton value={code} />
-      </div>
-      <pre className={styles.snippet}>
-        <code>{code}</code>
-      </pre>
-    </div>
-  );
-}
-
-function CopyButton({ value }: { value: string }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <Button
-      size="sm"
-      variant="ghost"
-      onClick={() => {
-        void navigator.clipboard.writeText(value).then(() => {
-          setCopied(true);
-          setTimeout(() => setCopied(false), 1500);
-        });
-      }}
-    >
-      {copied ? 'Copied' : 'Copy'}
-    </Button>
   );
 }

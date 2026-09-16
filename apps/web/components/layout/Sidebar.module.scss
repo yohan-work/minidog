@@ -46,6 +46,23 @@
     gap: var(--space-1);
     overflow-x: auto;
     padding-block: var(--space-2);
+    scrollbar-width: none;
+
+    // Half the pages sit off-screen on a phone. The inner shadows say so, and
+    // each fades away at its end of the scroll (`local` covers, `scroll` shows).
+    background:
+      linear-gradient(to right, var(--background-primary), transparent) left center / var(--space-6) 100% no-repeat
+        local,
+      linear-gradient(to left, var(--background-primary), transparent) right center / var(--space-6) 100% no-repeat
+        local,
+      radial-gradient(farthest-side at 0 50%, var(--border-strong), transparent) left center / var(--space-2) 100%
+        no-repeat scroll,
+      radial-gradient(farthest-side at 100% 50%, var(--border-strong), transparent) right center / var(--space-2) 100%
+        no-repeat scroll;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
   }
 }
 
@@ -90,6 +107,11 @@
   color: var(--foreground-secondary);
   white-space: nowrap;
   @include transition(background-color, color);
+
+  @include mobile {
+    height: var(--control-height-lg);
+    padding-inline: var(--space-3);
+  }
 
   &:is(a):hover {
     background: var(--background-hover);
