@@ -306,6 +306,24 @@ export class SpanRepository extends ClickHouseRepository {
       : { requests: 0, errors: 0, p50Ms: null, p95Ms: null, p99Ms: null };
   }
 
+  /**
+   * Requests of one service between two times. Counting only: service_down asks
+   * this on every pass for services that are quiet, which is most passes for the
+   * side projects it watches, so it must not pay for quantiles it throws away.
+   * `untilMs` is exclusive; the parameter is not called `toMs` because that name
+   * belongs to the millisecond helper above.
+   */
+  async requestCount(scope: Scope, service: string, fromMs: number, untilMs?: number): Promise<number> {
+    const [row] = await this.query<{ requests: Num }>(
+      `SELECT count() AS requests
+       FROM spans
+       WHERE ${SCOPE_FILTER} AND is_entry = 1 AND service = {service:String} AND ${since('fromMs')}
+         ${optional(untilMs, before('untilMs'))}`,
+      { ...scope, service, fromMs, untilMs },
+    );
+    return Number(row?.requests ?? 0);
+  }
+
   /** Requests, errors and P95 of one service since `fromMs` — used by monitors. */
   async windowStats(
     scope: Scope,

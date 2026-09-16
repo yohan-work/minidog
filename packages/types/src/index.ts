@@ -763,26 +763,33 @@ export interface AlertDefaults {
   warning: number | null;
   critical: number;
   windowMinutes: number;
+  /** Minutes the condition must last before it alerts; 0 reports the first measurement. */
+  alertAfterMinutes: number;
 }
 
 /**
- * Thresholds by type. Units: service_down — requests in the window (alerts
- * when fewer arrive); error_rate and host_resource — percent; latency — P95 ms;
- * synthetic_check — see SYNTHETIC_ALERT_DEFAULTS (failure rate shown here).
+ * Thresholds by type. Units: service_down — requests in the window (alerts when
+ * fewer arrive, and only for a service that was receiving them); error_rate and
+ * host_resource — percent; latency — P95 ms; synthetic_check — see
+ * SYNTHETIC_ALERT_DEFAULTS (failure rate shown here).
+ *
+ * Service down waits before alerting: traffic to a side project arrives in
+ * bursts, and a gap between two visitors is not an outage. With the default
+ * window that means silence is reported ten minutes after it starts.
  */
 export const ALERT_MONITOR_DEFAULTS: Record<AlertMonitorType, AlertDefaults> = {
-  service_down: { warning: null, critical: 1, windowMinutes: 5 },
-  error_rate: { warning: 2, critical: 10, windowMinutes: 5 },
-  latency: { warning: 1_000, critical: 2_000, windowMinutes: 5 },
-  host_resource: { warning: 85, critical: 95, windowMinutes: 5 },
-  synthetic_check: { warning: null, critical: 50, windowMinutes: 5 },
+  service_down: { warning: null, critical: 1, windowMinutes: 5, alertAfterMinutes: 5 },
+  error_rate: { warning: 2, critical: 10, windowMinutes: 5, alertAfterMinutes: 0 },
+  latency: { warning: 1_000, critical: 2_000, windowMinutes: 5, alertAfterMinutes: 0 },
+  host_resource: { warning: 85, critical: 95, windowMinutes: 5, alertAfterMinutes: 0 },
+  synthetic_check: { warning: null, critical: 50, windowMinutes: 5, alertAfterMinutes: 0 },
 };
 
 /** failure_rate — % of failed checks; response_time — P95 ms; ssl_days — days left (alerts below). */
 export const SYNTHETIC_ALERT_DEFAULTS: Record<SyntheticAlertMetric, AlertDefaults> = {
-  failure_rate: { warning: null, critical: 50, windowMinutes: 5 },
-  response_time: { warning: 1_000, critical: 3_000, windowMinutes: 5 },
-  ssl_days: { warning: 14, critical: 7, windowMinutes: 60 },
+  failure_rate: { warning: null, critical: 50, windowMinutes: 5, alertAfterMinutes: 0 },
+  response_time: { warning: 1_000, critical: 3_000, windowMinutes: 5, alertAfterMinutes: 0 },
+  ssl_days: { warning: 14, critical: 7, windowMinutes: 60, alertAfterMinutes: 0 },
 };
 
 export function alertDefaults(type: AlertMonitorType, metric: AlertMetric | null): AlertDefaults {

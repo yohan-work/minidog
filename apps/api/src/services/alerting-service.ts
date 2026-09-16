@@ -93,7 +93,7 @@ export class AlertingService {
       criticalThreshold: thresholds.critical,
       windowMinutes: input.windowMinutes ?? defaults.windowMinutes,
       webhookUrl: input.webhookUrl ?? '',
-      alertAfterMinutes: input.alertAfterMinutes ?? 0,
+      alertAfterMinutes: input.alertAfterMinutes ?? defaults.alertAfterMinutes,
       recoverAfterMinutes: input.recoverAfterMinutes ?? 0,
     });
     return this.evaluateNow(monitor);

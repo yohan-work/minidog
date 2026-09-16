@@ -199,12 +199,35 @@ export class AlertEvaluator {
     const stats = await this.deps.spans.windowStats(scope, monitor.target, fromMs);
     switch (monitor.type) {
       case 'service_down':
-        return stats.requests;
+        return this.serviceDownValue(monitor, scope, fromMs, stats.requests);
       case 'error_rate':
         return stats.requests > 0 ? Math.round((stats.errors / stats.requests) * 1000) / 10 : null;
       case 'latency':
         return stats.requests > 0 ? stats.p95Ms : null;
     }
+  }
+
+  /**
+   * Silence means "down" only for a service that was talking. A side project
+   * with no visitors at four in the morning would otherwise turn Critical every
+   * night, and an alert that cries wolf is an alert that gets switched off — so
+   * when nothing arrived, the window before it decides whether that is news.
+   *
+   * The rule stops applying as soon as the monitor is heading for an alert, not
+   * only once it has arrived: during `alertAfterMinutes` the stored state is
+   * still ok, and dropping to no data there would throw the pending transition
+   * away — the silence would never be reported at all.
+   */
+  private async serviceDownValue(
+    monitor: ScopedAlertMonitor,
+    scope: { projectId: string; environment: string },
+    fromMs: number,
+    requests: number,
+  ): Promise<number | null> {
+    if (requests > 0 || isAlerting(monitor.state) || isAlerting(monitor.pendingState)) return requests;
+    const windowMs = monitor.windowMinutes * 60_000;
+    const before = await this.deps.spans.requestCount(scope, monitor.target, fromMs - windowMs, fromMs);
+    return before > 0 ? requests : null;
   }
 
   /** Failed checks (%), P95 of passing checks (ms) or days until the certificate expires. */

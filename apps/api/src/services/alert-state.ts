@@ -89,6 +89,9 @@ export interface MessageInput extends Signal {
 }
 
 function noDataMessage(signal: Signal, window: string): string {
+  // Service down cannot tell "quiet because nobody visited" from "quiet because
+  // it died while nobody was visiting", and says so rather than guessing.
+  if (signal.type === 'service_down') return `No requests in the ${window}, and none before it to compare with`;
   if (signal.type !== 'synthetic_check') return `No data in the ${window}`;
   if (signal.metric === 'ssl_days') return 'No SSL certificate in recent checks';
   if (signal.metric === 'response_time') return `No successful checks in the ${window}`;
@@ -115,7 +118,7 @@ export function alertMessage(monitor: MessageInput, state: AlertState, value: nu
 }
 
 /** States that notify when entered or left. */
-export const isAlerting = (state: AlertState) => state === 'warning' || state === 'critical';
+export const isAlerting = (state: AlertState | null) => state === 'warning' || state === 'critical';
 
 // No data and Healthy are equally quiet: moving between them is never delayed.
 const SEVERITY: Record<AlertState, number> = { ok: 0, no_data: 0, warning: 1, critical: 2 };
