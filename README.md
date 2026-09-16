@@ -102,7 +102,17 @@ minidog is for **one person watching a handful of projects**. It is not for team
 
 ## Security
 
-The first visit sets a password, and every page and the Query API require sign-in. Every port binds to 127.0.0.1. Checks and webhooks never reach link-local or cloud metadata addresses. Forgot the password? Run `docker compose exec api node cli/reset-password.mjs`. See [SECURITY.md](SECURITY.md) for the model and how to report a vulnerability.
+The first visit sets a password, and every page and the Query API require sign-in. Every port binds to 127.0.0.1. Checks and webhooks never reach link-local or cloud metadata addresses. Forgot the password? Run `docker compose exec api node cli/reset-password.mjs`. See [SECURITY.md](SECURITY.md) for the model and how to report a vulnerability, and the guide for [reaching minidog from another machine](docs/getting-started.md#running-it-on-a-server) without publishing it to the internet.
+
+## Keeping it
+
+Your password, API keys, monitors and dashboards live in one small SQLite file; telemetry lives in ClickHouse and ages out on its own. Copy that file at any time, including while minidog is running:
+
+```bash
+docker compose exec api node cli/backup.mjs /data/minidog-$(date +%F).sqlite
+```
+
+Details, and how to put it back, are in [Backing up](docs/getting-started.md#backing-up). Note that `docker compose down -v` deletes both volumes — everything, not just the telemetry.
 
 ## Documentation
 

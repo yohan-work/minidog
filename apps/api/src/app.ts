@@ -45,6 +45,7 @@ import { StorageService } from './services/storage-service';
 import { SummaryService } from './services/summary-service';
 import { AlertEvaluator } from './worker/alert-evaluator';
 import { GapTracker } from './worker/gap-tracker';
+import { HeartbeatPinger } from './worker/heartbeat-pinger';
 import { ResultWriter } from './worker/result-writer';
 import { SummaryScheduler } from './worker/summary-scheduler';
 import { SyntheticScheduler } from './worker/synthetic-scheduler';
@@ -128,6 +129,12 @@ export async function buildApp(config: Config, options: BuildAppOptions = {}): P
       })
     : null;
 
+  // Runs wherever the API runs: its silence is the signal, so it must not depend
+  // on the worker being enabled.
+  const heartbeat = config.HEARTBEAT_URL
+    ? new HeartbeatPinger(config.HEARTBEAT_URL, config.HEARTBEAT_INTERVAL_SECONDS * 1000, app.log)
+    : null;
+
   const ctx: AppContext = {
     scope,
     defaultScope,
@@ -163,6 +170,7 @@ export async function buildApp(config: Config, options: BuildAppOptions = {}): P
     gapTracker?.start();
     scheduler?.start();
     summaryScheduler?.start();
+    heartbeat?.start();
     if (config.ALERTS_ENABLED) evaluator.start();
   });
   app.addHook('onClose', async () => {
@@ -170,6 +178,7 @@ export async function buildApp(config: Config, options: BuildAppOptions = {}): P
     scheduler?.stop();
     gapTracker?.stop();
     summaryScheduler?.stop();
+    heartbeat?.stop();
     await evaluator.stop();
     await writer.stop();
     await clickhouse.close();

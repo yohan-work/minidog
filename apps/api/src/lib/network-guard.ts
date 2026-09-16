@@ -52,26 +52,40 @@ export class BlockedAddressError extends Error {
 }
 
 /** IP literals connect without a DNS lookup, so they are checked before connecting. */
-export function checkHost(hostname: string): BlockedAddressError | null {
+export function checkHost(hostname: string, blockPrivate?: boolean): BlockedAddressError | null {
   const host = hostname.replace(/^\[|\]$/g, '');
-  const reason = blockedReason(host);
+  const reason = blockedReason(host, blockPrivate);
   return reason ? new BlockedAddressError(host, host, reason) : null;
 }
 
-/** A `lookup` for http.request that refuses hosts resolving to a blocked address. */
-export function guardedLookup(
+/**
+ * A `lookup` for http.request that refuses hosts resolving to a blocked address.
+ *
+ * `blockPrivate` is read per request, because the policy is set at startup after
+ * this module loads. Requests minidog makes on its own behalf — the heartbeat,
+ * which an operator configures — pass `false`: keeping those off the local
+ * network protects nobody, and would silently break a watcher on the same LAN.
+ */
+export function lookupGuardedBy(
+  blockPrivate: () => boolean,
+): (
   hostname: string,
   options: LookupOptions,
   callback: (error: NodeJS.ErrnoException | null, address: string | LookupAddress[], family?: number) => void,
-): void {
-  dnsLookup(hostname, { ...options, all: true }, (error, resolved) => {
-    if (error) return callback(error, '');
-    const addresses = resolved as unknown as LookupAddress[];
-    for (const entry of addresses) {
-      const reason = blockedReason(entry.address);
-      if (reason) return callback(new BlockedAddressError(hostname, entry.address, reason), '');
-    }
-    if (options.all) callback(null, addresses);
-    else callback(null, addresses[0]!.address, addresses[0]!.family);
-  });
+) => void {
+  return (hostname, options, callback) => {
+    dnsLookup(hostname, { ...options, all: true }, (error, resolved) => {
+      if (error) return callback(error, '');
+      const addresses = resolved as unknown as LookupAddress[];
+      for (const entry of addresses) {
+        const reason = blockedReason(entry.address, blockPrivate());
+        if (reason) return callback(new BlockedAddressError(hostname, entry.address, reason), '');
+      }
+      if (options.all) callback(null, addresses);
+      else callback(null, addresses[0]!.address, addresses[0]!.family);
+    });
+  };
 }
+
+/** The guard for synthetic checks and webhooks: follows BLOCK_PRIVATE_TARGETS. */
+export const guardedLookup = lookupGuardedBy(() => networkPolicy.blockPrivate);
