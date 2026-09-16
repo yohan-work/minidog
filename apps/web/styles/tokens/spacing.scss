@@ -17,6 +17,8 @@
   --topbar-height: 48px;
   --control-height-sm: 28px;
   --control-height-md: 32px;
+  // Touch target on phones, where a pointer cannot be precise.
+  --control-height-lg: 40px;
   --row-height: 36px;
   --chart-height: 200px;
   --bar-height: 24px;

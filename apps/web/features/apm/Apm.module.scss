@@ -58,21 +58,7 @@
   @include truncate;
 }
 
-// Setup snippet in empty states
-.snippet {
-  max-width: 100%;
-  margin: 0;
-  padding: var(--space-3) var(--space-4);
-  overflow-x: auto;
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
-  background: var(--background-secondary);
-  font-family: var(--font-mono);
-  font-size: var(--text-meta);
-  line-height: var(--leading-normal);
-  color: var(--foreground-secondary);
-}
-
+// Setup instructions in empty states; the snippet itself is components/ui/CodeSnippet.
 .setup {
   display: grid;
   gap: var(--space-3);

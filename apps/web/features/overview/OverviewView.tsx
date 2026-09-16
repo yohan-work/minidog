@@ -23,6 +23,7 @@ import { Icon } from '@/components/ui/Icon';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { formatChange, formatCount, formatLatency, formatPercent, formatRate, formatUtilization } from '@/lib/format';
 import { serviceHref, tracesHref } from '@/lib/links';
+import { needsSetup } from '@/lib/onboarding';
 import { useTimeRange, withRange } from '@/lib/time-range';
 import { useApi } from '@/lib/use-api';
 import { deploymentMarkers } from '../apm/deployments';
@@ -68,8 +69,8 @@ export function OverviewView() {
   const attentionServices = serviceList.filter((service) => SEVERITY[service.health] !== undefined).length;
   const active = alerts.data?.active ?? [];
   const criticalAlerts = active.filter((monitor) => monitor.state === 'critical').length;
-  const nothingYet =
-    services.data && serviceList.length === 0 && hosts.data?.hosts.length === 0 && synthetics.data?.counts.total === 0;
+  const hostsReporting = hosts.data ? hosts.data.hosts.length > 0 : false;
+  const nothingYet = needsSetup(services.data ? serviceList.length : undefined, synthetics.data?.counts.total);
 
   const attention = buildAttention({
     range,
@@ -89,16 +90,33 @@ export function OverviewView() {
         onRetry={services.refetch}
       />
 
-      {!services.data && !services.isLoading ? (
-        <ErrorState title="Unable to load overview." description={services.error?.message} onRetry={services.refetch} />
+      {/* Both counts decide whether to show setup instructions, so either one failing is a dead end. */}
+      {(!services.data && !services.isLoading) || (!synthetics.data && !synthetics.isLoading) ? (
+        <ErrorState
+          title="Unable to load overview."
+          description={(services.error ?? synthetics.error)?.message}
+          onRetry={() => {
+            services.refetch();
+            synthetics.refetch();
+          }}
+        />
       ) : nothingYet ? (
         <EmptyState
-          title="Nothing is reporting yet"
-          description="Send traces, logs and metrics with an OpenTelemetry SDK, or add a URL monitor to start with synthetic checks."
+          title="Connect your first app"
+          description={
+            hostsReporting
+              ? 'This machine is already reporting its CPU, memory, disk and network. Send traces, logs and metrics from an app with an OpenTelemetry SDK, or add a URL monitor to start with synthetic checks.'
+              : 'Send traces, logs and metrics with an OpenTelemetry SDK, or add a URL monitor to start with synthetic checks.'
+          }
           action={
             <div className={styles.onboarding}>
               <TelemetrySetup />
               <ButtonLink href={withRange('/synthetics/new', range)}>Add a URL monitor</ButtonLink>
+              {hostsReporting && (
+                <ButtonLink href={withRange('/infrastructure', range)} variant="ghost">
+                  See this machine
+                </ButtonLink>
+              )}
             </div>
           }
         />
