@@ -104,11 +104,77 @@ API는 환경변수를 읽는다. 소스로 실행할 때는 `apps/api/.env`(`.e
 | `INGEST_REQUIRE_API_KEY` | `false` | 키 없는 OTLP 요청 거절 |
 | `AUTH_DISABLED` | `false` | 로그인 끄기. 아무도 접근할 수 없는 컴퓨터에서만 |
 | `BLOCK_PRIVATE_TARGETS` | `false` | 체크·웹훅이 사설망·로컬 주소에도 연결하지 않게 함(여러 사람이 쓰는 서버용) |
+| `HEARTBEAT_URL` | — | minidog이 켜져 있는 동안 이 주소로 신호를 보냄. 멈추면 상대 서비스가 알아챈다(아래 참고) |
+| `HEARTBEAT_INTERVAL_SECONDS` | `300` | 신호를 보내는 주기 |
 | `PUBLIC_API_URL` / `PUBLIC_COLLECTOR_URL` | `http://localhost:4000` / `:4318` | Settings에 보이는 연결 정보 |
 
 대시보드는 `/api/*`를 `API_URL`(기본 `http://127.0.0.1:4000`)로 전달하며, 요청이 올 때마다 읽는다.
 
 보관 기간 기본값은 span·로그 14일, 지표 30일, 합성 체크 결과 90일이다. **Settings → Storage**에서 신호별 디스크 사용량을 보고 보관 기간을 바꿀 수 있다(모든 프로젝트에 적용, 줄이면 오래된 기록이 바로 지워짐).
+
+## 서버에서 운영하기
+
+모든 포트는 `127.0.0.1`에만 열리므로, 갓 설치한 minidog은 그 컴퓨터에서만 접속된다. 노트북에서 보려고 이 접두사를 지우면 인증 없이도 데이터를 받는 OTLP 수신구까지 함께 열린다. 더 나은 방법 두 가지가 있다.
+
+**터널로 접속하고, 아무것도 공개하지 않기.** 바인딩은 그대로 두고 필요할 때만 포트를 넘긴다.
+
+```bash
+ssh -N -L 3000:127.0.0.1:3000 you@your-server   # 그다음 http://localhost:3000
+```
+
+Tailscale, WireGuard 같은 VPN도 같은 방식이다. Docker 입장에서 대시보드는 여전히 localhost에 있다.
+
+**꼭 공개해야 한다면 앞에 TLS를 둔다.** 리버스 프록시에서 HTTPS를 끝내고 나머지는 닫아 둔다.
+
+```text
+minidog.example.com {
+    reverse_proxy 127.0.0.1:3000
+}
+```
+
+그리고 `compose.yaml`에서:
+
+- `INGEST_REQUIRE_API_KEY: true` — 내 서비스만 텔레메트리를 보낼 수 있게 한다.
+- `BLOCK_PRIVATE_TARGETS: true` — 로그인한 브라우저가 체크·웹훅을 서버 내부망으로 돌리지 못하게 한다.
+- `CLICKHOUSE_PASSWORD` — 기본값이 아닌 값으로 바꾼다.
+- `4317`·`4318`은 외부에서 OTLP를 보낼 때만 열고, 열 때는 키를 필수로 한다.
+
+프록시가 `X-Forwarded-Proto: https`를 붙이면(Caddy·nginx는 기본으로 붙인다) 로그인 쿠키에 `Secure`가 적용된다.
+
+### minidog 자신이 죽었을 때
+
+알림은 minidog이 보낸다. 그래서 minidog이 꺼져 있으면 아무 알림도 오지 않는다(노트북 잠자기, 컨테이너 종료, 서버가 안 돌아온 경우). 침묵을 알아채는 주소를 지정하면, 켜져 있는 동안 그 주소로 신호를 보낸다.
+
+```yaml
+HEARTBEAT_URL: https://hc-ping.com/<uuid>   # healthchecks.io, Uptime Kuma push URL 등
+HEARTBEAT_INTERVAL_SECONDS: 300
+```
+
+받는 쪽은 이 주기보다 조금 여유 있게(기본 5분이면 10분마다) 기대하도록 설정한다. 그러면 minidog이 조용해질 때 알려 준다.
+
+## 백업하기
+
+볼륨 두 개에 모든 것이 들어 있다. `minidog-data`는 작은 SQLite 파일 하나로 비밀번호, 세션, API 키, 프로젝트, 모니터, 대시보드, 알림 이력이 들어 있다. `clickhouse-data`는 텔레메트리이고 보관 기간이 지나면 저절로 지워진다. 복사해 둘 가치가 있는 것은 앞의 것이다. 잃어버리면 전부 다시 설정하고 모든 발신처의 키를 새로 발급해야 한다.
+
+```bash
+docker compose exec api node cli/backup.mjs /data/minidog-backup.sqlite   # 공개 이미지
+docker cp minidog-api-1:/data/minidog-backup.sqlite .                     # 볼륨 밖으로 꺼내기
+pnpm db:backup ./minidog-backup.sqlite                                    # 소스로 실행할 때
+```
+
+minidog이 켜져 있어도 안전하다. 일관된 스냅샷으로 복사하기 때문이며, 실행 중인 SQLite 파일을 그냥 `cp`로 복사하는 것은 안전하지 않다.
+
+되돌릴 때는 API를 먼저 멈춘다. API가 데이터에 잠금을 걸고 있고, 잠금이 걸린 동안에는 복구가 거부된다.
+
+```bash
+docker compose stop api
+docker compose run --rm -v "$PWD:/backup" api node cli/restore.mjs /backup/minidog-backup.sqlite
+docker compose start api
+```
+
+소스로 실행할 때는 minidog을 멈추고 `pnpm db:restore ./minidog-backup.sqlite`.
+
+`docker compose down`은 볼륨을 남기고, `docker compose down -v`는 지운다.
 
 ## 데모 가게로 둘러보기
 
