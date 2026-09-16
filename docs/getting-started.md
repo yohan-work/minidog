@@ -50,7 +50,9 @@ pnpm local:down   # stop, e.g. to go back to pnpm dev
 
 - It uses the same data (`apps/api/data` and the ClickHouse volume) and settings (`apps/api/.env`) as `pnpm dev`, so run one or the other. The API locks the data (`minidog.sqlite.lock`) and refuses to start while the other holds it. A lock left by a crash expires after 30 seconds.
 - After pulling new code, run `pnpm local:up` again to rebuild.
-- To have it come back after a reboot, turn on Docker Desktop's *Start Docker Desktop when you sign in*. Checks pause while the Mac sleeps, and that time shows as *not measured*.
+- To have it come back after a reboot, turn on Docker Desktop's *Start Docker Desktop when you sign in*. Checks pause while the machine sleeps, and that time shows as *not measured*.
+
+This section is for running your own build. On a server, the published images already restart with Docker (`restart: unless-stopped` in `deploy/compose.yaml`) and need nothing here.
 
 ## Sending data
 
@@ -204,6 +206,6 @@ With the published images, port 5100 is only reachable inside Docker. Use `docke
 | Deploy marker | From source, restart with `DEMO_VERSION=1.1.0 pnpm demo`. Service charts show a `1.1.0` line, and Versions compares 1.0.0 with 1.1.0. |
 | Live tail | Logs → **Live tail**. New lines appear every 2 seconds, and filters still apply. |
 | Phone alert | Put `https://ntfy.sh/<topic>` in a monitor's Webhook URL → **Send test** |
-| Not measured | Stop minidog for a few minutes, or let the Mac sleep. The monitor's availability bar shows a hatched *not measured* stretch. |
+| Not measured | Stop minidog for a few minutes, or let the machine sleep. The monitor's availability bar shows a hatched *not measured* stretch. |
 | Search | Press ⌘K anywhere and type `checkout`. Pasting a 32-character trace id opens that trace. |
 | Dashboard | Dashboards → New dashboard, then add synthetic monitors, service charts or metrics. **Add to dashboard** on Metrics works too. |
