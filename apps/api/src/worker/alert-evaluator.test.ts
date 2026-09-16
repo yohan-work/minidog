@@ -59,6 +59,75 @@ const input = {
   windowMinutes: 1,
 } as const;
 
+/** A service whose traffic differs between the measured window and the one before it. */
+function setupServiceDown(now: number, before: number) {
+  const db = openDatabase(':memory:');
+  const { projectId, environment } = new ProjectRepository(db).ensureDefault();
+  const scope = { projectId, environment };
+  const monitors = new AlertMonitorRepository(db);
+  const traffic = { now, before };
+  const spans = {
+    // The evaluator asks for the previous window by passing an upper bound.
+    windowStats: async (_scope: unknown, _service: string, _fromMs: number, toMs?: number) => ({
+      requests: toMs === undefined ? traffic.now : traffic.before,
+      errors: 0,
+      p95Ms: null,
+    }),
+  } as unknown as SpanRepository;
+  const evaluator = new AlertEvaluator({
+    monitors,
+    spans,
+    metrics: {} as MetricRepository,
+    syntheticMonitors: new MonitorRepository(db),
+    syntheticResults: {} as SyntheticResultRepository,
+    log: silentLog,
+    intervalMs: 30_000,
+  });
+  const monitor = monitors.create(scope, {
+    name: 'Requests · api',
+    type: 'service_down',
+    target: 'api',
+    metric: null,
+    warningThreshold: null,
+    criticalThreshold: 1,
+    windowMinutes: 5,
+    webhookUrl: '',
+    // The measurement is what these tests are about, not the delay before it alerts.
+    alertAfterMinutes: 0,
+  });
+  return { evaluator, monitor, traffic };
+}
+
+test('a service that is quiet in both windows is not called down', async () => {
+  const { evaluator, monitor } = setupServiceDown(0, 0);
+
+  const result = await evaluator.evaluate(monitor);
+
+  // Four in the morning on a side project: nobody visited, nothing is wrong.
+  assert.equal(result.state, 'no_data');
+});
+
+test('a service that was receiving requests and stopped is down', async () => {
+  const { evaluator, monitor } = setupServiceDown(0, 120);
+
+  const result = await evaluator.evaluate(monitor);
+
+  assert.equal(result.state, 'critical');
+  assert.match(result.stateMessage, /No requests/);
+});
+
+test('a service that stays down is not reported as recovered when its quiet hours begin', async () => {
+  const { evaluator, monitor, traffic } = setupServiceDown(0, 120);
+  const down = await evaluator.evaluate(monitor);
+  assert.equal(down.state, 'critical');
+
+  // It has now been down long enough that the window before is empty as well.
+  traffic.before = 0;
+  const stillDown = await evaluator.evaluate(down);
+
+  assert.equal(stillDown.state, 'critical', 'a monitor already alerting keeps measuring silence as down');
+});
+
 test('thresholds changed after a pass loaded its monitors apply to the evaluation', async () => {
   const { monitors, evaluator, latency } = setup(600);
   const loadedByPass = latency();

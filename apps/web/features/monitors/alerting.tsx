@@ -54,7 +54,8 @@ export const TYPE_LABELS: Record<AlertMonitorType, string> = {
 };
 
 export const TYPE_DESCRIPTIONS: Record<AlertMonitorType, string> = {
-  service_down: 'Alerts when a service receives fewer requests than the threshold in the window.',
+  service_down:
+    'Alerts when a service that had been receiving requests stops. Quiet periods of a service that sends nothing either way are not reported — for an app with little traffic, a URL check in Synthetics is the better signal.',
   error_rate: 'Alerts when the share of failed requests reaches a percentage.',
   latency: 'Alerts when the P95 of server spans reaches a duration.',
   host_resource: 'Alerts when CPU, memory or disk utilization of a host reaches a percentage.',

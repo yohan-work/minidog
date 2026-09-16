@@ -69,12 +69,13 @@ function defaultMetric(type: AlertMonitorType): string {
 function defaultsFor(
   type: AlertMonitorType,
   metric: string,
-): Pick<FormValues, 'warningThreshold' | 'criticalThreshold' | 'windowMinutes'> {
+): Pick<FormValues, 'warningThreshold' | 'criticalThreshold' | 'windowMinutes' | 'alertAfterMinutes'> {
   const defaults = alertDefaults(type, (metric || null) as AlertMetric | null);
   return {
     warningThreshold: defaults.warning === null ? '' : String(defaults.warning),
     criticalThreshold: String(defaults.critical),
     windowMinutes: String(defaults.windowMinutes),
+    alertAfterMinutes: String(defaults.alertAfterMinutes),
   };
 }
 
@@ -91,7 +92,6 @@ export function NewAlertMonitorView() {
       target: params.get('target') ?? '',
       metric,
       ...defaultsFor(type, metric),
-      alertAfterMinutes: '0',
       recoverAfterMinutes: '0',
       webhookUrl: '',
       name: '',
