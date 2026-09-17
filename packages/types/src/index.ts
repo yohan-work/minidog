@@ -200,6 +200,12 @@ export interface ContextResponse {
   };
   /** False when AUTH_DISABLED is set. */
   auth: { enabled: boolean };
+  /** Alert delivery: email works only when SMTP_HOST and SMTP_FROM are set. */
+  alerts: {
+    email: boolean;
+    /** The From address SMTP is configured with; empty when email is off. */
+    emailFrom: string;
+  };
 }
 
 /** `GET /api/auth/status`: whether the dashboard needs a first password or a sign-in. */
@@ -476,10 +482,31 @@ export interface ServiceListResponse {
   deployments: Deployment[];
 }
 
+/** How far back the baseline looks: the same window one week earlier. */
+export const BASELINE_OFFSET_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * The same window one week earlier, for "P95 ↑ 312% vs last week". A week
+ * back compares Monday morning with Monday morning, which the previous
+ * period of the same length (`p95Change`) does not; each change is the
+ * ratio minus one, null when the baseline had nothing to compare with.
+ */
+export interface ServiceBaseline {
+  requests: number;
+  errorRate: number | null;
+  p95Ms: number | null;
+  requestsChange: number | null;
+  /** Difference in percentage points, not a ratio: 0.5% → 2% reads as +1.5 pp. */
+  errorRateChange: number | null;
+  p95Change: number | null;
+}
+
 export interface ServiceResponse {
   range: TimeRange;
   service: ServiceSummary;
   series: RequestSeries;
+  /** Null when the service had no requests in the same window last week. */
+  baseline: ServiceBaseline | null;
   endpoints: EndpointSummary[];
   /** Deployments of this service in the range, oldest first. */
   deployments: Deployment[];
@@ -680,8 +707,25 @@ export const ALERT_MONITOR_TYPES = [
   'latency',
   'host_resource',
   'synthetic_check',
+  'heartbeat',
 ] as const;
 export type AlertMonitorType = (typeof ALERT_MONITOR_TYPES)[number];
+
+/**
+ * Where a heartbeat monitor is pinged: `GET` or `POST {apiUrl}/heartbeat/{token}`.
+ * The token is the monitor's `target`; the route needs no sign-in, so a cron
+ * job can `curl` it.
+ */
+export const HEARTBEAT_PATH = '/heartbeat';
+export const heartbeatUrl = (apiUrl: string, token: string) =>
+  `${apiUrl.replace(/\/$/, '')}${HEARTBEAT_PATH}/${encodeURIComponent(token)}`;
+
+/** Ping bookkeeping of a heartbeat monitor. */
+export interface HeartbeatInfo {
+  /** ISO time of the last ping; null before the first. */
+  lastPingAt: string | null;
+  pings: number;
+}
 
 export const HOST_RESOURCE_METRICS = ['cpu', 'memory', 'disk'] as const;
 export type HostResourceMetric = (typeof HOST_RESOURCE_METRICS)[number];
@@ -718,6 +762,12 @@ export type WebhookFormat = 'slack' | 'discord' | 'telegram' | 'ntfy' | 'json';
 export interface WebhookTestResponse {
   format: WebhookFormat;
   /** e.g. `sent 204` or `failed 404`. */
+  status: string;
+}
+
+/** `POST /api/alerting/email-test`. */
+export interface EmailTestResponse {
+  /** e.g. `sent 250` or `failed: …`. */
   status: string;
 }
 
@@ -771,7 +821,8 @@ export interface AlertDefaults {
  * Thresholds by type. Units: service_down — requests in the window (alerts when
  * fewer arrive, and only for a service that was receiving them); error_rate and
  * host_resource — percent; latency — P95 ms; synthetic_check — see
- * SYNTHETIC_ALERT_DEFAULTS (failure rate shown here).
+ * SYNTHETIC_ALERT_DEFAULTS (failure rate shown here); heartbeat — minutes
+ * since the last ping (alerts when more have passed).
  *
  * Service down waits before alerting: traffic to a side project arrives in
  * bursts, and a gap between two visitors is not an outage. With the default
@@ -783,6 +834,7 @@ export const ALERT_MONITOR_DEFAULTS: Record<AlertMonitorType, AlertDefaults> = {
   latency: { warning: 1_000, critical: 2_000, windowMinutes: 5, alertAfterMinutes: 0 },
   host_resource: { warning: 85, critical: 95, windowMinutes: 5, alertAfterMinutes: 0 },
   synthetic_check: { warning: null, critical: 50, windowMinutes: 5, alertAfterMinutes: 0 },
+  heartbeat: { warning: null, critical: 90, windowMinutes: 5, alertAfterMinutes: 0 },
 };
 
 /** failure_rate — % of failed checks; response_time — P95 ms; ssl_days — days left (alerts below). */
@@ -810,8 +862,9 @@ export function alertDirection(type: AlertMonitorType, metric: AlertMetric | nul
   return 'above';
 }
 
-/** SSL expiry is judged on the latest certificate; every other signal on its window. */
+/** SSL expiry is judged on the latest certificate and a heartbeat on its last ping; every other signal on its window. */
 export function usesWindow(type: AlertMonitorType, metric: AlertMetric | null): boolean {
+  if (type === 'heartbeat') return false;
   return !(type === 'synthetic_check' && metric === 'ssl_days');
 }
 
@@ -819,10 +872,12 @@ export interface AlertMonitor {
   id: string;
   name: string;
   type: AlertMonitorType;
-  /** Service name; host name for host_resource; synthetic monitor id for synthetic_check. */
+  /** Service name; host name for host_resource; synthetic monitor id for synthetic_check; ping token for heartbeat. */
   target: string;
   /** Display name of the target (the synthetic monitor's name for synthetic_check). */
   targetLabel: string;
+  /** heartbeat only. */
+  heartbeat: HeartbeatInfo | null;
   /** host_resource and synthetic_check only. */
   metric: AlertMetric | null;
   warningThreshold: number | null;
@@ -830,6 +885,8 @@ export interface AlertMonitor {
   windowMinutes: number;
   /** Optional; state changes are POSTed as JSON. */
   webhookUrl: string;
+  /** Optional; state changes are emailed here (one address, or several separated by commas). Needs SMTP. */
+  email: string;
   /** Minutes a worse state must last before the monitor enters it (and notifies). */
   alertAfterMinutes: number;
   /** Minutes a better state must last before recovery is reported. */
@@ -863,17 +920,21 @@ export interface AlertEvent {
   acknowledged: boolean;
   /** '' when no webhook is configured, otherwise `sent 200`, `failed …` or `muted` (held until the mute ends). */
   webhookStatus: string;
+  /** '' when no email is configured, otherwise `sent 250`, `failed …` or `muted`. */
+  emailStatus: string;
 }
 
 export interface CreateAlertMonitorInput {
   name?: string;
   type: AlertMonitorType;
-  target: string;
+  /** Not used by heartbeat monitors, whose token is issued on creation. */
+  target?: string;
   metric?: AlertMetric;
   warningThreshold?: number | null;
   criticalThreshold?: number;
   windowMinutes?: number;
   webhookUrl?: string;
+  email?: string;
   alertAfterMinutes?: number;
   recoverAfterMinutes?: number;
 }
@@ -886,6 +947,7 @@ export type UpdateAlertMonitorInput = Partial<
     | 'criticalThreshold'
     | 'windowMinutes'
     | 'webhookUrl'
+    | 'email'
     | 'enabled'
     | 'alertAfterMinutes'
     | 'recoverAfterMinutes'

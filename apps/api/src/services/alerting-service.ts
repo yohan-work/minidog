@@ -13,6 +13,7 @@ import {
 } from '@minidog/types';
 import { z } from 'zod';
 import { NotFoundError } from '../lib/errors';
+import { createId } from '../lib/id';
 import {
   publicMonitor,
   type AlertMonitorRepository,
@@ -71,9 +72,12 @@ export class AlertingService {
     const metric = resolveMetric(input.type, input.metric);
     const defaults = alertDefaults(input.type, metric);
 
-    let targetLabel = input.target;
+    // A heartbeat has no target to watch: the token minidog issues is what the job pings.
+    const target = input.type === 'heartbeat' ? createId('hb', 20) : (input.target ?? '');
+    if (target === '') throw issue('target', 'Choose a target.');
+    let targetLabel = target;
     if (input.type === 'synthetic_check') {
-      const check = this.syntheticMonitors.getInScope(this.scope, input.target);
+      const check = this.syntheticMonitors.getInScope(this.scope, target);
       if (!check) throw issue('target', 'Choose a synthetic monitor in this environment.');
       targetLabel = check.name;
     }
@@ -85,14 +89,17 @@ export class AlertingService {
     if (!thresholdsInOrder(thresholds, alertDirection(input.type, metric))) throw orderIssue();
 
     const monitor = this.monitors.create(this.scope, {
-      name: input.name || `${signalLabel({ type: input.type, metric })} · ${targetLabel}`,
+      name:
+        input.name ||
+        (input.type === 'heartbeat' ? 'Heartbeat' : `${signalLabel({ type: input.type, metric })} · ${targetLabel}`),
       type: input.type,
-      target: input.target,
+      target,
       metric,
       warningThreshold: thresholds.warning,
       criticalThreshold: thresholds.critical,
       windowMinutes: input.windowMinutes ?? defaults.windowMinutes,
       webhookUrl: input.webhookUrl ?? '',
+      email: input.email ?? '',
       alertAfterMinutes: input.alertAfterMinutes ?? defaults.alertAfterMinutes,
       recoverAfterMinutes: input.recoverAfterMinutes ?? 0,
     });
@@ -136,6 +143,19 @@ export class AlertingService {
   delete(id: string): void {
     this.get(id);
     this.monitors.delete(id);
+  }
+
+  /**
+   * A job checking in. Unknown tokens are reported as not found; a monitor that
+   * was not Healthy is evaluated right away (SQLite only, so it is quick) so
+   * the recovery does not wait for the next interval. Not scoped: the token is
+   * the credential.
+   */
+  async ping(token: string): Promise<ScopedAlertMonitor | undefined> {
+    const monitor = this.monitors.ping(token, new Date());
+    if (!monitor) return undefined;
+    if (monitor.enabled && (monitor.state !== 'ok' || monitor.pendingState !== null)) return this.evaluateNow(monitor);
+    return monitor;
   }
 
   /** Evaluates immediately instead of waiting for the next interval. */

@@ -57,6 +57,8 @@ export function signalLabel({ type, metric }: Signal): string {
       return RESOURCE_LABELS[isHostResourceMetric(metric) ? metric : 'cpu'];
     case 'synthetic_check':
       return SYNTHETIC_LABELS[isSyntheticAlertMetric(metric) ? metric : 'failure_rate'];
+    case 'heartbeat':
+      return 'Last ping';
   }
 }
 
@@ -66,6 +68,13 @@ function formatDays(days: number): string {
   if (days <= 0) return 'expired';
   const whole = Math.floor(days);
   return whole === 1 ? '1 day' : `${whole} days`;
+}
+
+/** `45 min`, `1.5 h`, `2 d` — how long since a heartbeat was pinged. Under an hour keeps a tenth, so `1.2 min ≥ 1 min` reads as true. */
+export function formatMinutes(minutes: number): string {
+  if (minutes < 60) return `${Number(minutes.toFixed(1))} min`;
+  if (minutes < 24 * 60) return `${Number((minutes / 60).toFixed(1))} h`;
+  return `${Number((minutes / (24 * 60)).toFixed(1))} d`;
 }
 
 export function formatAlertValue(signal: Signal, value: number): string {
@@ -78,6 +87,8 @@ export function formatAlertValue(signal: Signal, value: number): string {
       if (signal.metric === 'response_time') return formatMs(value);
       if (signal.metric === 'ssl_days') return formatDays(value);
       return `${value.toFixed(1)}%`;
+    case 'heartbeat':
+      return formatMinutes(value);
     default:
       return `${value.toFixed(1)}%`;
   }
@@ -92,6 +103,7 @@ function noDataMessage(signal: Signal, window: string): string {
   // Service down cannot tell "quiet because nobody visited" from "quiet because
   // it died while nobody was visiting", and says so rather than guessing.
   if (signal.type === 'service_down') return `No requests in the ${window}, and none before it to compare with`;
+  if (signal.type === 'heartbeat') return 'No ping received yet';
   if (signal.type !== 'synthetic_check') return `No data in the ${window}`;
   if (signal.metric === 'ssl_days') return 'No SSL certificate in recent checks';
   if (signal.metric === 'response_time') return `No successful checks in the ${window}`;
@@ -105,6 +117,7 @@ export function alertMessage(monitor: MessageInput, state: AlertState, value: nu
   if (monitor.type === 'service_down' && state === 'critical' && value === 0) return `No requests in the ${window}`;
   if (monitor.type === 'synthetic_check' && monitor.metric === 'ssl_days' && value <= 0)
     return 'SSL certificate expired';
+  if (monitor.type === 'heartbeat') return heartbeatMessage(monitor.thresholds, state, value);
 
   const scope = usesWindow(monitor.type, monitor.metric) ? ` (${window})` : '';
   const format = (amount: number) => formatAlertValue(monitor, amount);
@@ -115,6 +128,13 @@ export function alertMessage(monitor: MessageInput, state: AlertState, value: nu
     return `${current} ${comparator} warning ${format(monitor.thresholds.warning)}${scope}`;
   }
   return `${current} within thresholds${scope}`;
+}
+
+/** `No ping for 2.5 h, expected within 90 min` or `Last ping 3 min ago`. */
+function heartbeatMessage(thresholds: Thresholds, state: AlertState, minutes: number): string {
+  const limit = state === 'critical' ? thresholds.critical : thresholds.warning;
+  if (state === 'ok' || limit === null) return `Last ping ${formatMinutes(minutes)} ago`;
+  return `No ping for ${formatMinutes(minutes)}, expected within ${formatMinutes(limit)}`;
 }
 
 /** States that notify when entered or left. */

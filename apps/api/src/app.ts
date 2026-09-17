@@ -25,6 +25,7 @@ import { registerAlertingRoutes } from './routes/alerting';
 import { authGuard, registerAuthRoutes } from './routes/auth';
 import { registerApmRoutes } from './routes/apm';
 import { registerDashboardRoutes } from './routes/dashboards';
+import { registerHeartbeatRoutes } from './routes/heartbeat';
 import { registerHostRoutes } from './routes/hosts';
 import { registerIngestRoutes } from './routes/ingest';
 import { registerLogRoutes } from './routes/logs';
@@ -35,6 +36,7 @@ import { registerStorageRoutes } from './routes/storage';
 import { registerSummaryRoutes } from './routes/summary';
 import { registerSystemRoutes } from './routes/system';
 import { AlertingService } from './services/alerting-service';
+import type { SmtpConfig } from './services/email';
 import { AuthService } from './services/auth';
 import { ApmService } from './services/apm-service';
 import { HostService } from './services/host-service';
@@ -75,6 +77,8 @@ export interface AppContext {
   summary: SummaryService;
   /** Null when WORKER_ENABLED=false. */
   scheduler: SyntheticScheduler | null;
+  /** Null when SMTP_HOST / SMTP_FROM are unset. */
+  smtp: SmtpConfig | null;
 }
 
 export interface BuildAppOptions {
@@ -109,6 +113,17 @@ export async function buildApp(config: Config, options: BuildAppOptions = {}): P
   const summaryScheduler = config.WORKER_ENABLED
     ? new SummaryScheduler(summary, app.log, gapTracker ?? undefined)
     : null;
+  const smtp: SmtpConfig | null =
+    config.SMTP_HOST && config.SMTP_FROM
+      ? {
+          host: config.SMTP_HOST,
+          port: config.SMTP_PORT,
+          secure: config.SMTP_SECURE,
+          user: config.SMTP_USER,
+          password: config.SMTP_PASSWORD,
+          from: config.SMTP_FROM,
+        }
+      : null;
   const evaluator = new AlertEvaluator({
     monitors: alertMonitors,
     spans,
@@ -118,6 +133,7 @@ export async function buildApp(config: Config, options: BuildAppOptions = {}): P
     log: app.log,
     intervalMs: config.ALERT_INTERVAL_SECONDS * 1000,
     gaps: gapTracker ?? undefined,
+    smtp,
   });
   const scheduler = config.WORKER_ENABLED
     ? new SyntheticScheduler({
@@ -161,6 +177,7 @@ export async function buildApp(config: Config, options: BuildAppOptions = {}): P
     storage: new StorageService(new StorageRepository(clickhouse), config.SQLITE_PATH),
     summary,
     scheduler,
+    smtp,
   };
 
   const lifetime = new AbortController();
@@ -228,6 +245,7 @@ export async function buildApp(config: Config, options: BuildAppOptions = {}): P
       registerLogRoutes(routes, ctx);
       registerMetricRoutes(routes, ctx);
       registerAlertingRoutes(routes, ctx);
+      registerHeartbeatRoutes(routes, ctx);
       registerSettingsRoutes(routes, ctx);
       registerIngestRoutes(routes, ctx);
     },

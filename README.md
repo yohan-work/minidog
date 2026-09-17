@@ -27,7 +27,7 @@ minidog is one install that answers both questions:
 - **One file to install.** `docker compose up -d`, set a password, done. No agent per host, no account.
 - **OpenTelemetry in, no vendor SDK.** Anything that speaks OTLP works: Node, Python, Go, Java or a Collector you already run.
 - **Honest about gaps.** Time when minidog was off, or the machine asleep, is recorded and drawn as *not measured* on a check's availability rather than counted as downtime — and checks and alerts hold off for a moment after waking, so a box that sleeps doesn't produce a wall of false alerts.
-- **Alerts on your phone for free.** Slack, Discord, Telegram or an [ntfy](https://ntfy.sh) topic, plus an optional daily summary.
+- **Alerts on your phone for free.** Slack, Discord, Telegram or an [ntfy](https://ntfy.sh) topic, email over SMTP, plus an optional daily summary.
 
 ## Quick start
 
@@ -56,7 +56,7 @@ To update, run `docker compose pull && docker compose up -d`. To pin a release, 
 | **Errors and queries** | Exceptions grouped by type and message. Slow database statements, ranked with their values replaced by `?`. |
 | **Logs** | Search, attribute facets and live tail. Log lines link to their traces, and traces link back to their logs. |
 | **Infrastructure** | Host CPU, memory, disk and network from the Collector, plus a metrics explorer. |
-| **Monitors** | Error rate, latency, service down, host resources and failed checks, with Warning and Critical levels. You can wait N minutes before alerting and mute during maintenance. |
+| **Monitors** | Error rate, latency, service down, host resources, failed checks and heartbeats (a cron job that stops checking in), with Warning and Critical levels. You can wait N minutes before alerting and mute during maintenance. |
 | **Everyday use** | Dashboards, ⌘K search, drag across a chart to see that window's slowest traces, light and dark themes, and retention per signal. |
 
 The [getting started guide](docs/getting-started.md) walks through each one with the demo shop.
@@ -126,8 +126,8 @@ For command usage without accessing the database, run `pnpm db:backup --help`, `
 
 ## Roadmap
 
-- [ ] Heartbeat / cron monitors: alert when a job stops checking in
-- [ ] Baseline comparison: "P95 ↑ 312% vs last week"
+- [x] Heartbeat / cron monitors: alert when a job stops checking in
+- [x] Baseline comparison: "P95 ↑ 312% vs last week"
 - [ ] LLM calls: token and cost views from OpenTelemetry `gen_ai` spans
 
 Ideas and votes are welcome in [issues](https://github.com/yohan-work/minidog/issues).

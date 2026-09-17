@@ -90,7 +90,21 @@ Put one of these in a monitor's **Webhook URL** and press **Send test**. minidog
 
 Any other URL receives a JSON POST with `text`, `monitor`, `state`, `message` and more.
 
+**Email.** Set `SMTP_HOST` and `SMTP_FROM` on the API (and usually `SMTP_USER` / `SMTP_PASSWORD`). Port 587 uses STARTTLS; set `SMTP_SECURE=true` for implicit TLS on 465. Each monitor can then take an **Email** address (or several, comma-separated) next to its webhook — same Warning/Critical, delays and mutes — and **Send test** checks the address before anything alerts. Delivery status shows next to the webhook status in History.
+
 **Daily summary.** In **Settings → Daily summary**, pick one of these URLs and a time of day. Once a day minidog sends uptime, response time and certificate days left for each monitor, alert changes, and time not measured. If the computer was off at that time, it sends when minidog starts again. On Mondays it can send a 7-day summary instead.
+
+### Cron jobs that stop running
+
+A backup that quietly stopped is the failure nobody notices. Create a monitor of type **Heartbeat**, set **Critical** to the job's period plus some slack (90 minutes for an hourly job, 26 hours for a nightly one), and minidog shows a ping URL with a crontab line to paste:
+
+```
+0 3 * * * /path/to/backup.sh && curl -fsS -m 10 --retry 3 http://<minidog>:4000/heartbeat/hb_… > /dev/null
+```
+
+The `&&` means the job only checks in when it succeeded. Any `GET` or `POST` to the URL counts, with or without a body, and it needs no sign-in: the token in the URL is the credential, so treat it like a password. When nothing has arrived for longer than the threshold the monitor turns Critical and notifies like any other; the next ping brings it back at once. The Monitor page shows how many pings have arrived and when the last one came.
+
+Pings need to reach the API from wherever the job runs — on the same machine `http://localhost:4000` works; from elsewhere see [running it on a server](#running-it-on-a-server).
 
 ## Configuration
 
@@ -109,6 +123,7 @@ The API reads environment variables, or `apps/api/.env` when run from source (co
 | `HEARTBEAT_URL` | — | Pinged while minidog runs, so something else notices when it stops (see below) |
 | `HEARTBEAT_INTERVAL_SECONDS` | `300` | How often that ping is sent |
 | `PUBLIC_API_URL` / `PUBLIC_COLLECTOR_URL` | `http://localhost:4000` / `:4318` | Connection details shown in Settings |
+| `SMTP_HOST` / `SMTP_FROM` | — | Enable alert emails (see below). Also `SMTP_PORT` (587), `SMTP_SECURE` (false), `SMTP_USER`, `SMTP_PASSWORD` |
 
 The dashboard forwards `/api/*` to `API_URL` (default `http://127.0.0.1:4000`), read when each request arrives.
 

@@ -9,6 +9,7 @@ export function contextResponse(ctx: AppContext): ContextResponse {
     worker: { enabled: ctx.scheduler !== null },
     ingest: ctx.ingest,
     auth: { enabled: !ctx.auth.disabled },
+    alerts: { email: ctx.smtp !== null, emailFrom: ctx.smtp?.from ?? '' },
   };
 }
 

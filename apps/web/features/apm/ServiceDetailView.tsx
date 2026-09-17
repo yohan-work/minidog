@@ -2,6 +2,7 @@
 
 import type {
   DbQueryListResponse,
+  ServiceBaseline,
   ServiceResponse,
   ServiceSummary,
   TimeRange,
@@ -103,7 +104,7 @@ export function ServiceDetailView({ service }: { service: string }) {
         <ErrorState title="Unable to load service." description={detail.error?.message} onRetry={detail.refetch} />
       ) : (
         <>
-          <ServiceMetrics summary={summary} />
+          <ServiceMetrics summary={summary} baseline={detail.data?.baseline ?? null} />
 
           <Section
             title="Latency"
@@ -270,7 +271,33 @@ function ServiceMeta({ summary, range }: { summary: ServiceSummary; range: TimeR
   );
 }
 
-function ServiceMetrics({ summary }: { summary: ServiceSummary | undefined }) {
+/** Error rates compare in percentage points: 0.5% → 2% is +1.5 pp, not +300%. */
+function formatPoints(delta: number): string {
+  const points = Math.round(delta * 100 * 10) / 10;
+  if (points === 0) return '±0 pp';
+  return `${points > 0 ? '↑' : '↓'} ${Math.abs(points)} pp`;
+}
+
+/** `first · ↑ 312% vs 7d`, the week-ago value in the tooltip; only `first` without a baseline. */
+function Meta({ first, change, was }: { first: string; change: string | null; was: string }) {
+  if (change === null) return first;
+  return (
+    <>
+      {first} ·{' '}
+      <span title={`Last week: ${was}`}>
+        {change} <abbr title="compared with the same window last week">vs 7d</abbr>
+      </span>
+    </>
+  );
+}
+
+function ServiceMetrics({
+  summary,
+  baseline,
+}: {
+  summary: ServiceSummary | undefined;
+  baseline: ServiceBaseline | null;
+}) {
   const loading = !summary;
   return (
     <MetricGrid label="Service summary">
@@ -278,14 +305,30 @@ function ServiceMetrics({ summary }: { summary: ServiceSummary | undefined }) {
         label="Requests"
         loading={loading}
         value={formatRate(summary?.requestsPerSecond)}
-        meta={summary && `${formatCount(summary.requests)} in range`}
+        meta={
+          summary && (
+            <Meta
+              first={`${formatCount(summary.requests)} in range`}
+              change={baseline?.requestsChange == null ? null : formatChange(baseline.requestsChange)}
+              was={formatCount(baseline?.requests ?? 0)}
+            />
+          )
+        }
       />
       <Metric
         label="Error rate"
         loading={loading}
         value={formatPercent(summary?.errorRate)}
         tone={errorRateTone(summary?.errorRate)}
-        meta={summary && `${formatCount(summary.errors)} errors`}
+        meta={
+          summary && (
+            <Meta
+              first={`${formatCount(summary.errors)} errors`}
+              change={baseline?.errorRateChange == null ? null : formatPoints(baseline.errorRateChange)}
+              was={formatPercent(baseline?.errorRate)}
+            />
+          )
+        }
       />
       <Metric label="P50" loading={loading} value={formatLatency(summary?.p50Ms)} meta="median" />
       <Metric
@@ -293,7 +336,13 @@ function ServiceMetrics({ summary }: { summary: ServiceSummary | undefined }) {
         loading={loading}
         value={formatLatency(summary?.p95Ms)}
         tone={latencyTone(summary?.p95Ms)}
-        meta={summary?.p95Change != null ? `${formatChange(summary.p95Change)} vs previous` : 'no previous period'}
+        meta={
+          <Meta
+            first={summary?.p95Change != null ? `${formatChange(summary.p95Change)} vs prev` : 'no previous period'}
+            change={baseline?.p95Change == null ? null : formatChange(baseline.p95Change)}
+            was={formatLatency(baseline?.p95Ms)}
+          />
+        }
       />
       <Metric label="P99" loading={loading} value={formatLatency(summary?.p99Ms)} meta="tail" />
     </MetricGrid>

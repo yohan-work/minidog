@@ -12,6 +12,19 @@
   color: var(--foreground-muted);
 }
 
+/* Ping URL section of a heartbeat monitor: an explanation and copyable snippets. */
+.heartbeat {
+  display: grid;
+  gap: var(--space-4);
+  max-width: calc(var(--space-16) * 12);
+}
+
+.explain {
+  margin: 0;
+  font-size: var(--text-secondary);
+  color: var(--foreground-secondary);
+}
+
 .reason {
   font-size: var(--text-secondary);
   color: var(--foreground-secondary);

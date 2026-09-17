@@ -43,6 +43,16 @@ const configSchema = z.object({
   /** Shown as connection info in Settings. */
   PUBLIC_API_URL: z.url().default('http://localhost:4000'),
   PUBLIC_COLLECTOR_URL: z.url().default('http://localhost:4318'),
+
+  // Optional SMTP for alert emails. Set SMTP_HOST and SMTP_FROM to enable; AUTH
+  // is optional (an open relay on the LAN). Port 465 uses implicit TLS; otherwise
+  // STARTTLS is used when the server offers it.
+  SMTP_HOST: z.string().min(1).optional(),
+  SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(587),
+  SMTP_SECURE: booleanString.default(false),
+  SMTP_USER: z.string().default(''),
+  SMTP_PASSWORD: z.string().default(''),
+  SMTP_FROM: z.string().min(1).optional(),
 });
 
 export type Config = z.infer<typeof configSchema>;

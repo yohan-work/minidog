@@ -2,9 +2,11 @@
 
 import {
   ALERT_MUTE_MINUTES,
+  heartbeatUrl,
   usesWindow,
   type AlertMonitor,
   type AlertMonitorResponse,
+  type ContextResponse,
   type HostResponse,
   type Series,
   type ServiceResponse,
@@ -19,13 +21,14 @@ import { Metric, MetricGrid } from '@/components/observability/Metric';
 import { EmptyState, ErrorState, StaleNotice } from '@/components/observability/States';
 import { ChartLegend, TimeSeriesChart, type ChartSeries } from '@/components/observability/TimeSeriesChart';
 import { Button, ButtonLink } from '@/components/ui/Button';
+import { CodeSnippet } from '@/components/ui/CodeSnippet';
 import { Field } from '@/components/ui/Field';
 import { Input } from '@/components/ui/Input';
 import { Notice } from '@/components/ui/Notice';
 import { Select } from '@/components/ui/Select';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { apiFetch, toApiClientError } from '@/lib/api-client';
-import { formatDateTime, formatRelative, formatTime } from '@/lib/format';
+import { formatCount, formatDateTime, formatRelative, formatTime } from '@/lib/format';
 import { useTimeRange, withRange } from '@/lib/time-range';
 import { useApi } from '@/lib/use-api';
 import { AlertEventTable } from './AlertEventTable';
@@ -46,6 +49,7 @@ import {
   WindowOptions,
 } from './alerting';
 import styles from './Monitors.module.scss';
+import { EmailTestButton } from './EmailTestButton';
 import { WebhookTestButton } from './WebhookTestButton';
 
 type Pending = 'evaluate' | 'toggle' | 'delete' | 'save' | 'mute';
@@ -222,7 +226,11 @@ export function AlertMonitorDetailView({ id }: { id: string }) {
               tone={tone}
               meta={
                 monitor &&
-                (usesWindow(monitor.type, monitor.metric) ? `last ${monitor.windowMinutes} min` : 'latest check')
+                (usesWindow(monitor.type, monitor.metric)
+                  ? `last ${monitor.windowMinutes} min`
+                  : monitor.type === 'heartbeat'
+                    ? 'since the last ping'
+                    : 'latest check')
               }
             />
             <Metric
@@ -252,6 +260,7 @@ export function AlertMonitorDetailView({ id }: { id: string }) {
           </MetricGrid>
 
           {monitor && usesWindow(monitor.type, monitor.metric) && <SignalSection monitor={monitor} range={range} />}
+          {monitor?.type === 'heartbeat' && <HeartbeatSection monitor={monitor} />}
 
           <Section title={<>History {data && <span className={styles.count}>{data.events.length}</span>}</>} flush>
             {!data ? (
@@ -301,17 +310,53 @@ function MonitorMeta({ monitor, range }: { monitor: AlertMonitor; range: TimeRan
   return (
     <>
       <span>{TYPE_LABELS[monitor.type]}</span>
-      <span className={styles.metaSeparator} aria-hidden>
-        ·
-      </span>
-      <Link href={targetHref(monitor, range)} className={`${styles.mono} ${styles.metaLink}`}>
-        {monitor.targetLabel}
-      </Link>
+      {monitor.type !== 'heartbeat' && (
+        <>
+          <span className={styles.metaSeparator} aria-hidden>
+            ·
+          </span>
+          <Link href={targetHref(monitor, range)} className={`${styles.mono} ${styles.metaLink}`}>
+            {monitor.targetLabel}
+          </Link>
+        </>
+      )}
       <span className={styles.metaSeparator} aria-hidden>
         ·
       </span>
       <span className={styles.mono}>{conditionText(monitor)}</span>
     </>
+  );
+}
+
+/** The URL the job pings, ready to paste into a crontab, and what has arrived so far. */
+function HeartbeatSection({ monitor }: { monitor: AlertMonitor }) {
+  const context = useApi<ContextResponse>('/context', 60_000);
+  const heartbeat = monitor.heartbeat;
+  const url = context.data ? heartbeatUrl(context.data.ingest.apiUrl, monitor.target) : null;
+  const received =
+    heartbeat?.pings && heartbeat.lastPingAt
+      ? `${formatCount(heartbeat.pings)} ${heartbeat.pings === 1 ? 'ping' : 'pings'} so far, the last ${formatRelative(Date.parse(heartbeat.lastPingAt))}`
+      : 'nothing has pinged it yet';
+  return (
+    <Section title="Ping URL">
+      <div className={styles.heartbeat}>
+        <p className={styles.explain}>
+          Have the job request this URL when it finishes — {received}. GET or POST, any body or none; no sign-in is
+          needed because the token in the URL is the credential, so keep it private.
+        </p>
+        {url ? (
+          <>
+            <CodeSnippet title="Ping URL" code={url} />
+            <CodeSnippet
+              title="crontab — ping only after the job succeeds"
+              code={`0 3 * * * /path/to/backup.sh && curl -fsS -m 10 --retry 3 ${url} > /dev/null`}
+            />
+          </>
+        ) : (
+          <Skeleton height="calc(var(--row-height) * 2)" />
+        )}
+      </div>
+    </Section>
   );
 }
 
@@ -430,6 +475,8 @@ function SignalSection({ monitor, range }: { monitor: AlertMonitor; range: TimeR
 }
 
 function SettingsSection({ monitor, onSaved }: { monitor: AlertMonitor; onSaved: () => void }) {
+  const context = useApi<ContextResponse>('/context', 60_000);
+  const emailReady = context.data?.alerts.email === true;
   const [values, setValues] = useState({
     warningThreshold: monitor.warningThreshold === null ? '' : String(monitor.warningThreshold),
     criticalThreshold: String(monitor.criticalThreshold),
@@ -437,6 +484,7 @@ function SettingsSection({ monitor, onSaved }: { monitor: AlertMonitor; onSaved:
     alertAfterMinutes: String(monitor.alertAfterMinutes),
     recoverAfterMinutes: String(monitor.recoverAfterMinutes),
     webhookUrl: monitor.webhookUrl,
+    email: monitor.email,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -464,6 +512,7 @@ function SettingsSection({ monitor, onSaved }: { monitor: AlertMonitor; onSaved:
           alertAfterMinutes: Number(values.alertAfterMinutes),
           recoverAfterMinutes: Number(values.recoverAfterMinutes),
           webhookUrl: values.webhookUrl.trim(),
+          email: values.email.trim(),
         }),
       });
       setSaved(true);
@@ -553,6 +602,29 @@ function SettingsSection({ monitor, onSaved }: { monitor: AlertMonitor; onSaved:
               invalid={Boolean(errors.webhookUrl)}
             />
             <WebhookTestButton url={values.webhookUrl} />
+          </Field>
+        </div>
+        <div className={styles.full}>
+          <Field
+            id="edit-email"
+            label="Email"
+            hint={
+              emailReady
+                ? `Optional. One address, or several separated by commas. Sent from ${context.data?.alerts.emailFrom}.`
+                : 'Optional. Needs SMTP_HOST and SMTP_FROM on the API to send.'
+            }
+            error={errors.email}
+          >
+            <Input
+              id="edit-email"
+              value={values.email}
+              onChange={update('email')}
+              type="text"
+              mono
+              autoComplete="email"
+              invalid={Boolean(errors.email)}
+            />
+            <EmailTestButton to={values.email} enabled={emailReady} />
           </Field>
         </div>
         <div className={styles.formActions}>

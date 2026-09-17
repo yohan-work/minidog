@@ -9,6 +9,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { AppContext } from '../app';
 import { publicMonitor } from '../repositories/alert-monitor-repository';
+import { isEmailAddress, parseEmailList, sendEmail, smtpConfigured } from '../services/email';
 import { sendWebhook, testWebhookPayload, webhookFormat } from '../services/webhook';
 import { idParamsSchema } from './schemas';
 
@@ -36,16 +37,27 @@ const webhookUrl = z
   .max(2048)
   .refine((value) => value === '' || isHttpUrl(value), 'Enter an http:// or https:// URL, or leave it empty.');
 
+const email = z
+  .string()
+  .trim()
+  .max(512)
+  .refine(
+    (value) => value === '' || parseEmailList(value).every(isEmailAddress),
+    'Enter one email address, or several separated by commas.',
+  );
+
 const createSchema = z
   .object({
     name: z.string().trim().max(100, 'Use at most 100 characters.').optional(),
     type: z.enum(ALERT_MONITOR_TYPES),
-    target: z.string().trim().min(1, 'Choose a target.').max(255),
+    // Required except for heartbeat monitors, which get their token on creation.
+    target: z.string().trim().max(255).optional(),
     metric: z.enum(ALERT_METRICS).optional(),
     warningThreshold: threshold.nullable().optional(),
     criticalThreshold: threshold.optional(),
     windowMinutes: windowMinutes.optional(),
     webhookUrl: webhookUrl.optional(),
+    email: email.optional(),
     alertAfterMinutes: delayMinutes.optional(),
     recoverAfterMinutes: delayMinutes.optional(),
   })
@@ -58,6 +70,7 @@ const updateSchema = z
     criticalThreshold: threshold,
     windowMinutes,
     webhookUrl,
+    email,
     alertAfterMinutes: delayMinutes,
     recoverAfterMinutes: delayMinutes,
     enabled: z.boolean(),
@@ -67,6 +80,17 @@ const updateSchema = z
 
 const webhookTestSchema = z
   .object({ url: webhookUrl.refine((value) => value !== '', 'Enter a webhook URL.') })
+  .strict();
+
+const emailTestSchema = z
+  .object({
+    to: z
+      .string()
+      .trim()
+      .min(1, 'Enter an email address.')
+      .max(512)
+      .refine((value) => parseEmailList(value).every(isEmailAddress), 'Enter a valid email address.'),
+  })
   .strict();
 
 const muteSchema = z.object({ minutes: oneOf(ALERT_MUTE_MINUTES, 'Unsupported mute duration.') }).strict();
@@ -119,6 +143,15 @@ export function registerAlertingRoutes(app: FastifyInstance, ctx: AppContext): v
   app.post('/api/alerting/webhook-test', async (request) => {
     const { url } = webhookTestSchema.parse(request.body ?? {});
     return { format: webhookFormat(url), status: await sendWebhook(url, testWebhookPayload()) };
+  });
+
+  // Sends a sample email through the configured SMTP, so the address can be checked first.
+  app.post('/api/alerting/email-test', async (request) => {
+    if (!smtpConfigured(ctx.smtp)) {
+      return { status: 'failed: SMTP is not configured (set SMTP_HOST and SMTP_FROM)' };
+    }
+    const { to } = emailTestSchema.parse(request.body ?? {});
+    return { status: await sendEmail(ctx.smtp, parseEmailList(to), testWebhookPayload()) };
   });
 
   app.post('/api/alerting/events/acknowledge', async (_request, reply) => {

@@ -8,10 +8,18 @@ import type { MonitorRepository } from '../repositories/monitor-repository';
 import type { SpanRepository } from '../repositories/span-repository';
 import type { SyntheticResultRepository } from '../repositories/synthetic-result-repository';
 import { alertMessage, deriveAlertState, isAlerting, isMuted } from '../services/alert-state';
+import { parseEmailList, sendEmail, smtpConfigured, type SmtpConfig } from '../services/email';
 import { sendWebhook, webhookPayload } from '../services/webhook';
 import { SLEEP_THRESHOLD_MS, type GapTracker } from './gap-tracker';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Minutes since the last ping, to a tenth; null before the first. Needs no ClickHouse. */
+export function minutesSincePing(monitor: Pick<ScopedAlertMonitor, 'heartbeat'>, nowMs: number): number | null {
+  const last = monitor.heartbeat?.lastPingAt;
+  if (!last) return null;
+  return Math.max(0, Math.round((nowMs - Date.parse(last)) / 6_000) / 10);
+}
 
 export interface AlertEvaluatorDeps {
   monitors: AlertMonitorRepository;
@@ -24,6 +32,8 @@ export interface AlertEvaluatorDeps {
   intervalMs: number;
   /** Right after the machine wakes, checks have not resumed yet; passes wait. */
   gaps?: Pick<GapTracker, 'noteSleep' | 'settling'>;
+  /** Null when SMTP_HOST / SMTP_FROM are unset; emails are then skipped. */
+  smtp?: SmtpConfig | null;
 }
 
 /**
@@ -146,13 +156,17 @@ export class AlertEvaluator {
    * is still current is sent once.
    */
   private notify(monitor: ScopedAlertMonitor, event: AlertEvent | null, now: number): void {
-    if (!monitor.webhookUrl) return;
+    const hasWebhook = Boolean(monitor.webhookUrl);
+    const hasEmail = Boolean(monitor.email) && smtpConfigured(this.deps.smtp ?? null);
+    if (!hasWebhook && !hasEmail) return;
     const muted = isMuted(monitor.mutedUntil, now);
 
     if (event) {
       if (!isAlerting(event.fromState) && !isAlerting(event.toState)) return;
-      if (muted) this.deps.monitors.setWebhookStatus(event.id, MUTED_WEBHOOK_STATUS);
-      else this.deliver(monitor, event);
+      if (muted) {
+        if (hasWebhook) this.deps.monitors.setWebhookStatus(event.id, MUTED_WEBHOOK_STATUS);
+        if (hasEmail) this.deps.monitors.setEmailStatus(event.id, MUTED_WEBHOOK_STATUS);
+      } else this.deliver(monitor, event);
       return;
     }
     if (muted) return;
@@ -162,7 +176,7 @@ export class AlertEvaluator {
     if (
       stored &&
       last &&
-      last.webhookStatus === MUTED_WEBHOOK_STATUS &&
+      (last.webhookStatus === MUTED_WEBHOOK_STATUS || last.emailStatus === MUTED_WEBHOOK_STATUS) &&
       last.toState === stored.state &&
       isAlerting(stored.state) &&
       this.deps.monitors.claimMutedEvent(last.id)
@@ -172,19 +186,31 @@ export class AlertEvaluator {
   }
 
   private deliver(monitor: ScopedAlertMonitor, event: AlertEvent, note?: string): void {
-    const delivery = sendWebhook(monitor.webhookUrl, webhookPayload(publicMonitor(monitor), event, note)).then(
-      (status) => {
+    const payload = webhookPayload(publicMonitor(monitor), event, note);
+    if (monitor.webhookUrl) {
+      const delivery = sendWebhook(monitor.webhookUrl, payload).then((status) => {
         this.deps.monitors.setWebhookStatus(event.id, status);
         if (status.startsWith('failed')) this.deps.log.warn({ monitorId: monitor.id, status }, 'Alert webhook failed');
-      },
-    );
-    this.deliveries.add(delivery);
-    void delivery.finally(() => this.deliveries.delete(delivery));
+      });
+      this.deliveries.add(delivery);
+      void delivery.finally(() => this.deliveries.delete(delivery));
+    }
+    const smtp = this.deps.smtp;
+    if (monitor.email && smtpConfigured(smtp)) {
+      const recipients = parseEmailList(monitor.email);
+      const delivery = sendEmail(smtp, recipients, payload).then((status) => {
+        this.deps.monitors.setEmailStatus(event.id, status);
+        if (status.startsWith('failed')) this.deps.log.warn({ monitorId: monitor.id, status }, 'Alert email failed');
+      });
+      this.deliveries.add(delivery);
+      void delivery.finally(() => this.deliveries.delete(delivery));
+    }
   }
 
   /** Value in the unit of the monitor type; null when there is nothing to measure. */
   private async measure(monitor: ScopedAlertMonitor): Promise<number | null> {
     if (monitor.type === 'synthetic_check') return this.measureSynthetic(monitor);
+    if (monitor.type === 'heartbeat') return minutesSincePing(monitor, Date.now());
 
     const scope = { projectId: monitor.projectId, environment: monitor.environment };
     const fromMs = Date.now() - monitor.windowMinutes * 60_000;
