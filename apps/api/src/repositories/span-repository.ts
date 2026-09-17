@@ -685,7 +685,7 @@ export class SpanRepository extends ClickHouseRepository {
     return rows.map((row) => ({ bin: Number(row.bin), requests: Number(row.requests), errors: Number(row.errors) }));
   }
 
-  async trace(scope: Scope, traceId: string): Promise<RawSpan[]> {
+  async trace(scope: Scope, traceId: string, bounds: { fromMs: number; toMs?: number }): Promise<RawSpan[]> {
     const rows = await this.query<{
       span_id: string;
       parent_span_id: string;
@@ -709,10 +709,13 @@ export class SpanRepository extends ClickHouseRepository {
               duration_ms, status_code, status_message, http_method, http_route, http_status, db_system,
               attributes, resource_attributes, events
        FROM spans
-       WHERE ${SCOPE_FILTER} AND trace_id = {traceId:String}
+       WHERE ${SCOPE_FILTER}
+         AND trace_id = {traceId:String}
+         AND ${since('fromMs')}
+         ${optional(bounds.toMs, before('toMs'))}
        ORDER BY timestamp
        LIMIT 5000`,
-      { ...scope, traceId },
+      { ...scope, traceId, ...bounds },
     );
     return rows.map((row) => ({
       spanId: row.span_id,

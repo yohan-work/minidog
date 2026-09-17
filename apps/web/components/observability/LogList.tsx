@@ -92,7 +92,10 @@ export function LogList({ logs, range, showService = true, showTrace = true }: L
                 <span className={styles.message}>{log.body}</span>
               </button>
               {showTrace && log.traceId && (
-                <Link href={traceHref(log.traceId, range, log.spanId || undefined)} className={styles.traceLink}>
+                <Link
+                  href={traceHref(log.traceId, range, log.spanId || undefined, log.timestamp)}
+                  className={styles.traceLink}
+                >
                   trace {log.traceId.slice(0, 7)}
                 </Link>
               )}
@@ -107,7 +110,9 @@ export function LogList({ logs, range, showService = true, showTrace = true }: L
                   {log.host && <Attribute name="host">{log.host}</Attribute>}
                   {log.traceId && (
                     <Attribute name="trace">
-                      <Link href={traceHref(log.traceId, range, log.spanId || undefined)}>{log.traceId}</Link>
+                      <Link href={traceHref(log.traceId, range, log.spanId || undefined, log.timestamp)}>
+                        {log.traceId}
+                      </Link>
                     </Attribute>
                   )}
                   {log.spanId && <Attribute name="span">{log.spanId}</Attribute>}

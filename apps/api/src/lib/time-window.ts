@@ -1,4 +1,25 @@
-import { TIME_RANGES, type SeriesPoint, type TimeRange } from '@minidog/types';
+import { RETENTION_MAX_DAYS, TIME_RANGES, type SeriesPoint, type TimeRange } from '@minidog/types';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Spans and logs of one trace are looked up this far either side of the hint. */
+export const TRACE_HINT_MARGIN_MS = DAY_MS;
+
+/** Without a hint, a trace is looked up across everything that can still be kept. */
+const TRACE_LOOKBACK_MS = RETENTION_MAX_DAYS * DAY_MS;
+
+/**
+ * Bounds for looking up one trace. A trace id says nothing about time, so on
+ * its own the lookup covers the whole retention: every daily partition, even
+ * with the bloom filter on trace_id. Every screen that links to a trace knows
+ * when it happened; with that hint (`at`, epoch ms) the lookup touches the
+ * days around it. A day either side covers traces that cross midnight and
+ * consumers that pick up a message long after the producer.
+ */
+export function traceBounds(at: number | undefined, nowMs: number = Date.now()): { fromMs: number; toMs?: number } {
+  if (at === undefined) return { fromMs: nowMs - TRACE_LOOKBACK_MS };
+  return { fromMs: at - TRACE_HINT_MARGIN_MS, toMs: at + TRACE_HINT_MARGIN_MS };
+}
 
 export interface TimeWindow {
   range: TimeRange;

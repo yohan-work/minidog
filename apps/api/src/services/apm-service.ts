@@ -21,7 +21,7 @@ import {
   type TraceResponse,
 } from '@minidog/types';
 import { NotFoundError } from '../lib/errors';
-import { queryBounds, timeWindow, type TimeWindow } from '../lib/time-window';
+import { queryBounds, timeWindow, traceBounds, type TimeWindow } from '../lib/time-window';
 import type { LogRepository } from '../repositories/log-repository';
 import type { Scope } from '../repositories/project-repository';
 import type {
@@ -237,10 +237,12 @@ export class ApmService {
     return { range, groups, truncated: groups.length >= limit };
   }
 
-  async trace(traceId: string): Promise<TraceResponse> {
+  /** `at` (epoch ms): when the trace was seen; narrows the lookup to the days around it. */
+  async trace(traceId: string, at?: number): Promise<TraceResponse> {
+    const bounds = traceBounds(at);
     const [spans, logCount] = await Promise.all([
-      this.spans.trace(this.scope, traceId),
-      this.logs.countByTrace(this.scope, traceId),
+      this.spans.trace(this.scope, traceId, bounds),
+      this.logs.countByTrace(this.scope, traceId, bounds),
     ]);
     if (spans.length === 0) throw new NotFoundError('Trace');
     return { traceId, spans, logCount };

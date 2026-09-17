@@ -45,10 +45,12 @@ export class LogRepository extends ClickHouseRepository {
     await this.insertRows('logs', rows);
   }
 
-  async countByTrace(scope: Scope, traceId: string): Promise<number> {
+  async countByTrace(scope: Scope, traceId: string, bounds: { fromMs: number; toMs?: number }): Promise<number> {
     const [row] = await this.query<{ count: Num }>(
-      `SELECT count() AS count FROM logs WHERE ${SCOPE_FILTER} AND trace_id = {traceId:String}`,
-      { ...scope, traceId },
+      `SELECT count() AS count FROM logs
+       WHERE ${SCOPE_FILTER}
+         ${filterSql({ traceId, ...bounds })}`,
+      filterParams(scope, { traceId, ...bounds }),
     );
     return Number(row?.count ?? 0);
   }

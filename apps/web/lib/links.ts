@@ -22,11 +22,19 @@ export const tracesHref = (
   range: TimeRange,
 ) => withRange(`/traces${query(filters)}`, range);
 
-export const traceHref = (traceId: string, range: TimeRange, spanId?: string) =>
-  withRange(`/traces/${traceId}${query({ span: spanId })}`, range);
+/**
+ * `at`: when the trace was seen (epoch ms). A trace id says nothing about
+ * time, so with it the API looks in the days around that moment instead of
+ * across the whole retention. Pass it wherever the row has a timestamp.
+ */
+export const traceHref = (traceId: string, range: TimeRange, spanId?: string, at?: number) =>
+  withRange(`/traces/${traceId}${query({ span: spanId, at: at === undefined ? undefined : Math.round(at) })}`, range);
 
-export const logsHref = (filters: { service?: string; traceId?: string; level?: string }, range: TimeRange) =>
-  withRange(`/logs${query(filters)}`, range);
+export const logsHref = (
+  filters: { service?: string; traceId?: string; level?: string; at?: number },
+  range: TimeRange,
+) =>
+  withRange(`/logs${query({ ...filters, at: filters.at === undefined ? undefined : Math.round(filters.at) })}`, range);
 
 export const metricsHref = (filters: { metric?: string; service?: string; host?: string }, range: TimeRange) =>
   withRange(`/metrics${query(filters)}`, range);

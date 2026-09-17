@@ -39,6 +39,8 @@ export function LogsView() {
   const range = useTimeRange();
   const { get, set } = useQueryParams();
   const filters = { service: get('service'), level: get('level'), q: get('q'), traceId: get('traceId') };
+  // When the trace was seen, from the screen that linked here; only meaningful with a trace id.
+  const at = filters.traceId && /^\d+$/.test(get('at') ?? '') ? get('at') : undefined;
   const window = parseWindow(get('from'), get('to'));
   const limit = Math.min(Number(get('limit')) || PAGE, MAX);
   const hasFilters = Object.values(filters).some(Boolean) || window !== null;
@@ -47,7 +49,7 @@ export function LogsView() {
   // Keeps loading while live tail runs: it feeds the service filter, and the
   // records are ready when live tail stops.
   const { data, error, isLoading, updatedAt, refetch } = useApi<LogListResponse>(
-    `/logs${toQuery({ range, limit, ...filters, ...(window ? windowParams(window) : {}) })}`,
+    `/logs${toQuery({ range, limit, ...filters, at, ...(window ? windowParams(window) : {}) })}`,
   );
 
   const serviceOptions = [
@@ -58,11 +60,13 @@ export function LogsView() {
       : []),
   ];
 
-  const clear = () => set({ service: null, level: null, q: null, traceId: null, limit: null, from: null, to: null });
+  const clear = () =>
+    set({ service: null, level: null, q: null, traceId: null, at: null, limit: null, from: null, to: null });
   // Dragging on the volume chart narrows the records to that window.
   const selectWindow = (fromMs: number, toMs: number) => set({ ...windowParams({ fromMs, toMs }), limit: null });
   // Live tail follows new records, so a fixed window, a trace or paging do not apply.
-  const toggleLive = () => set(live ? { live: null } : { live: '1', from: null, to: null, traceId: null, limit: null });
+  const toggleLive = () =>
+    set(live ? { live: null } : { live: '1', from: null, to: null, traceId: null, at: null, limit: null });
 
   return (
     <>
@@ -96,7 +100,9 @@ export function LogsView() {
         {window && !filters.traceId && (
           <FilterChip label="Window" value={formatWindow(window)} onClear={() => set({ from: null, to: null })} />
         )}
-        {filters.traceId && <FilterChip label="Trace" value={filters.traceId} onClear={() => set({ traceId: null })} />}
+        {filters.traceId && (
+          <FilterChip label="Trace" value={filters.traceId} onClear={() => set({ traceId: null, at: null })} />
+        )}
         <SearchField label="Search logs" value={filters.q} placeholder="Search logs…" onChange={(q) => set({ q })} />
       </FilterBar>
       {live ? (
