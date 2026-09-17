@@ -181,6 +181,19 @@ docker compose start api
 
 From source, with minidog stopped: `pnpm db:restore ./minidog-backup.sqlite`.
 
+### Telemetry too
+
+Usually not worth it: spans and logs are kept for 14 days and metrics for 30 by default, so a backup is out of date before you need it, and the senders fill ClickHouse again on their own. If you have raised the retention and want to keep what is there, copy the volume with ClickHouse stopped. It writes to its data directory continuously; a copy taken while it runs can hold half-written parts that it refuses to load.
+
+```bash
+docker compose stop clickhouse api
+docker run --rm -v minidog_clickhouse-data:/data -v "$PWD:/backup" alpine \
+  tar czf /backup/clickhouse-$(date +%F).tgz -C /data .
+docker compose start clickhouse api
+```
+
+Stopping the API with it is deliberate: exporters get a connection error instead of a 503 and retry, and the collector buffers what arrives in the meantime, so a minute's stop loses nothing that was sent. To restore, stop both again, empty the volume (`docker run --rm -v minidog_clickhouse-data:/data alpine sh -c 'rm -rf /data/*'`) and extract the archive into it the same way, then start them. The archive must come from the same ClickHouse major version. An archive from an older minidog is fine: the API adds the columns it needs when it starts.
+
 `docker compose down` keeps both volumes; `docker compose down -v` deletes them.
 
 ## A tour with the demo shop
