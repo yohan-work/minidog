@@ -325,16 +325,20 @@ export class SpanRepository extends ClickHouseRepository {
   }
 
   /** Requests, errors and P95 of one service since `fromMs` — used by monitors. */
+  /** Requests, errors and P95 of a service from `fromMs`, up to now or to `untilMs` (exclusive). */
   async windowStats(
     scope: Scope,
     service: string,
     fromMs: number,
+    untilMs?: number,
   ): Promise<{ requests: number; errors: number; p95Ms: number | null }> {
     const [row] = await this.query<{ requests: Num; errors: Num; p95: NullableNum }>(
       `SELECT count() AS requests, sum(is_error) AS errors, quantile(0.95)(duration_ms) AS p95
        FROM spans
-       WHERE ${SCOPE_FILTER} AND is_entry = 1 AND service = {service:String} AND ${since('fromMs')}`,
-      { ...scope, service, fromMs },
+       WHERE ${SCOPE_FILTER} AND is_entry = 1 AND service = {service:String}
+         AND ${since('fromMs')}
+         ${optional(untilMs, before('toMs'))}`,
+      { ...scope, service, fromMs, toMs: untilMs },
     );
     return {
       requests: Number(row?.requests ?? 0),

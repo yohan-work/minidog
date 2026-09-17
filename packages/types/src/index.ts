@@ -476,10 +476,31 @@ export interface ServiceListResponse {
   deployments: Deployment[];
 }
 
+/** How far back the baseline looks: the same window one week earlier. */
+export const BASELINE_OFFSET_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * The same window one week earlier, for "P95 ↑ 312% vs last week". A week
+ * back compares Monday morning with Monday morning, which the previous
+ * period of the same length (`p95Change`) does not; each change is the
+ * ratio minus one, null when the baseline had nothing to compare with.
+ */
+export interface ServiceBaseline {
+  requests: number;
+  errorRate: number | null;
+  p95Ms: number | null;
+  requestsChange: number | null;
+  /** Difference in percentage points, not a ratio: 0.5% → 2% reads as +1.5 pp. */
+  errorRateChange: number | null;
+  p95Change: number | null;
+}
+
 export interface ServiceResponse {
   range: TimeRange;
   service: ServiceSummary;
   series: RequestSeries;
+  /** Null when the service had no requests in the same window last week. */
+  baseline: ServiceBaseline | null;
   endpoints: EndpointSummary[];
   /** Deployments of this service in the range, oldest first. */
   deployments: Deployment[];

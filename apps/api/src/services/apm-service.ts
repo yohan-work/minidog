@@ -1,4 +1,5 @@
 import {
+  BASELINE_OFFSET_MS,
   RETENTION_MAX_DAYS,
   SERVICE_CURRENT_WINDOW_SECONDS,
   TIME_RANGES,
@@ -31,6 +32,7 @@ import type {
   SpanRepository,
   TraceFilters,
 } from '../repositories/span-repository';
+import { compareToBaseline } from './baseline';
 import { deriveDeployments, summarizeVersions } from './deployments';
 import { fillHistogram } from './histogram';
 import { deriveServiceHealth } from './service-health';
@@ -96,7 +98,7 @@ export class ApmService {
   async detail(service: string, range: TimeRange): Promise<ServiceResponse> {
     const now = Date.now();
     const window = timeWindow(range, now);
-    const [[stats], points, endpoints, versions] = await Promise.all([
+    const [[stats], points, endpoints, versions, lastWeek] = await Promise.all([
       this.spans.serviceStats(
         this.scope,
         { ...this.statsWindow(window, now), lookbackFromMs: now - LOOKBACK_MS },
@@ -105,6 +107,8 @@ export class ApmService {
       this.spans.requestSeries(this.scope, window.fromMs, window.stepSeconds, service),
       this.spans.endpoints(this.scope, window.fromMs, service),
       this.spans.versionStats(this.scope, { fromMs: window.fromMs, lookbackFromMs: now - LOOKBACK_MS, service }),
+      // The same window, one week earlier.
+      this.spans.windowStats(this.scope, service, window.fromMs - BASELINE_OFFSET_MS, now - BASELINE_OFFSET_MS),
     ]);
     if (!stats) throw new NotFoundError('Service');
 
@@ -112,6 +116,7 @@ export class ApmService {
       range,
       service: toServiceSummary(stats, range),
       series: fillRequestSeries(window, points),
+      baseline: compareToBaseline({ requests: stats.requests, errors: stats.errors, p95Ms: stats.p95Ms }, lastWeek),
       endpoints: endpoints.map(toEndpointSummary),
       deployments: deriveDeployments(versions, window.fromMs),
       versions: summarizeVersions(versions, window.fromMs),
