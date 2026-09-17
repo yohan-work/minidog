@@ -3,6 +3,7 @@
 import { DEFAULT_TIME_RANGE, TIME_RANGE_KEYS, TIME_RANGES, type ContextResponse, type TimeRange } from '@minidog/types';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { ChangeEvent, ReactNode } from 'react';
+import { formatWindow, parseWindow } from '@/components/observability/TimeSelection';
 import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Select';
 import { apiFetch } from '@/lib/api-client';
@@ -13,6 +14,9 @@ import { AlertsIndicator } from './AlertsIndicator';
 import { CommandMenuTrigger } from './CommandMenu';
 import { ProjectSwitcher } from './ProjectSwitcher';
 import styles from './TopBar.module.scss';
+
+/** Select value while an absolute window is in force; not a preset, so it cannot be chosen. */
+const WINDOW_OPTION = 'window';
 
 export function TopBarFrame({ context, controls }: { context: ReactNode; controls?: ReactNode }) {
   return (
@@ -34,6 +38,9 @@ export function TopBar() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { data } = useApi<ContextResponse>('/context', 60_000);
+  // A window dragged on a chart. The screen shows that, not the preset, so the
+  // control reads the window until a preset is chosen, which clears it.
+  const selection = parseWindow(searchParams.get('from') ?? '', searchParams.get('to') ?? '');
 
   const onRangeChange = (event: ChangeEvent<HTMLSelectElement>) => {
     const next = event.target.value as TimeRange;
@@ -73,7 +80,12 @@ export function TopBar() {
           )}
           <label className={styles.range}>
             <span className={styles.visuallyHidden}>Time range</span>
-            <Select controlSize="sm" value={range} onChange={onRangeChange}>
+            <Select controlSize="sm" value={selection ? WINDOW_OPTION : range} onChange={onRangeChange}>
+              {selection && (
+                <option value={WINDOW_OPTION} disabled>
+                  {formatWindow(selection)}
+                </option>
+              )}
               {TIME_RANGE_KEYS.map((key) => (
                 <option key={key} value={key}>
                   {TIME_RANGES[key].label}
