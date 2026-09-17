@@ -200,6 +200,12 @@ export interface ContextResponse {
   };
   /** False when AUTH_DISABLED is set. */
   auth: { enabled: boolean };
+  /** Alert delivery: email works only when SMTP_HOST and SMTP_FROM are set. */
+  alerts: {
+    email: boolean;
+    /** The From address SMTP is configured with; empty when email is off. */
+    emailFrom: string;
+  };
 }
 
 /** `GET /api/auth/status`: whether the dashboard needs a first password or a sign-in. */
@@ -759,6 +765,12 @@ export interface WebhookTestResponse {
   status: string;
 }
 
+/** `POST /api/alerting/email-test`. */
+export interface EmailTestResponse {
+  /** e.g. `sent 250` or `failed: …`. */
+  status: string;
+}
+
 /** A short report sent to a webhook once a day (and weekly, if chosen). */
 export interface SummarySettings {
   enabled: boolean;
@@ -873,6 +885,8 @@ export interface AlertMonitor {
   windowMinutes: number;
   /** Optional; state changes are POSTed as JSON. */
   webhookUrl: string;
+  /** Optional; state changes are emailed here (one address, or several separated by commas). Needs SMTP. */
+  email: string;
   /** Minutes a worse state must last before the monitor enters it (and notifies). */
   alertAfterMinutes: number;
   /** Minutes a better state must last before recovery is reported. */
@@ -906,6 +920,8 @@ export interface AlertEvent {
   acknowledged: boolean;
   /** '' when no webhook is configured, otherwise `sent 200`, `failed …` or `muted` (held until the mute ends). */
   webhookStatus: string;
+  /** '' when no email is configured, otherwise `sent 250`, `failed …` or `muted`. */
+  emailStatus: string;
 }
 
 export interface CreateAlertMonitorInput {
@@ -918,6 +934,7 @@ export interface CreateAlertMonitorInput {
   criticalThreshold?: number;
   windowMinutes?: number;
   webhookUrl?: string;
+  email?: string;
   alertAfterMinutes?: number;
   recoverAfterMinutes?: number;
 }
@@ -930,6 +947,7 @@ export type UpdateAlertMonitorInput = Partial<
     | 'criticalThreshold'
     | 'windowMinutes'
     | 'webhookUrl'
+    | 'email'
     | 'enabled'
     | 'alertAfterMinutes'
     | 'recoverAfterMinutes'

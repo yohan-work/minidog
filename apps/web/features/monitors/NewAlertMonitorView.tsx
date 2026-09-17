@@ -11,6 +11,7 @@ import {
   type AlertMetric,
   type AlertMonitor,
   type AlertMonitorType,
+  type ContextResponse,
   type HostListResponse,
   type MonitorListResponse,
   type ServiceListResponse,
@@ -39,6 +40,7 @@ import {
   WindowOptions,
 } from './alerting';
 import styles from './Monitors.module.scss';
+import { EmailTestButton } from './EmailTestButton';
 import { WebhookTestButton } from './WebhookTestButton';
 
 interface FormValues {
@@ -51,6 +53,7 @@ interface FormValues {
   alertAfterMinutes: string;
   recoverAfterMinutes: string;
   webhookUrl: string;
+  email: string;
   name: string;
 }
 
@@ -94,6 +97,7 @@ export function NewAlertMonitorView() {
       ...defaultsFor(type, metric),
       recoverAfterMinutes: '0',
       webhookUrl: '',
+      email: '',
       name: '',
     };
   });
@@ -101,6 +105,8 @@ export function NewAlertMonitorView() {
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const backHref = withRange('/monitors', range);
+  const context = useApi<ContextResponse>('/context', 60_000);
+  const emailReady = context.data?.alerts.email === true;
 
   const isHost = values.type === 'host_resource';
   const isSynthetic = values.type === 'synthetic_check';
@@ -167,6 +173,9 @@ export function NewAlertMonitorView() {
     recoverAfterMinutes: 'Report recovery only after it holds this long.',
     webhookUrl:
       'Optional. Slack, Discord, Telegram and ntfy.sh URLs get their own format; any other URL receives JSON.',
+    email: emailReady
+      ? `Optional. One address, or several separated by commas. Sent from ${context.data?.alerts.emailFrom}.`
+      : 'Optional. Needs SMTP_HOST and SMTP_FROM on the API to send.',
     name: isHeartbeat ? 'What the job is, e.g. Nightly backup.' : 'Defaults to the signal and target.',
   };
 
@@ -197,6 +206,7 @@ export function NewAlertMonitorView() {
           alertAfterMinutes: Number(values.alertAfterMinutes),
           recoverAfterMinutes: Number(values.recoverAfterMinutes),
           webhookUrl: values.webhookUrl.trim(),
+          email: values.email.trim(),
           ...(values.name.trim() ? { name: values.name.trim() } : {}),
         }),
       });
@@ -351,6 +361,12 @@ export function NewAlertMonitorView() {
               <Field id="webhookUrl" label="Webhook URL" hint={hints.webhookUrl} error={errors.webhookUrl}>
                 <Input {...control('webhookUrl')} type="url" mono placeholder="https://ntfy.sh/your-topic" />
                 <WebhookTestButton url={values.webhookUrl} />
+              </Field>
+            </div>
+            <div className={styles.full}>
+              <Field id="email" label="Email" hint={hints.email} error={errors.email}>
+                <Input {...control('email')} type="text" mono placeholder="you@example.com" autoComplete="email" />
+                <EmailTestButton to={values.email} enabled={emailReady} />
               </Field>
             </div>
             <div className={styles.full}>

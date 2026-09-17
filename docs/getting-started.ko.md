@@ -90,6 +90,8 @@ Docker Desktop에서는 맥이 아니라 Docker VM의 지표가 보인다. 실�
 
 그 밖의 주소에는 JSON(`text`, `monitor`, `state`, `message` …)을 POST 한다.
 
+**이메일.** API에 `SMTP_HOST`와 `SMTP_FROM`을 설정하면(대개 `SMTP_USER` / `SMTP_PASSWORD`도) 모니터마다 웹훅 옆에 **Email** 주소를 넣을 수 있다(쉼표로 여러 개). Warning/Critical·지연·음소거는 웹훅과 같고, **Send test**로 알림이 오기 전에 주소를 확인할 수 있다. History에 웹훅 상태 옆에 메일 전송 결과도 보인다. 포트 587은 STARTTLS, 465는 `SMTP_SECURE=true`로 암묵적 TLS.
+
 **하루 요약**: **Settings → Daily summary**에서 같은 종류의 주소와 받을 시각을 정하면, 매일 모니터별 가용성·응답 시간·인증서 남은 날, 알림 상태 변화, 측정 못 한 시간을 한 번 보낸다. 그 시각에 컴퓨터가 꺼져 있었으면 minidog이 다시 켜질 때 보낸다. 월요일에는 7일 요약으로 받을 수도 있다.
 
 ### 멈춘 cron 작업 알아채기
@@ -121,6 +123,7 @@ API는 환경변수를 읽는다. 소스로 실행할 때는 `apps/api/.env`(`.e
 | `HEARTBEAT_URL` | — | minidog이 켜져 있는 동안 이 주소로 신호를 보냄. 멈추면 상대 서비스가 알아챈다(아래 참고) |
 | `HEARTBEAT_INTERVAL_SECONDS` | `300` | 신호를 보내는 주기 |
 | `PUBLIC_API_URL` / `PUBLIC_COLLECTOR_URL` | `http://localhost:4000` / `:4318` | Settings에 보이는 연결 정보 |
+| `SMTP_HOST` / `SMTP_FROM` | — | 알림 메일 사용 (아래 참고). `SMTP_PORT`(587), `SMTP_SECURE`(false), `SMTP_USER`, `SMTP_PASSWORD`도 있음 |
 
 대시보드는 `/api/*`를 `API_URL`(기본 `http://127.0.0.1:4000`)로 전달하며, 요청이 올 때마다 읽는다.
 

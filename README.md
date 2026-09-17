@@ -27,7 +27,7 @@ minidog is one install that answers both questions:
 - **One file to install.** `docker compose up -d`, set a password, done. No agent per host, no account.
 - **OpenTelemetry in, no vendor SDK.** Anything that speaks OTLP works: Node, Python, Go, Java or a Collector you already run.
 - **Honest about gaps.** Time when minidog was off, or the machine asleep, is recorded and drawn as *not measured* on a check's availability rather than counted as downtime — and checks and alerts hold off for a moment after waking, so a box that sleeps doesn't produce a wall of false alerts.
-- **Alerts on your phone for free.** Slack, Discord, Telegram or an [ntfy](https://ntfy.sh) topic, plus an optional daily summary.
+- **Alerts on your phone for free.** Slack, Discord, Telegram or an [ntfy](https://ntfy.sh) topic, email over SMTP, plus an optional daily summary.
 
 ## Quick start
 

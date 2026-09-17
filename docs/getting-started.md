@@ -90,6 +90,8 @@ Put one of these in a monitor's **Webhook URL** and press **Send test**. minidog
 
 Any other URL receives a JSON POST with `text`, `monitor`, `state`, `message` and more.
 
+**Email.** Set `SMTP_HOST` and `SMTP_FROM` on the API (and usually `SMTP_USER` / `SMTP_PASSWORD`). Port 587 uses STARTTLS; set `SMTP_SECURE=true` for implicit TLS on 465. Each monitor can then take an **Email** address (or several, comma-separated) next to its webhook — same Warning/Critical, delays and mutes — and **Send test** checks the address before anything alerts. Delivery status shows next to the webhook status in History.
+
 **Daily summary.** In **Settings → Daily summary**, pick one of these URLs and a time of day. Once a day minidog sends uptime, response time and certificate days left for each monitor, alert changes, and time not measured. If the computer was off at that time, it sends when minidog starts again. On Mondays it can send a 7-day summary instead.
 
 ### Cron jobs that stop running
@@ -121,6 +123,7 @@ The API reads environment variables, or `apps/api/.env` when run from source (co
 | `HEARTBEAT_URL` | — | Pinged while minidog runs, so something else notices when it stops (see below) |
 | `HEARTBEAT_INTERVAL_SECONDS` | `300` | How often that ping is sent |
 | `PUBLIC_API_URL` / `PUBLIC_COLLECTOR_URL` | `http://localhost:4000` / `:4318` | Connection details shown in Settings |
+| `SMTP_HOST` / `SMTP_FROM` | — | Enable alert emails (see below). Also `SMTP_PORT` (587), `SMTP_SECURE` (false), `SMTP_USER`, `SMTP_PASSWORD` |
 
 The dashboard forwards `/api/*` to `API_URL` (default `http://127.0.0.1:4000`), read when each request arrives.
 

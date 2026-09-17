@@ -4,13 +4,20 @@ import { EMPTY, formatDateTime } from '@/lib/format';
 import { AlertStateIndicator, formatAlertValue, monitorHref, type AlertSignal } from './alerting';
 import styles from './Monitors.module.scss';
 
+function deliveryStatus(event: AlertEvent): string {
+  const parts: string[] = [];
+  if (event.webhookStatus) parts.push(`webhook ${event.webhookStatus}`);
+  if (event.emailStatus) parts.push(`email ${event.emailStatus}`);
+  return parts.join(' · ');
+}
+
 const COLUMNS = [
   { label: 'Time' },
   { label: 'Monitor' },
   { label: 'Change' },
   { label: 'Value', align: 'end', hideBelow: 'tablet' },
   { label: 'Message', hideBelow: 'desktop' },
-  { label: 'Webhook', hideBelow: 'desktop' },
+  { label: 'Delivery', hideBelow: 'desktop' },
 ] as const satisfies readonly ColumnSpec[];
 
 const COLUMNS_FOR_MONITOR = COLUMNS.filter((column) => column.label !== 'Monitor');
@@ -65,9 +72,13 @@ export function AlertEventTable({ events, range, types, showMonitor = true }: Al
                 mono
                 muted
                 hideBelow="desktop"
-                className={event.webhookStatus.startsWith('failed') ? styles.error : undefined}
+                className={
+                  event.webhookStatus.startsWith('failed') || event.emailStatus.startsWith('failed')
+                    ? styles.error
+                    : undefined
+                }
               >
-                {event.webhookStatus || EMPTY}
+                {deliveryStatus(event) || EMPTY}
               </Td>
             </Tr>
           );

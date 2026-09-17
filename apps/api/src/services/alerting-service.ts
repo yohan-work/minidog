@@ -99,6 +99,7 @@ export class AlertingService {
       criticalThreshold: thresholds.critical,
       windowMinutes: input.windowMinutes ?? defaults.windowMinutes,
       webhookUrl: input.webhookUrl ?? '',
+      email: input.email ?? '',
       alertAfterMinutes: input.alertAfterMinutes ?? defaults.alertAfterMinutes,
       recoverAfterMinutes: input.recoverAfterMinutes ?? 0,
     });

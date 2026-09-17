@@ -147,6 +147,10 @@ const MIGRATIONS: readonly string[] = [
 
   CREATE INDEX alert_monitors_target ON alert_monitors (type, target);
   `,
+  /* 10 — alert emails alongside webhooks */ `
+  ALTER TABLE alert_monitors ADD COLUMN email TEXT NOT NULL DEFAULT '';
+  ALTER TABLE alert_events ADD COLUMN email_status TEXT NOT NULL DEFAULT '';
+  `,
 ];
 
 /** The schema this build knows: `user_version` equals it once every migration has run. */

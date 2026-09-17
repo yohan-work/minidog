@@ -27,7 +27,7 @@ minidog은 한 번 설치로 두 질문에 답합니다.
 - **파일 하나로 설치.** `docker compose up -d` 하고 비밀번호만 정하면 됩니다. 호스트마다 에이전트를 깔 필요도, 가입할 필요도 없습니다.
 - **OpenTelemetry로 받음, 전용 SDK 없음.** Node, Python, Go, Java, 이미 쓰는 Collector 등 OTLP를 보내는 것은 모두 됩니다.
 - **못 본 시간을 정직하게 표시.** minidog이 꺼져 있었거나 장비가 잠자기 중이던 시간은 체크의 가용성 막대에 *측정 못 함*으로 남고 장애로 세지 않습니다. 깨어난 직후에는 체크와 알림이 잠시 쉬어서 가짜 알림이 쏟아지지 않습니다.
-- **휴대폰 알림 무료.** Slack, Discord, Telegram, [ntfy](https://ntfy.sh) 토픽으로 보내고, 하루 요약도 받을 수 있습니다.
+- **휴대폰 알림 무료.** Slack, Discord, Telegram, [ntfy](https://ntfy.sh) 토픽, SMTP 이메일로 보내고, 하루 요약도 받을 수 있습니다.
 
 ## 빠른 시작
 

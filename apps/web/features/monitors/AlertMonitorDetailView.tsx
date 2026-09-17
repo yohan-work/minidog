@@ -49,6 +49,7 @@ import {
   WindowOptions,
 } from './alerting';
 import styles from './Monitors.module.scss';
+import { EmailTestButton } from './EmailTestButton';
 import { WebhookTestButton } from './WebhookTestButton';
 
 type Pending = 'evaluate' | 'toggle' | 'delete' | 'save' | 'mute';
@@ -474,6 +475,8 @@ function SignalSection({ monitor, range }: { monitor: AlertMonitor; range: TimeR
 }
 
 function SettingsSection({ monitor, onSaved }: { monitor: AlertMonitor; onSaved: () => void }) {
+  const context = useApi<ContextResponse>('/context', 60_000);
+  const emailReady = context.data?.alerts.email === true;
   const [values, setValues] = useState({
     warningThreshold: monitor.warningThreshold === null ? '' : String(monitor.warningThreshold),
     criticalThreshold: String(monitor.criticalThreshold),
@@ -481,6 +484,7 @@ function SettingsSection({ monitor, onSaved }: { monitor: AlertMonitor; onSaved:
     alertAfterMinutes: String(monitor.alertAfterMinutes),
     recoverAfterMinutes: String(monitor.recoverAfterMinutes),
     webhookUrl: monitor.webhookUrl,
+    email: monitor.email,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -508,6 +512,7 @@ function SettingsSection({ monitor, onSaved }: { monitor: AlertMonitor; onSaved:
           alertAfterMinutes: Number(values.alertAfterMinutes),
           recoverAfterMinutes: Number(values.recoverAfterMinutes),
           webhookUrl: values.webhookUrl.trim(),
+          email: values.email.trim(),
         }),
       });
       setSaved(true);
@@ -597,6 +602,29 @@ function SettingsSection({ monitor, onSaved }: { monitor: AlertMonitor; onSaved:
               invalid={Boolean(errors.webhookUrl)}
             />
             <WebhookTestButton url={values.webhookUrl} />
+          </Field>
+        </div>
+        <div className={styles.full}>
+          <Field
+            id="edit-email"
+            label="Email"
+            hint={
+              emailReady
+                ? `Optional. One address, or several separated by commas. Sent from ${context.data?.alerts.emailFrom}.`
+                : 'Optional. Needs SMTP_HOST and SMTP_FROM on the API to send.'
+            }
+            error={errors.email}
+          >
+            <Input
+              id="edit-email"
+              value={values.email}
+              onChange={update('email')}
+              type="text"
+              mono
+              autoComplete="email"
+              invalid={Boolean(errors.email)}
+            />
+            <EmailTestButton to={values.email} enabled={emailReady} />
           </Field>
         </div>
         <div className={styles.formActions}>

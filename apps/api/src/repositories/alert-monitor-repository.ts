@@ -17,6 +17,7 @@ interface MonitorRow {
   critical_threshold: number;
   window_minutes: number;
   webhook_url: string;
+  email: string;
   alert_after_minutes: number;
   recover_after_minutes: number;
   muted_until: string | null;
@@ -45,6 +46,7 @@ interface EventRow {
   created_at: string;
   acknowledged: number;
   webhook_status: string;
+  email_status: string;
 }
 
 /** Monitor with the scope it evaluates in. */
@@ -62,6 +64,7 @@ export interface NewAlertMonitor {
   criticalThreshold: number;
   windowMinutes: number;
   webhookUrl: string;
+  email?: string;
   alertAfterMinutes?: number;
   recoverAfterMinutes?: number;
 }
@@ -74,6 +77,7 @@ export type AlertMonitorPatch = Partial<
     | 'criticalThreshold'
     | 'windowMinutes'
     | 'webhookUrl'
+    | 'email'
     | 'alertAfterMinutes'
     | 'recoverAfterMinutes'
   > & { enabled: boolean; mutedUntil: string | null }
@@ -85,6 +89,7 @@ const COLUMNS: Record<keyof AlertMonitorPatch, string> = {
   criticalThreshold: 'critical_threshold',
   windowMinutes: 'window_minutes',
   webhookUrl: 'webhook_url',
+  email: 'email',
   alertAfterMinutes: 'alert_after_minutes',
   recoverAfterMinutes: 'recover_after_minutes',
   mutedUntil: 'muted_until',
@@ -105,6 +110,7 @@ function toMonitor(row: MonitorRow): ScopedAlertMonitor {
     criticalThreshold: row.critical_threshold,
     windowMinutes: row.window_minutes,
     webhookUrl: row.webhook_url,
+    email: row.email,
     alertAfterMinutes: row.alert_after_minutes,
     recoverAfterMinutes: row.recover_after_minutes,
     mutedUntil: row.muted_until,
@@ -134,6 +140,7 @@ function toEvent(row: EventRow): AlertEvent {
     createdAt: row.created_at,
     acknowledged: row.acknowledged === 1,
     webhookStatus: row.webhook_status,
+    emailStatus: row.email_status,
   };
 }
 
@@ -154,7 +161,7 @@ const MONITOR_SELECT = `
 
 const EVENT_SELECT = `
   SELECT e.id, e.monitor_id, m.name AS monitor_name, e.from_state, e.to_state, e.value, e.message,
-         e.created_at, e.acknowledged, e.webhook_status
+         e.created_at, e.acknowledged, e.webhook_status, e.email_status
     FROM alert_events e
     JOIN alert_monitors m ON m.id = e.monitor_id`;
 
@@ -198,9 +205,9 @@ export class AlertMonitorRepository {
       .prepare(
         `INSERT INTO alert_monitors
            (id, project_id, environment, name, type, target, metric, warning_threshold, critical_threshold,
-            window_minutes, webhook_url, alert_after_minutes, recover_after_minutes, enabled, state, state_message,
+            window_minutes, webhook_url, email, alert_after_minutes, recover_after_minutes, enabled, state, state_message,
             created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'no_data', 'Waiting for first evaluation', ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'no_data', 'Waiting for first evaluation', ?, ?)`,
       )
       .run(
         id,
@@ -214,6 +221,7 @@ export class AlertMonitorRepository {
         input.criticalThreshold,
         input.windowMinutes,
         input.webhookUrl,
+        input.email ?? '',
         input.alertAfterMinutes ?? 0,
         input.recoverAfterMinutes ?? 0,
         now,
@@ -378,11 +386,20 @@ export class AlertMonitorRepository {
     this.db.prepare('UPDATE alert_events SET webhook_status = ? WHERE id = ?').run(status, eventId);
   }
 
+  setEmailStatus(eventId: string, status: string): void {
+    this.db.prepare('UPDATE alert_events SET email_status = ? WHERE id = ?').run(status, eventId);
+  }
+
   /** Takes a notification held by a mute for delivery. False when another evaluation already took it. */
   claimMutedEvent(eventId: string): boolean {
     const result = this.db
-      .prepare(`UPDATE alert_events SET webhook_status = 'sending' WHERE id = ? AND webhook_status = ?`)
-      .run(eventId, MUTED_WEBHOOK_STATUS);
+      .prepare(
+        `UPDATE alert_events
+            SET webhook_status = CASE WHEN webhook_status = ? THEN 'sending' ELSE webhook_status END,
+                email_status = CASE WHEN email_status = ? THEN 'sending' ELSE email_status END
+          WHERE id = ? AND (webhook_status = ? OR email_status = ?)`,
+      )
+      .run(MUTED_WEBHOOK_STATUS, MUTED_WEBHOOK_STATUS, eventId, MUTED_WEBHOOK_STATUS, MUTED_WEBHOOK_STATUS);
     return Number(result.changes) > 0;
   }
 
