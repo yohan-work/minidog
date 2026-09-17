@@ -4,7 +4,14 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Added
+
+- **Logs filter by attribute.** An Attributes section above the records lists the keys the matching records carry and the commonest values of each, with counts for the current filters; clicking a value narrows the records to it, and each attribute in an expanded record is a button that does the same. Up to five at once, as `?attr=key:value` in the URL, so a view can be shared.
+- **The waterfall folds and searches.** Spans with children collapse to one row that says how many it hides, with Collapse all and Expand all above; a search box keeps the spans whose service, name, route or status message match, plus the path down to each of them.
+
 ### Changed
+
+- While a window dragged on a chart is in force, the time range control in the top bar shows that window instead of the preset it replaced. Choosing a preset clears it, as before.
 
 - Telemetry is written with ClickHouse's asynchronous inserts: the rows of each OTLP export are collected in memory and written as one part per table per flush, instead of a new part every time a collector pipeline exports. The API still waits for the flush before answering, so a 200 means the data is on disk and exporters retry on anything else.
 - Opening a trace looks for its spans and logs in the days around when it happened, using the moment the link was made from (`?at=`), instead of across the whole retention. A pasted URL without it still searches everything.

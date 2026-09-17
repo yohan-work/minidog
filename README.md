@@ -54,7 +54,7 @@ To update, run `docker compose pull && docker compose up -d`. To pin a release, 
 | **Synthetics** | HTTP checks with status, latency, uptime and SSL expiry. They can follow redirects and require text in the body. |
 | **APM** | Services, endpoints, P50/P95/P99, traces with a span waterfall, a service map and deploy markers per `service.version`. |
 | **Errors and queries** | Exceptions grouped by type and message. Slow database statements, ranked with their values replaced by `?`. |
-| **Logs** | Search and live tail. Log lines link to their traces, and traces link back to their logs. |
+| **Logs** | Search, attribute facets and live tail. Log lines link to their traces, and traces link back to their logs. |
 | **Infrastructure** | Host CPU, memory, disk and network from the Collector, plus a metrics explorer. |
 | **Monitors** | Error rate, latency, service down, host resources and failed checks, with Warning and Critical levels. You can wait N minutes before alerting and mute during maintenance. |
 | **Everyday use** | Dashboards, ⌘K search, drag across a chart to see that window's slowest traces, light and dark themes, and retention per signal. |
