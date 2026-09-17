@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { apiFetch, toApiClientError, type ApiClientError } from './api-client';
+import { useCallback, useState, useSyncExternalStore } from 'react';
+import type { ApiClientError } from './api-client';
+import { type ApiSnapshot, apiStore, EMPTY_SNAPSHOT } from './api-store';
 
 export const DEFAULT_REFRESH_MS = 15_000;
 
@@ -16,47 +17,36 @@ export interface ApiState<T> {
   refetch: () => void;
 }
 
+const noop = () => {};
+
 /**
- * Loads `/api{path}` and polls while the tab is visible. Previous data stays on
- * screen while a new path loads, so changing the time range never blanks the page.
+ * Loads `/api{path}` and polls while the tab is visible. Components asking
+ * for the same path share one request and one timer (see `ApiStore`), and a
+ * path that was loaded before shows its last response at once while the
+ * fresh one arrives. Previous data stays on screen while a new path loads,
+ * so changing the time range never blanks the page.
  */
 export function useApi<T>(path: string | null, refreshMs: number = DEFAULT_REFRESH_MS): ApiState<T> {
-  const [state, setState] = useState<{ data?: T; error?: ApiClientError; updatedAt?: number }>({});
-  const [nonce, setNonce] = useState(0);
+  const subscribe = useCallback(
+    (onChange: () => void) => (path ? apiStore.subscribe(path, refreshMs, onChange) : noop),
+    [path, refreshMs],
+  );
+  const getSnapshot = useCallback(() => (path ? apiStore.peek<T>(path) : EMPTY_SNAPSHOT), [path]);
+  const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: nonce is not read; changing it (refetch) re-runs the load.
-  useEffect(() => {
-    if (!path) return;
-    const controller = new AbortController();
+  // A path that has not answered yet leaves the previous path's response on screen.
+  const [shown, setShown] = useState<ApiSnapshot<T>>(snapshot);
+  if (snapshot !== shown && (snapshot.data !== undefined || snapshot.error !== undefined)) setShown(snapshot);
 
-    const load = async () => {
-      try {
-        const data = await apiFetch<T>(path, { signal: controller.signal });
-        setState({ data, error: undefined, updatedAt: Date.now() });
-      } catch (error) {
-        if (controller.signal.aborted) return;
-        setState((previous) => ({ ...previous, error: toApiClientError(error) }));
-      }
-    };
-
-    void load();
-    const timer = window.setInterval(() => {
-      if (document.visibilityState === 'visible') void load();
-    }, refreshMs);
-
-    return () => {
-      controller.abort();
-      window.clearInterval(timer);
-    };
-  }, [path, refreshMs, nonce]);
-
-  const refetch = useCallback(() => setNonce((value) => value + 1), []);
+  const refetch = useCallback(() => {
+    if (path) apiStore.refetch(path);
+  }, [path]);
 
   return {
-    data: state.data,
-    error: state.error,
-    isLoading: state.data === undefined && state.error === undefined,
-    updatedAt: state.updatedAt,
+    data: shown.data,
+    error: shown.error,
+    isLoading: shown.data === undefined && shown.error === undefined,
+    updatedAt: shown.updatedAt,
     refetch,
   };
 }
