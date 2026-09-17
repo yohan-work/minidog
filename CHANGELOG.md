@@ -6,6 +6,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Added
 
+- **CI smoke and Playwright.** A compose smoke job brings ClickHouse and the API up and checks `/api/health`; a Playwright job seeds one OTLP trace and log, sets a password, and walks Services → Traces → Logs. Dependabot watches npm, Actions and the Dockerfiles weekly.
 - **Heartbeat monitors.** A monitor type for cron jobs, backups and anything scheduled: minidog issues a ping URL (`GET` or `POST /heartbeat/<token>`, no sign-in, any body), the job requests it when it finishes, and silence for longer than the threshold is the alert — with the same Warning/Critical levels, delays, mutes and webhooks as the other types. The Monitor page shows the URL with a crontab line to paste, the ping count and the last ping; a ping to an alerting monitor recovers it at once. Measured from SQLite alone, so it works while ClickHouse is down.
 - **Alert emails over SMTP.** Set `SMTP_HOST` and `SMTP_FROM` (and usually a user and password); each monitor can then take an email address next to its webhook. Same delays and mutes, a Send test button, and delivery status in History. No extra dependency — a small SMTP client over STARTTLS or implicit TLS.
 - **Last week on the service page.** The Requests, Error rate and P95 cards say how the range compares with the same window seven days earlier (`↑ 52% vs 7d`), with last week's value in a tooltip. A service that had no traffic then shows no comparison rather than a meaningless percentage.

@@ -1,3 +1,7 @@
+> **Archived planning note (2024–2025).** This document captured the original product brief before minidog shipped. Behaviour that is true today is described in the [README](../README.md), [architecture](architecture.md) and [getting started](getting-started.md) guides; the live roadmap is the checklist at the bottom of the README. Keep this file for history — do not treat unchecked items here as open work.
+
+---
+
 # 개인용 Observability SaaS 기획서
 
 ## 1. 프로젝트 개요
