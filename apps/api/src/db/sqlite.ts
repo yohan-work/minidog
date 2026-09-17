@@ -141,6 +141,12 @@ const MIGRATIONS: readonly string[] = [
     expires_at  TEXT NOT NULL
   );
   `,
+  /* 9 — heartbeat monitors: pings by token (the monitor's target) */ `
+  ALTER TABLE alert_monitors ADD COLUMN last_ping_at TEXT;
+  ALTER TABLE alert_monitors ADD COLUMN ping_count INTEGER NOT NULL DEFAULT 0;
+
+  CREATE INDEX alert_monitors_target ON alert_monitors (type, target);
+  `,
 ];
 
 /** The schema this build knows: `user_version` equals it once every migration has run. */

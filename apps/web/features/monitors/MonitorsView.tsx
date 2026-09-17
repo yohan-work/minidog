@@ -94,7 +94,8 @@ export function MonitorsView() {
                           {monitor.name}
                         </RowLink>
                         <span className={styles.target}>
-                          {TYPE_LABELS[monitor.type]} · {monitor.targetLabel}
+                          {TYPE_LABELS[monitor.type]}
+                          {monitor.type !== 'heartbeat' && ` · ${monitor.targetLabel}`}
                         </span>
                       </span>
                     </Td>

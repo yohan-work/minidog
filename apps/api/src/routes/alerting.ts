@@ -40,7 +40,8 @@ const createSchema = z
   .object({
     name: z.string().trim().max(100, 'Use at most 100 characters.').optional(),
     type: z.enum(ALERT_MONITOR_TYPES),
-    target: z.string().trim().min(1, 'Choose a target.').max(255),
+    // Required except for heartbeat monitors, which get their token on creation.
+    target: z.string().trim().max(255).optional(),
     metric: z.enum(ALERT_METRICS).optional(),
     warningThreshold: threshold.nullable().optional(),
     criticalThreshold: threshold.optional(),

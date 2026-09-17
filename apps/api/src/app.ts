@@ -25,6 +25,7 @@ import { registerAlertingRoutes } from './routes/alerting';
 import { authGuard, registerAuthRoutes } from './routes/auth';
 import { registerApmRoutes } from './routes/apm';
 import { registerDashboardRoutes } from './routes/dashboards';
+import { registerHeartbeatRoutes } from './routes/heartbeat';
 import { registerHostRoutes } from './routes/hosts';
 import { registerIngestRoutes } from './routes/ingest';
 import { registerLogRoutes } from './routes/logs';
@@ -228,6 +229,7 @@ export async function buildApp(config: Config, options: BuildAppOptions = {}): P
       registerLogRoutes(routes, ctx);
       registerMetricRoutes(routes, ctx);
       registerAlertingRoutes(routes, ctx);
+      registerHeartbeatRoutes(routes, ctx);
       registerSettingsRoutes(routes, ctx);
       registerIngestRoutes(routes, ctx);
     },

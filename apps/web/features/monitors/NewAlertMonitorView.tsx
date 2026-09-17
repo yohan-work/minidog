@@ -104,12 +104,16 @@ export function NewAlertMonitorView() {
 
   const isHost = values.type === 'host_resource';
   const isSynthetic = values.type === 'synthetic_check';
+  const isHeartbeat = values.type === 'heartbeat';
   const signal = { type: values.type, metric: (values.metric || null) as AlertMetric | null };
   const unit = thresholdUnit(signal);
   const below = alertDirection(signal.type, signal.metric) === 'below';
   const showWindow = usesWindow(signal.type, signal.metric);
 
-  const services = useApi<ServiceListResponse>(!isHost && !isSynthetic ? '/services?range=24h' : null, 60_000);
+  const services = useApi<ServiceListResponse>(
+    !isHost && !isSynthetic && !isHeartbeat ? '/services?range=24h' : null,
+    60_000,
+  );
   const hosts = useApi<HostListResponse>(isHost ? '/hosts?range=24h' : null, 60_000);
   const synthetics = useApi<MonitorListResponse>(isSynthetic ? '/monitors?range=1h' : null, 60_000);
   const targets = isHost
@@ -146,20 +150,24 @@ export function NewAlertMonitorView() {
     warningThreshold:
       values.type === 'service_down'
         ? 'Optional. Warn below this many requests.'
-        : below
-          ? `Optional. Warn below this many ${unit}.`
-          : `Optional, in ${unit}.`,
+        : isHeartbeat
+          ? 'Optional. Warn when no ping has arrived for this many minutes.'
+          : below
+            ? `Optional. Warn below this many ${unit}.`
+            : `Optional, in ${unit}.`,
     criticalThreshold:
       values.type === 'service_down'
         ? 'Critical below this many requests (1 = no requests at all).'
-        : below
-          ? `Critical below this many ${unit}.`
-          : `In ${unit}.`,
+        : isHeartbeat
+          ? 'Critical when no ping has arrived for this many minutes: the job’s period plus some slack, e.g. 90 for an hourly job.'
+          : below
+            ? `Critical below this many ${unit}.`
+            : `In ${unit}.`,
     alertAfterMinutes: 'Enter Warning or Critical only when the condition lasts this long.',
     recoverAfterMinutes: 'Report recovery only after it holds this long.',
     webhookUrl:
       'Optional. Slack, Discord, Telegram and ntfy.sh URLs get their own format; any other URL receives JSON.',
-    name: 'Defaults to the signal and target.',
+    name: isHeartbeat ? 'What the job is, e.g. Nightly backup.' : 'Defaults to the signal and target.',
   };
 
   const control = (name: FieldName) => ({
@@ -181,7 +189,7 @@ export function NewAlertMonitorView() {
         method: 'POST',
         body: JSON.stringify({
           type: values.type,
-          target: values.target.trim(),
+          ...(isHeartbeat ? {} : { target: values.target.trim() }),
           ...(isHost || isSynthetic ? { metric: values.metric } : {}),
           warningThreshold: values.warningThreshold.trim() === '' ? null : Number(values.warningThreshold),
           criticalThreshold: Number(values.criticalThreshold),
@@ -235,30 +243,39 @@ export function NewAlertMonitorView() {
                 </Select>
               </Field>
             </div>
-            <Field
-              id="target"
-              label={isSynthetic ? 'Synthetic monitor' : isHost ? 'Host' : 'Service'}
-              hint={hints.target}
-              error={errors.target}
-            >
-              {isSynthetic ? (
-                <Select {...control('target')} required>
-                  <option value="">Choose a monitor</option>
-                  {/* A target passed in the URL ("Create alert") stays selected while the list loads. */}
-                  {values.target && !checks.some((check) => check.id === values.target) && (
-                    <option value={values.target}>{synthetics.data ? 'Unknown monitor' : 'Loading…'}</option>
-                  )}
-                  {checks.map((check) => (
-                    <option key={check.id} value={check.id}>
-                      {check.name}
-                    </option>
-                  ))}
-                </Select>
-              ) : (
-                <Input {...control('target')} list="monitor-targets" mono autoComplete="off" required />
-              )}
-            </Field>
-            {!isSynthetic && (
+            {isHeartbeat ? (
+              <div className={styles.full}>
+                <p className={styles.explain}>
+                  The ping URL is issued when the monitor is created and shown on its page, with a crontab line to
+                  paste.
+                </p>
+              </div>
+            ) : (
+              <Field
+                id="target"
+                label={isSynthetic ? 'Synthetic monitor' : isHost ? 'Host' : 'Service'}
+                hint={hints.target}
+                error={errors.target}
+              >
+                {isSynthetic ? (
+                  <Select {...control('target')} required>
+                    <option value="">Choose a monitor</option>
+                    {/* A target passed in the URL ("Create alert") stays selected while the list loads. */}
+                    {values.target && !checks.some((check) => check.id === values.target) && (
+                      <option value={values.target}>{synthetics.data ? 'Unknown monitor' : 'Loading…'}</option>
+                    )}
+                    {checks.map((check) => (
+                      <option key={check.id} value={check.id}>
+                        {check.name}
+                      </option>
+                    ))}
+                  </Select>
+                ) : (
+                  <Input {...control('target')} list="monitor-targets" mono autoComplete="off" required />
+                )}
+              </Field>
+            )}
+            {!isSynthetic && !isHeartbeat && (
               <datalist id="monitor-targets">
                 {targets.map((target) => (
                   <option key={target} value={target} />
@@ -285,7 +302,7 @@ export function NewAlertMonitorView() {
                   ))}
                 </Select>
               </Field>
-            ) : (
+            ) : isHeartbeat ? null : (
               windowField
             )}
             <Field

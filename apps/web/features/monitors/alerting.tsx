@@ -51,6 +51,7 @@ export const TYPE_LABELS: Record<AlertMonitorType, string> = {
   latency: 'Latency',
   host_resource: 'CPU / Memory',
   synthetic_check: 'Synthetic check',
+  heartbeat: 'Heartbeat',
 };
 
 export const TYPE_DESCRIPTIONS: Record<AlertMonitorType, string> = {
@@ -61,6 +62,8 @@ export const TYPE_DESCRIPTIONS: Record<AlertMonitorType, string> = {
   host_resource: 'Alerts when CPU, memory or disk utilization of a host reaches a percentage.',
   synthetic_check:
     'Alerts when a URL check from Synthetics fails, slows down or its SSL certificate is about to expire.',
+  heartbeat:
+    'Alerts when a cron job, backup or any scheduled task stops checking in. minidog gives you a URL; the job requests it when it finishes, and silence for longer than the threshold is the alert.',
 };
 
 export const RESOURCE_LABELS: Record<HostResourceMetric, string> = { cpu: 'CPU', memory: 'Memory', disk: 'Disk' };
@@ -85,6 +88,8 @@ export function thresholdUnit({ type, metric }: AlertSignal): string {
       return 'ms';
     case 'synthetic_check':
       return metric === 'response_time' ? 'ms' : metric === 'ssl_days' ? 'days' : '%';
+    case 'heartbeat':
+      return 'min';
     default:
       return '%';
   }
@@ -100,7 +105,14 @@ export function signalLabel({ type, metric }: AlertSignal): string {
     };
     return labels[isSyntheticAlertMetric(metric) ? metric : 'failure_rate'];
   }
-  return { service_down: 'Requests', error_rate: 'Error rate', latency: 'P95' }[type];
+  return { service_down: 'Requests', error_rate: 'Error rate', latency: 'P95', heartbeat: 'Last ping' }[type];
+}
+
+/** `45 min`, `1.5 h`, `2 d` — how long since a heartbeat was pinged. Under an hour keeps a tenth, so `1.2 min ≥ 1 min` reads as true. */
+export function formatMinutes(minutes: number): string {
+  if (minutes < 60) return `${Number(minutes.toFixed(1))} min`;
+  if (minutes < 24 * 60) return `${Number((minutes / 60).toFixed(1))} h`;
+  return `${Number((minutes / (24 * 60)).toFixed(1))} d`;
 }
 
 export function formatAlertValue(signal: AlertSignal, value: number | null | undefined): string {
@@ -117,6 +129,8 @@ export function formatAlertValue(signal: AlertSignal, value: number | null | und
       const days = Math.floor(value);
       return days === 1 ? '1 day' : `${days} days`;
     }
+    case 'heartbeat':
+      return formatMinutes(value);
     default:
       return `${value.toFixed(1)}%`;
   }
@@ -178,7 +192,9 @@ export function WindowOptions() {
 export const monitorHref = (id: string, range: TimeRange) => withRange(`/monitors/${id}`, range);
 
 /** Where the monitored signal comes from: a service, a host or a synthetic monitor. */
-export function targetHref(monitor: Pick<AlertMonitor, 'type' | 'target'>, range: TimeRange): string {
+export function targetHref(monitor: Pick<AlertMonitor, 'id' | 'type' | 'target'>, range: TimeRange): string {
+  // A heartbeat watches nothing else in minidog; its ping URL is on its own page.
+  if (monitor.type === 'heartbeat') return monitorHref(monitor.id, range);
   if (monitor.type === 'host_resource') return hostHref(monitor.target, range);
   if (monitor.type === 'synthetic_check') return withRange(`/synthetics/${encodeURIComponent(monitor.target)}`, range);
   return serviceHref(monitor.target, range);

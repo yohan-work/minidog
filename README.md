@@ -56,7 +56,7 @@ To update, run `docker compose pull && docker compose up -d`. To pin a release, 
 | **Errors and queries** | Exceptions grouped by type and message. Slow database statements, ranked with their values replaced by `?`. |
 | **Logs** | Search, attribute facets and live tail. Log lines link to their traces, and traces link back to their logs. |
 | **Infrastructure** | Host CPU, memory, disk and network from the Collector, plus a metrics explorer. |
-| **Monitors** | Error rate, latency, service down, host resources and failed checks, with Warning and Critical levels. You can wait N minutes before alerting and mute during maintenance. |
+| **Monitors** | Error rate, latency, service down, host resources, failed checks and heartbeats (a cron job that stops checking in), with Warning and Critical levels. You can wait N minutes before alerting and mute during maintenance. |
 | **Everyday use** | Dashboards, ⌘K search, drag across a chart to see that window's slowest traces, light and dark themes, and retention per signal. |
 
 The [getting started guide](docs/getting-started.md) walks through each one with the demo shop.
@@ -124,8 +124,8 @@ Details, and how to put it back, are in [Backing up](docs/getting-started.md#bac
 
 ## Roadmap
 
-- [ ] Heartbeat / cron monitors: alert when a job stops checking in
-- [ ] Baseline comparison: "P95 ↑ 312% vs last week"
+- [x] Heartbeat / cron monitors: alert when a job stops checking in
+- [x] Baseline comparison: "P95 ↑ 312% vs last week"
 - [ ] LLM calls: token and cost views from OpenTelemetry `gen_ai` spans
 
 Ideas and votes are welcome in [issues](https://github.com/yohan-work/minidog/issues).

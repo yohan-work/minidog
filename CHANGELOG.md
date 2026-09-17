@@ -6,6 +6,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Added
 
+- **Heartbeat monitors.** A monitor type for cron jobs, backups and anything scheduled: minidog issues a ping URL (`GET` or `POST /heartbeat/<token>`, no sign-in, any body), the job requests it when it finishes, and silence for longer than the threshold is the alert — with the same Warning/Critical levels, delays, mutes and webhooks as the other types. The Monitor page shows the URL with a crontab line to paste, the ping count and the last ping; a ping to an alerting monitor recovers it at once. Measured from SQLite alone, so it works while ClickHouse is down.
+- **Last week on the service page.** The Requests, Error rate and P95 cards say how the range compares with the same window seven days earlier (`↑ 52% vs 7d`), with last week's value in a tooltip. A service that had no traffic then shows no comparison rather than a meaningless percentage.
 - **Logs filter by attribute.** An Attributes section above the records lists the keys the matching records carry and the commonest values of each, with counts for the current filters; clicking a value narrows the records to it, and each attribute in an expanded record is a button that does the same. Up to five at once, as `?attr=key:value` in the URL, so a view can be shared.
 - **The waterfall folds and searches.** Spans with children collapse to one row that says how many it hides, with Collapse all and Expand all above; a search box keeps the spans whose service, name, route or status message match, plus the path down to each of them.
 

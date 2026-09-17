@@ -53,7 +53,7 @@ Browser ──▶ Dashboard (Next.js) ──/api/* (proxy route)─────�
 
 | You want to… | Touch |
 |---|---|
-| Add an alert monitor type | `packages/types` (`ALERT_MONITOR_TYPES`, defaults), `worker/alert-evaluator.ts` (`measure`), `routes/alerting.ts`, `features/monitors/NewAlertMonitorView.tsx` |
+| Add an alert monitor type | `packages/types` (`ALERT_MONITOR_TYPES`, defaults), `worker/alert-evaluator.ts` (`measure`), `services/alert-state.ts` (labels, messages), `routes/alerting.ts`, `features/monitors/alerting.tsx` and `NewAlertMonitorView.tsx`. Heartbeat is the one type measured from SQLite alone (`routes/heartbeat.ts` records the pings). |
 | Add a Query API route | a file in `routes/`, register it in `app.ts`, add types to `packages/types`, add a test with `app.inject` |
 | Store a new setting | the `settings` table through a small repository (see `summary-repository.ts`) |
 | Add a telemetry column | a new `ALTER TABLE … ADD COLUMN IF NOT EXISTS` in `db/clickhouse.ts`, the ingest mapper and the repository query |

@@ -92,6 +92,18 @@ Any other URL receives a JSON POST with `text`, `monitor`, `state`, `message` an
 
 **Daily summary.** In **Settings → Daily summary**, pick one of these URLs and a time of day. Once a day minidog sends uptime, response time and certificate days left for each monitor, alert changes, and time not measured. If the computer was off at that time, it sends when minidog starts again. On Mondays it can send a 7-day summary instead.
 
+### Cron jobs that stop running
+
+A backup that quietly stopped is the failure nobody notices. Create a monitor of type **Heartbeat**, set **Critical** to the job's period plus some slack (90 minutes for an hourly job, 26 hours for a nightly one), and minidog shows a ping URL with a crontab line to paste:
+
+```
+0 3 * * * /path/to/backup.sh && curl -fsS -m 10 --retry 3 http://<minidog>:4000/heartbeat/hb_… > /dev/null
+```
+
+The `&&` means the job only checks in when it succeeded. Any `GET` or `POST` to the URL counts, with or without a body, and it needs no sign-in: the token in the URL is the credential, so treat it like a password. When nothing has arrived for longer than the threshold the monitor turns Critical and notifies like any other; the next ping brings it back at once. The Monitor page shows how many pings have arrived and when the last one came.
+
+Pings need to reach the API from wherever the job runs — on the same machine `http://localhost:4000` works; from elsewhere see [running it on a server](#running-it-on-a-server).
+
 ## Configuration
 
 The API reads environment variables, or `apps/api/.env` when run from source (copy `.env.example`). With the published images, set them in `compose.yaml`.

@@ -13,6 +13,13 @@ import { SLEEP_THRESHOLD_MS, type GapTracker } from './gap-tracker';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/** Minutes since the last ping, to a tenth; null before the first. Needs no ClickHouse. */
+export function minutesSincePing(monitor: Pick<ScopedAlertMonitor, 'heartbeat'>, nowMs: number): number | null {
+  const last = monitor.heartbeat?.lastPingAt;
+  if (!last) return null;
+  return Math.max(0, Math.round((nowMs - Date.parse(last)) / 6_000) / 10);
+}
+
 export interface AlertEvaluatorDeps {
   monitors: AlertMonitorRepository;
   spans: SpanRepository;
@@ -185,6 +192,7 @@ export class AlertEvaluator {
   /** Value in the unit of the monitor type; null when there is nothing to measure. */
   private async measure(monitor: ScopedAlertMonitor): Promise<number | null> {
     if (monitor.type === 'synthetic_check') return this.measureSynthetic(monitor);
+    if (monitor.type === 'heartbeat') return minutesSincePing(monitor, Date.now());
 
     const scope = { projectId: monitor.projectId, environment: monitor.environment };
     const fromMs = Date.now() - monitor.windowMinutes * 60_000;

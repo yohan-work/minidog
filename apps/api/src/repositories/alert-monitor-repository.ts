@@ -28,6 +28,8 @@ interface MonitorRow {
   state_message: string;
   state_changed_at: string | null;
   last_evaluated_at: string | null;
+  last_ping_at: string | null;
+  ping_count: number;
   created_at: string;
   updated_at: string;
 }
@@ -114,6 +116,7 @@ function toMonitor(row: MonitorRow): ScopedAlertMonitor {
     stateMessage: row.state_message,
     stateChangedAt: row.state_changed_at,
     lastEvaluatedAt: row.last_evaluated_at,
+    heartbeat: row.type === 'heartbeat' ? { lastPingAt: row.last_ping_at, pings: row.ping_count } : null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -242,6 +245,22 @@ export class AlertMonitorRepository {
 
   delete(id: string): boolean {
     return Number(this.db.prepare('DELETE FROM alert_monitors WHERE id = ?').run(id).changes) > 0;
+  }
+
+  /**
+   * Records a ping for the heartbeat monitor with this token. Returns the
+   * monitor, or undefined when no heartbeat monitor has the token. Pings to a
+   * paused monitor are kept, so resuming it starts from the truth.
+   */
+  ping(token: string, at: Date): ScopedAlertMonitor | undefined {
+    const row = this.db
+      .prepare(
+        `UPDATE alert_monitors SET last_ping_at = ?, ping_count = ping_count + 1
+          WHERE type = 'heartbeat' AND target = ?
+          RETURNING id`,
+      )
+      .get(at.toISOString(), token) as { id: string } | undefined;
+    return row ? this.get(row.id) : undefined;
   }
 
   /**

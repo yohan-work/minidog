@@ -701,8 +701,25 @@ export const ALERT_MONITOR_TYPES = [
   'latency',
   'host_resource',
   'synthetic_check',
+  'heartbeat',
 ] as const;
 export type AlertMonitorType = (typeof ALERT_MONITOR_TYPES)[number];
+
+/**
+ * Where a heartbeat monitor is pinged: `GET` or `POST {apiUrl}/heartbeat/{token}`.
+ * The token is the monitor's `target`; the route needs no sign-in, so a cron
+ * job can `curl` it.
+ */
+export const HEARTBEAT_PATH = '/heartbeat';
+export const heartbeatUrl = (apiUrl: string, token: string) =>
+  `${apiUrl.replace(/\/$/, '')}${HEARTBEAT_PATH}/${encodeURIComponent(token)}`;
+
+/** Ping bookkeeping of a heartbeat monitor. */
+export interface HeartbeatInfo {
+  /** ISO time of the last ping; null before the first. */
+  lastPingAt: string | null;
+  pings: number;
+}
 
 export const HOST_RESOURCE_METRICS = ['cpu', 'memory', 'disk'] as const;
 export type HostResourceMetric = (typeof HOST_RESOURCE_METRICS)[number];
@@ -792,7 +809,8 @@ export interface AlertDefaults {
  * Thresholds by type. Units: service_down — requests in the window (alerts when
  * fewer arrive, and only for a service that was receiving them); error_rate and
  * host_resource — percent; latency — P95 ms; synthetic_check — see
- * SYNTHETIC_ALERT_DEFAULTS (failure rate shown here).
+ * SYNTHETIC_ALERT_DEFAULTS (failure rate shown here); heartbeat — minutes
+ * since the last ping (alerts when more have passed).
  *
  * Service down waits before alerting: traffic to a side project arrives in
  * bursts, and a gap between two visitors is not an outage. With the default
@@ -804,6 +822,7 @@ export const ALERT_MONITOR_DEFAULTS: Record<AlertMonitorType, AlertDefaults> = {
   latency: { warning: 1_000, critical: 2_000, windowMinutes: 5, alertAfterMinutes: 0 },
   host_resource: { warning: 85, critical: 95, windowMinutes: 5, alertAfterMinutes: 0 },
   synthetic_check: { warning: null, critical: 50, windowMinutes: 5, alertAfterMinutes: 0 },
+  heartbeat: { warning: null, critical: 90, windowMinutes: 5, alertAfterMinutes: 0 },
 };
 
 /** failure_rate — % of failed checks; response_time — P95 ms; ssl_days — days left (alerts below). */
@@ -831,8 +850,9 @@ export function alertDirection(type: AlertMonitorType, metric: AlertMetric | nul
   return 'above';
 }
 
-/** SSL expiry is judged on the latest certificate; every other signal on its window. */
+/** SSL expiry is judged on the latest certificate and a heartbeat on its last ping; every other signal on its window. */
 export function usesWindow(type: AlertMonitorType, metric: AlertMetric | null): boolean {
+  if (type === 'heartbeat') return false;
   return !(type === 'synthetic_check' && metric === 'ssl_days');
 }
 
@@ -840,10 +860,12 @@ export interface AlertMonitor {
   id: string;
   name: string;
   type: AlertMonitorType;
-  /** Service name; host name for host_resource; synthetic monitor id for synthetic_check. */
+  /** Service name; host name for host_resource; synthetic monitor id for synthetic_check; ping token for heartbeat. */
   target: string;
   /** Display name of the target (the synthetic monitor's name for synthetic_check). */
   targetLabel: string;
+  /** heartbeat only. */
+  heartbeat: HeartbeatInfo | null;
   /** host_resource and synthetic_check only. */
   metric: AlertMetric | null;
   warningThreshold: number | null;
@@ -889,7 +911,8 @@ export interface AlertEvent {
 export interface CreateAlertMonitorInput {
   name?: string;
   type: AlertMonitorType;
-  target: string;
+  /** Not used by heartbeat monitors, whose token is issued on creation. */
+  target?: string;
   metric?: AlertMetric;
   warningThreshold?: number | null;
   criticalThreshold?: number;

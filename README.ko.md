@@ -56,7 +56,7 @@ docker compose --profile demo up -d
 | **에러·쿼리** | 예외를 종류와 메시지로 묶어 보여줍니다. 느린 DB 쿼리는 값을 `?`로 바꿔 순위로 보여줍니다. |
 | **로그** | 검색, 속성별 필터, 실시간 보기를 지원합니다. 로그는 트레이스로, 트레이스는 로그로 이어집니다. |
 | **인프라** | Collector가 모은 호스트 CPU·메모리·디스크·네트워크 지표와 지표 탐색기를 제공합니다. |
-| **모니터** | 에러율, 지연, 서비스 다운, 호스트 자원, 체크 실패를 Warning/Critical 단계로 알립니다. N분 지속된 뒤에만 알리거나, 점검 중에는 음소거할 수 있습니다. |
+| **모니터** | 에러율, 지연, 서비스 다운, 호스트 자원, 체크 실패, heartbeat(신호를 멈춘 cron 작업)를 Warning/Critical 단계로 알립니다. N분 지속된 뒤에만 알리거나, 점검 중에는 음소거할 수 있습니다. |
 | **일상 사용** | 대시보드, ⌘K 검색, 차트를 드래그해 그 구간의 느린 트레이스 보기, 라이트·다크 테마, 신호별 보관 기간 설정. |
 
 [실행 가이드](docs/getting-started.ko.md)에서 데모 가게로 하나씩 따라 해 볼 수 있습니다.
@@ -124,8 +124,8 @@ docker compose exec api node cli/backup.mjs /data/minidog-$(date +%F).sqlite
 
 ## 로드맵
 
-- [ ] Heartbeat / cron 모니터: 작업이 신호를 안 보내면 알림
-- [ ] 기준 비교: "P95 ↑ 312% vs 지난주"
+- [x] Heartbeat / cron 모니터: 작업이 신호를 안 보내면 알림
+- [x] 기준 비교: "P95 ↑ 312% vs 지난주"
 - [ ] LLM 호출: OpenTelemetry `gen_ai` span으로 토큰·비용 보기
 
 아이디어와 투표는 [issues](https://github.com/yohan-work/minidog/issues)에 남겨 주세요.
