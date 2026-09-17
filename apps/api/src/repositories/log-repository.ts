@@ -37,8 +37,10 @@ function filterSql(filters: Omit<LogFilters, 'limit'>): string {
     filters.minLevel === undefined ? '' : `AND indexOf(${LEVEL_ORDER}, level) >= {minRank:UInt8}`,
     filters.query === undefined ? '' : 'AND positionCaseInsensitive(body, {query:String}) > 0',
     filters.traceId === undefined ? '' : 'AND trace_id = {traceId:String}',
+    // A missing key reads as '' from a Map, so a filter on an empty value must also ask for the key.
     ...(filters.attributes ?? []).map(
-      (_, index) => `AND attributes[{attrKey${index}:String}] = {attrValue${index}:String}`,
+      (_, index) =>
+        `AND mapContains(attributes, {attrKey${index}:String}) AND attributes[{attrKey${index}:String}] = {attrValue${index}:String}`,
     ),
     'AND timestamp >= fromUnixTimestamp64Milli({fromMs:Int64})',
     filters.toMs === undefined ? '' : 'AND timestamp < fromUnixTimestamp64Milli({toMs:Int64})',

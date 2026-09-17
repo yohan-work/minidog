@@ -57,8 +57,15 @@ test('attribute filters reach every log query as map lookups, and the key ends a
     const searches = recorded.filter((entry) => entry.query.includes('FROM logs') && !entry.query.includes('DISTINCT'));
     assert.ok(searches.length >= 3, 'records, volume and facets are all filtered');
     for (const { query, params } of searches) {
-      assert.match(query, /attributes\[\{attrKey0:String\}\] = \{attrValue0:String\}/);
-      assert.match(query, /attributes\[\{attrKey1:String\}\] = \{attrValue1:String\}/);
+      // The key must be present: a Map reads a missing key as '', which an empty-value filter would otherwise match.
+      assert.match(
+        query,
+        /mapContains\(attributes, \{attrKey0:String\}\) AND attributes\[\{attrKey0:String\}\] = \{attrValue0:String\}/,
+      );
+      assert.match(
+        query,
+        /mapContains\(attributes, \{attrKey1:String\}\) AND attributes\[\{attrKey1:String\}\] = \{attrValue1:String\}/,
+      );
       assert.equal(params.attrKey0, 'http.method');
       assert.equal(params.attrValue0, 'GET');
       assert.equal(params.attrKey1, 'url.path');
