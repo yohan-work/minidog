@@ -39,6 +39,8 @@ pnpm build
 pnpm check:deploy   # only if you touched infra/ or deploy/
 ```
 
+CI also runs a ClickHouse + API smoke check and a Playwright walk of login → Services → Traces → Logs (`pnpm test:e2e` locally after `bash scripts/ci-stack.sh up` and `node e2e/seed.mjs`).
+
 Editor support: the [Biome extension](https://biomejs.dev/guides/editors/first-party-extensions/) formats on save with the repository's `biome.jsonc`.
 
 - **One change per PR**, as small as it can be. Refactors go in their own PR.

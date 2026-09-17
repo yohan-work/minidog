@@ -23,9 +23,12 @@
     "infra:logs": "docker compose -f infra/docker/compose.yaml logs -f",
     "local:up": "mkdir -p apps/api/data && MINIDOG_INGEST_ENDPOINT=http://api:4000 docker compose -f infra/docker/compose.yaml --profile app up -d --build --wait",
     "local:down": "docker compose -f infra/docker/compose.yaml --profile app rm --stop --force api web && docker compose -f infra/docker/compose.yaml up -d --wait otel-collector",
-    "local:logs": "docker compose -f infra/docker/compose.yaml --profile app logs -f api web"
+    "local:logs": "docker compose -f infra/docker/compose.yaml --profile app logs -f api web",
+    "test:e2e": "playwright test",
+    "test:e2e:install": "playwright install chromium"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.13"
+    "@biomejs/biome": "2.5.13",
+    "@playwright/test": "1.55.0"
   }
 }

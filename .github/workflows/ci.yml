@@ -66,3 +66,57 @@ jobs:
           push: false
           cache-from: type=gha,scope=ci-demo
           cache-to: type=gha,mode=max,scope=ci-demo
+
+  smoke:
+    name: Compose smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Start ClickHouse and API
+        run: bash scripts/ci-stack.sh up-api
+      - name: Health endpoint
+        run: |
+          curl -sf http://127.0.0.1:4000/api/health | tee /tmp/health.json
+          grep -q '"status":"ok"' /tmp/health.json
+          grep -q '"sqlite":"ok"' /tmp/health.json
+          grep -q '"clickhouse":"ok"' /tmp/health.json
+      - name: Tear down
+        if: always()
+        run: bash scripts/ci-stack.sh down
+
+  e2e:
+    name: Playwright
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install Chromium
+        run: pnpm exec playwright install chromium --with-deps
+      - name: Start stack
+        run: bash scripts/ci-stack.sh up
+      - name: Seed a trace and a log
+        run: node e2e/seed.mjs
+      - name: Run Playwright
+        run: pnpm test:e2e
+      - name: Tear down
+        if: always()
+        run: bash scripts/ci-stack.sh down
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-trace
+          path: test-results/
+          if-no-files-found: ignore
