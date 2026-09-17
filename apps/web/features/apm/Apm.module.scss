@@ -12,6 +12,26 @@
   color: var(--foreground-muted);
 }
 
+.waterfallTools {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.spanSearch {
+  display: inline-flex;
+  width: calc(var(--space-16) * 3);
+  max-width: 100%;
+
+  input {
+    height: var(--control-height-sm);
+  }
+}
+
+.visuallyHidden {
+  @include visually-hidden;
+}
+
 .reason {
   font-size: var(--text-secondary);
   color: var(--foreground-secondary);

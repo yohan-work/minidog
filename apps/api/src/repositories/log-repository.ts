@@ -1,4 +1,12 @@
-import { LOG_LEVELS, type LogEntry, type LogLevel, type LogVolumePoint } from '@minidog/types';
+import {
+  LOG_FACET_KEYS,
+  LOG_FACET_VALUES,
+  LOG_LEVELS,
+  type LogEntry,
+  type LogFacet,
+  type LogLevel,
+  type LogVolumePoint,
+} from '@minidog/types';
 import { ClickHouseRepository } from '../db/clickhouse-repository';
 import type { LogRow } from '../ingest/otlp-logs';
 import type { Scope } from './project-repository';
@@ -18,6 +26,8 @@ export interface LogFilters {
   /** Case-insensitive text in the body. */
   query?: string;
   traceId?: string;
+  /** Records whose attributes carry every one of these values. */
+  attributes?: readonly { key: string; value: string }[];
   limit: number;
 }
 
@@ -27,16 +37,28 @@ function filterSql(filters: Omit<LogFilters, 'limit'>): string {
     filters.minLevel === undefined ? '' : `AND indexOf(${LEVEL_ORDER}, level) >= {minRank:UInt8}`,
     filters.query === undefined ? '' : 'AND positionCaseInsensitive(body, {query:String}) > 0',
     filters.traceId === undefined ? '' : 'AND trace_id = {traceId:String}',
+    // A missing key reads as '' from a Map, so a filter on an empty value must also ask for the key.
+    ...(filters.attributes ?? []).map(
+      (_, index) =>
+        `AND mapContains(attributes, {attrKey${index}:String}) AND attributes[{attrKey${index}:String}] = {attrValue${index}:String}`,
+    ),
     'AND timestamp >= fromUnixTimestamp64Milli({fromMs:Int64})',
     filters.toMs === undefined ? '' : 'AND timestamp < fromUnixTimestamp64Milli({toMs:Int64})',
   ].join('\n');
 }
 
 function filterParams(scope: Scope, filters: Omit<LogFilters, 'limit'>) {
+  const { attributes, ...rest } = filters;
   return {
     ...scope,
-    ...filters,
+    ...rest,
     minRank: filters.minLevel === undefined ? 0 : LOG_LEVELS.indexOf(filters.minLevel) + 1,
+    ...Object.fromEntries(
+      (attributes ?? []).flatMap(({ key, value }, index) => [
+        [`attrKey${index}`, key],
+        [`attrValue${index}`, value],
+      ]),
+    ),
   };
 }
 
@@ -103,6 +125,49 @@ export class LogRepository extends ClickHouseRepository {
       { ...filterParams(scope, filters), step: stepSeconds },
     );
     return rows.map((row) => ({ t: Number(row.t), total: Number(row.total), errors: Number(row.errors) }));
+  }
+
+  /**
+   * The attribute keys of the matching records, commonest first, each with
+   * its commonest values. Two passes over the window: keys, then the values
+   * of those keys, so a key with many distinct values cannot crowd out the
+   * others.
+   */
+  async facets(scope: Scope, filters: Omit<LogFilters, 'limit'>): Promise<LogFacet[]> {
+    const params = filterParams(scope, filters);
+    const keys = await this.query<{ key: string; count: Num }>(
+      `SELECT key, count() AS count
+       FROM logs
+       ARRAY JOIN mapKeys(attributes) AS key
+       WHERE ${SCOPE_FILTER}
+         ${filterSql(filters)}
+       GROUP BY key
+       ORDER BY count DESC, key
+       LIMIT {keyLimit:UInt32}`,
+      { ...params, keyLimit: LOG_FACET_KEYS },
+    );
+    if (keys.length === 0) return [];
+
+    const values = await this.query<{ key: string; value: string; count: Num }>(
+      `SELECT key, value, count() AS count
+       FROM logs
+       ARRAY JOIN mapKeys(attributes) AS key, mapValues(attributes) AS value
+       WHERE ${SCOPE_FILTER}
+         ${filterSql(filters)}
+         AND key IN {keys:Array(String)}
+       GROUP BY key, value
+       ORDER BY count DESC, value
+       LIMIT {valueLimit:UInt32} BY key`,
+      { ...params, keys: keys.map((row) => row.key), valueLimit: LOG_FACET_VALUES },
+    );
+
+    return keys.map((row) => ({
+      key: row.key,
+      count: Number(row.count),
+      values: values
+        .filter((value) => value.key === row.key)
+        .map((value) => ({ value: value.value, count: Number(value.count) })),
+    }));
   }
 
   async services(scope: Scope, fromMs: number): Promise<string[]> {

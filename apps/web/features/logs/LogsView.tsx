@@ -1,6 +1,6 @@
 'use client';
 
-import type { LogListResponse } from '@minidog/types';
+import { LOG_ATTRIBUTE_FILTERS_MAX, type LogListResponse } from '@minidog/types';
 import { useMemo } from 'react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Section } from '@/components/layout/Section';
@@ -17,6 +17,7 @@ import { useTimeRange } from '@/lib/time-range';
 import { useApi } from '@/lib/use-api';
 import { TelemetrySetup } from '../apm/TelemetrySetup';
 import { LiveTail } from './LiveTail';
+import { LogFacets } from './LogFacets';
 import styles from './Logs.module.scss';
 
 const LEVEL_OPTIONS = [
@@ -37,20 +38,31 @@ const MAX = 1000;
 
 export function LogsView() {
   const range = useTimeRange();
-  const { get, set } = useQueryParams();
+  const { get, getAll, set } = useQueryParams();
   const filters = { service: get('service'), level: get('level'), q: get('q'), traceId: get('traceId') };
   // When the trace was seen, from the screen that linked here; only meaningful with a trace id.
   const at = filters.traceId && /^\d+$/.test(get('at') ?? '') ? get('at') : undefined;
+  // `?attr=key:value`, one per attribute the records must carry.
+  const attr = getAll('attr')
+    .filter((item) => item.indexOf(':') > 0)
+    .slice(0, LOG_ATTRIBUTE_FILTERS_MAX);
   const window = parseWindow(get('from'), get('to'));
   const limit = Math.min(Number(get('limit')) || PAGE, MAX);
-  const hasFilters = Object.values(filters).some(Boolean) || window !== null;
+  const hasFilters = Object.values(filters).some(Boolean) || attr.length > 0 || window !== null;
   const live = get('live') === '1';
 
   // Keeps loading while live tail runs: it feeds the service filter, and the
   // records are ready when live tail stops.
   const { data, error, isLoading, updatedAt, refetch } = useApi<LogListResponse>(
-    `/logs${toQuery({ range, limit, ...filters, at, ...(window ? windowParams(window) : {}) })}`,
+    `/logs${toQuery({ range, limit, ...filters, at, attr, ...(window ? windowParams(window) : {}) })}`,
   );
+
+  const addAttribute = (key: string, value: string) => {
+    const item = `${key}:${value}`;
+    if (attr.includes(item) || attr.length >= LOG_ATTRIBUTE_FILTERS_MAX) return;
+    set({ attr: [...attr, item], limit: null });
+  };
+  const removeAttribute = (item: string) => set({ attr: attr.filter((other) => other !== item), limit: null });
 
   const serviceOptions = [
     { value: '', label: 'All services' },
@@ -61,12 +73,22 @@ export function LogsView() {
   ];
 
   const clear = () =>
-    set({ service: null, level: null, q: null, traceId: null, at: null, limit: null, from: null, to: null });
+    set({
+      service: null,
+      level: null,
+      q: null,
+      traceId: null,
+      at: null,
+      attr: null,
+      limit: null,
+      from: null,
+      to: null,
+    });
   // Dragging on the volume chart narrows the records to that window.
   const selectWindow = (fromMs: number, toMs: number) => set({ ...windowParams({ fromMs, toMs }), limit: null });
-  // Live tail follows new records, so a fixed window, a trace or paging do not apply.
+  // Live tail follows new records, so a fixed window, a trace, attribute filters or paging do not apply.
   const toggleLive = () =>
-    set(live ? { live: null } : { live: '1', from: null, to: null, traceId: null, at: null, limit: null });
+    set(live ? { live: null } : { live: '1', from: null, to: null, traceId: null, at: null, attr: null, limit: null });
 
   return (
     <>
@@ -103,6 +125,17 @@ export function LogsView() {
         {filters.traceId && (
           <FilterChip label="Trace" value={filters.traceId} onClear={() => set({ traceId: null, at: null })} />
         )}
+        {attr.map((item) => {
+          const colon = item.indexOf(':');
+          return (
+            <FilterChip
+              key={item}
+              label={item.slice(0, colon)}
+              value={item.slice(colon + 1)}
+              onClear={() => removeAttribute(item)}
+            />
+          );
+        })}
         <SearchField label="Search logs" value={filters.q} placeholder="Search logs…" onChange={(q) => set({ q })} />
       </FilterBar>
       {live ? (
@@ -141,6 +174,16 @@ export function LogsView() {
             </Section>
           )}
 
+          {!filters.traceId && data && data.facets.length > 0 && (
+            <LogFacets
+              facets={data.facets}
+              active={attr}
+              full={attr.length >= LOG_ATTRIBUTE_FILTERS_MAX}
+              onSelect={addAttribute}
+              onRemove={removeAttribute}
+            />
+          )}
+
           <Section title={filters.traceId ? 'Logs of this trace' : 'Records'} flush>
             {isLoading ? (
               <Skeleton height="calc(var(--row-height) * 8)" />
@@ -148,7 +191,12 @@ export function LogsView() {
               <ErrorState title="Unable to query logs." description={error?.message} onRetry={refetch} />
             ) : data.logs.length > 0 ? (
               <>
-                <LogList logs={data.logs} range={range} showTrace={!filters.traceId} />
+                <LogList
+                  logs={data.logs}
+                  range={range}
+                  showTrace={!filters.traceId}
+                  onAttributeSelect={filters.traceId ? undefined : addAttribute}
+                />
                 {data.truncated && limit < MAX && (
                   <div className={styles.more}>
                     <Button size="sm" onClick={() => set({ limit: String(limit + PAGE) })}>

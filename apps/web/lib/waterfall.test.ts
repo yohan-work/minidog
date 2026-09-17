@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { SpanDetail } from '@minidog/types';
-import { buildWaterfall, selfTime } from './waterfall';
+import { buildWaterfall, selfTime, visibleRows } from './waterfall';
 
 const span = (
   spanId: string,
@@ -86,4 +86,46 @@ test('the slowest span is the one with the most self time, not the longest', () 
 
 test('a single span has no slowest span to point at', () => {
   assert.equal(buildWaterfall([span('only', '', 0, 12)]).slowestSpanId, null);
+});
+
+// request → auth → token, request → query; a second root on its own.
+const tree = () =>
+  buildWaterfall([
+    span('request', '', 0, 100, 'POST /checkout'),
+    span('auth', 'request', 5, 20, 'verify'),
+    span('token', 'auth', 6, 10, 'jwt.decode'),
+    span('query', 'request', 40, 50, 'postgres.query'),
+    span('other', '', 200, 5, 'cron'),
+  ]);
+const ids = (rows: readonly { span: SpanDetail }[]) => rows.map((row) => row.span.spanId);
+
+test('rows know how many spans sit below them', () => {
+  const model = tree();
+  const counts = Object.fromEntries(model.rows.map((row) => [row.span.spanId, [row.childCount, row.descendantCount]]));
+  assert.deepEqual(counts, { request: [2, 3], auth: [1, 1], token: [0, 0], query: [0, 0], other: [0, 0] });
+});
+
+test('a collapsed span hides everything below it and nothing beside it', () => {
+  const model = tree();
+  const rows = visibleRows(model, { collapsed: new Set(['auth']), query: '' });
+  assert.deepEqual(ids(rows), ['request', 'auth', 'query', 'other']);
+  assert.deepEqual(
+    rows.map((row) => row.collapsed),
+    [false, true, false, false],
+  );
+
+  assert.deepEqual(ids(visibleRows(model, { collapsed: new Set(['request']), query: '' })), ['request', 'other']);
+  // Collapsing a leaf changes nothing.
+  assert.deepEqual(ids(visibleRows(model, { collapsed: new Set(['token']), query: '' })).length, 5);
+});
+
+test('a search keeps the matches and the path down to them, and ignores collapsing', () => {
+  const model = tree();
+  const rows = visibleRows(model, { collapsed: new Set(['request', 'auth']), query: 'JWT' });
+  assert.deepEqual(ids(rows), ['request', 'auth', 'token']);
+  assert.deepEqual(
+    rows.map((row) => row.matches),
+    [false, false, true],
+  );
+  assert.equal(visibleRows(model, { collapsed: new Set(), query: 'nothing here' }).length, 0);
 });

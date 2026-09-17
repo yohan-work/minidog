@@ -8,6 +8,10 @@ export interface WaterfallRow {
   widthPct: number;
   /** Time not covered by child spans. */
   selfMs: number;
+  /** Direct children; 0 for a leaf. */
+  childCount: number;
+  /** Everything below this span, at any depth. */
+  descendantCount: number;
 }
 
 export interface WaterfallModel {
@@ -41,21 +45,76 @@ export function buildWaterfall(spans: readonly SpanDetail[]): WaterfallModel {
   const durationMs = Math.max(endMs - startMs, 0.001);
 
   const rows: WaterfallRow[] = [];
-  const visit = (span: SpanDetail, depth: number) => {
+  const visit = (span: SpanDetail, depth: number): number => {
     const kids = children.get(span.spanId) ?? [];
-    rows.push({
+    const row: WaterfallRow = {
       span,
       depth,
       offsetPct: ((span.startMs - startMs) / durationMs) * 100,
       widthPct: Math.max((span.durationMs / durationMs) * 100, 0.3),
       selfMs: selfTime(span, kids),
-    });
-    for (const child of kids) visit(child, depth + 1);
+      childCount: kids.length,
+      descendantCount: 0,
+    };
+    rows.push(row);
+    for (const child of kids) row.descendantCount += 1 + visit(child, depth + 1);
+    return row.descendantCount;
   };
   for (const root of roots) visit(root, 0);
 
   const slowest = rows.length > 1 ? rows.reduce((worst, row) => (row.selfMs > worst.selfMs ? row : worst)) : null;
   return { rows, startMs, durationMs, slowestSpanId: slowest?.span.spanId ?? null };
+}
+
+export interface VisibleRow extends WaterfallRow {
+  /** Whether the span itself matches the search; ancestors of a match are shown dimmed. */
+  matches: boolean;
+  collapsed: boolean;
+}
+
+/** Case-insensitive match on the span's service, name and status message. */
+export function matchesSpan(span: SpanDetail, query: string): boolean {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return true;
+  return [span.service, span.name, span.statusMessage, span.httpRoute].some((text) =>
+    text.toLowerCase().includes(needle),
+  );
+}
+
+/**
+ * The rows to draw. Collapsed spans hide everything below them. A search
+ * shows the spans that match and the path down to each of them, and ignores
+ * collapsing, so a match is never hidden.
+ */
+export function visibleRows(
+  model: WaterfallModel,
+  options: { collapsed: ReadonlySet<string>; query: string },
+): VisibleRow[] {
+  const searching = options.query.trim() !== '';
+  if (!searching) {
+    const shown: VisibleRow[] = [];
+    let hideBelow: number | null = null;
+    for (const row of model.rows) {
+      if (hideBelow !== null && row.depth > hideBelow) continue;
+      hideBelow = null;
+      const collapsed = row.childCount > 0 && options.collapsed.has(row.span.spanId);
+      if (collapsed) hideBelow = row.depth;
+      shown.push({ ...row, matches: true, collapsed });
+    }
+    return shown;
+  }
+
+  const parents = new Map(model.rows.map((row) => [row.span.spanId, row.span.parentSpanId]));
+  const keep = new Set<string>();
+  const matched = new Set<string>();
+  for (const row of model.rows) {
+    if (!matchesSpan(row.span, options.query)) continue;
+    matched.add(row.span.spanId);
+    for (let id: string | undefined = row.span.spanId; id && !keep.has(id); id = parents.get(id)) keep.add(id);
+  }
+  return model.rows
+    .filter((row) => keep.has(row.span.spanId))
+    .map((row) => ({ ...row, matches: matched.has(row.span.spanId), collapsed: false }));
 }
 
 /** Duration minus the union of child intervals clipped to the span. */
