@@ -18,6 +18,22 @@ import { DatabaseSync } from 'node:sqlite';
 import { loadConfig } from '../config';
 import { readLockOwner } from '../db/data-lock';
 
+if (process.argv.slice(2).some((arg) => arg === '--help' || arg === '-h')) {
+  console.log(`Usage: backup <file>
+
+Copy the settings database to a new file, including passwords, API keys,
+monitors and dashboards. ClickHouse telemetry is not included.
+Run the backup on the same host or container as minidog; it can stay running.
+
+Examples:
+  pnpm db:backup ./minidog-backup.sqlite
+  docker compose exec api node cli/backup.mjs /data/minidog-backup.sqlite
+
+Set SQLITE_PATH to select the source database.
+  -h, --help  Show this help without accessing the database.`);
+  process.exit(0);
+}
+
 try {
   process.loadEnvFile();
 } catch {

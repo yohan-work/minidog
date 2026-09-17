@@ -116,6 +116,8 @@ docker compose exec api node cli/backup.mjs /data/minidog-$(date +%F).sqlite
 
 되돌리는 방법을 포함한 자세한 내용은 [백업하기](docs/getting-started.ko.md#백업하기)에 있습니다. `docker compose down -v`는 볼륨을 모두 지우므로 텔레메트리뿐 아니라 설정도 사라집니다.
 
+DB에 접근하지 않고 사용법을 확인하려면 소스 체크아웃에서 `pnpm db:backup --help`, `pnpm db:restore --help`, `pnpm auth:reset --help`를 실행하세요. Docker에서는 `docker compose exec api node cli/backup.mjs --help`를 사용합니다(`restore.mjs`, `reset-password.mjs`도 동일). 세 명령 모두 `-h`도 지원합니다.
+
 ## 문서
 
 - [실행 가이드](docs/getting-started.ko.md) ([English](docs/getting-started.md)): 설정, 항상 켜두기, 소스로 실행, 데모 가게, 휴대폰 알림
