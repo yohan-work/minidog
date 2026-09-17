@@ -17,6 +17,8 @@ export interface LogQuery {
   traceId?: string;
   /** When the trace was seen (epoch ms); narrows a trace's log lookup to the days around it. */
   at?: number;
+  /** Attribute values every record must carry. */
+  attributes?: readonly { key: string; value: string }[];
   limit: number;
 }
 
@@ -44,12 +46,14 @@ export class LogService {
     // A trace's logs are found wherever they are, regardless of the window.
     const bounds = filters.traceId ? traceBounds(at, now) : { fromMs: window.fromMs, toMs: custom?.toMs };
 
-    const [logs, points, services] = await Promise.all([
+    // A trace's logs are few and already found; volume and facets are for searching.
+    const [logs, points, services, facets] = await Promise.all([
       this.logs.search(this.scope, { ...filters, ...bounds, limit }),
       filters.traceId
         ? Promise.resolve([])
         : this.logs.volume(this.scope, { ...filters, ...bounds }, window.stepSeconds),
       this.logs.services(this.scope, window.fromMs),
+      filters.traceId ? Promise.resolve([]) : this.logs.facets(this.scope, { ...filters, ...bounds }),
     ]);
 
     return {
@@ -58,6 +62,7 @@ export class LogService {
       truncated: logs.length >= limit,
       series: { stepSeconds: window.stepSeconds, points: filters.traceId ? [] : fillVolume(window, points) },
       services,
+      facets,
     };
   }
 

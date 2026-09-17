@@ -1,0 +1,83 @@
+@use '../../styles/mixins' as *;
+
+.note {
+  font-size: var(--text-meta);
+  color: var(--foreground-muted);
+}
+
+// Keys in columns that wrap with the viewport; each column lists its values.
+.facets {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(calc(var(--space-16) * 3), 1fr));
+  gap: var(--space-4) var(--space-6);
+}
+
+.facet {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.key {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+  color: var(--foreground-secondary);
+  @include truncate;
+}
+
+.count {
+  flex-shrink: 0;
+  @include mono-numeric;
+  font-size: var(--text-meta);
+  color: var(--foreground-muted);
+}
+
+.values {
+  display: grid;
+}
+
+.value {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-width: 0;
+  height: var(--control-height-sm);
+  padding-inline: var(--space-2);
+  margin-inline: calc(var(--space-2) * -1);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-secondary);
+  color: var(--foreground-primary);
+  text-align: left;
+  cursor: pointer;
+  @include transition(background-color);
+
+  &:hover:not(:disabled) {
+    background: var(--background-hover);
+  }
+
+  &[aria-pressed='true'] {
+    background: var(--background-active);
+    font-weight: var(--weight-medium);
+  }
+
+  &:disabled {
+    color: var(--foreground-muted);
+    cursor: default;
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: inset 0 0 0 2px var(--focus-ring);
+  }
+}
+
+.valueText {
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+  @include truncate;
+}

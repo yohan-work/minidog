@@ -155,3 +155,24 @@
     }
   }
 }
+
+// An attribute value that filters the list; dotted so it reads as an action, not a link.
+.attributeFilter {
+  text-align: left;
+  word-break: break-all;
+  color: inherit;
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-decoration-color: var(--border-strong);
+  text-underline-offset: 3px;
+
+  &:hover {
+    text-decoration-style: solid;
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--focus-ring);
+    border-radius: var(--radius-sm);
+  }
+}

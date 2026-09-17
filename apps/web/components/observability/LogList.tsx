@@ -31,6 +31,8 @@ interface LogListProps {
   showService?: boolean;
   /** Hide the trace link when the list is already scoped to one trace. */
   showTrace?: boolean;
+  /** When given, an attribute in an expanded record can be clicked to filter by it. */
+  onAttributeSelect?: (key: string, value: string) => void;
 }
 
 /**
@@ -51,7 +53,7 @@ function logKeys(logs: readonly LogEntry[]): string[] {
   });
 }
 
-export function LogList({ logs, range, showService = true, showTrace = true }: LogListProps) {
+export function LogList({ logs, range, showService = true, showTrace = true, onAttributeSelect }: LogListProps) {
   const listId = useId();
   const keys = useMemo(() => logKeys(logs), [logs]);
   const [open, setOpen] = useState<ReadonlySet<string>>(new Set());
@@ -120,7 +122,18 @@ export function LogList({ logs, range, showService = true, showTrace = true }: L
                     .sort(([a], [b]) => a.localeCompare(b))
                     .map(([key, value]) => (
                       <Attribute key={key} name={key}>
-                        {value}
+                        {onAttributeSelect ? (
+                          <button
+                            type="button"
+                            className={styles.attributeFilter}
+                            title={`Only records with ${key} = ${value}`}
+                            onClick={() => onAttributeSelect(key, value)}
+                          >
+                            {value}
+                          </button>
+                        ) : (
+                          value
+                        )}
                       </Attribute>
                     ))}
                 </dl>

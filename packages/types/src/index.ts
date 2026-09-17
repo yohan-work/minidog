@@ -980,6 +980,20 @@ export interface LogVolumePoint {
   errors: number;
 }
 
+/** How many attribute filters (`?attr=key:value`) one log query may carry. */
+export const LOG_ATTRIBUTE_FILTERS_MAX = 5;
+/** Attribute keys and values per key that the facets list. */
+export const LOG_FACET_KEYS = 12;
+export const LOG_FACET_VALUES = 6;
+
+/** One attribute key across the records that match the current filters, with its commonest values. */
+export interface LogFacet {
+  key: string;
+  /** Records carrying this key. */
+  count: number;
+  values: { value: string; count: number }[];
+}
+
 export interface LogListResponse {
   range: TimeRange;
   logs: LogEntry[];
@@ -989,6 +1003,8 @@ export interface LogListResponse {
   series: { stepSeconds: number; points: LogVolumePoint[] };
   /** Services with logs in the range, for the service filter. */
   services: string[];
+  /** Attribute keys in the matching records, commonest first; empty when filtering by trace. */
+  facets: LogFacet[];
 }
 
 /** `GET /api/logs/tail`: records from `since` on, newest first. */
