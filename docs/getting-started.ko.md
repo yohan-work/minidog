@@ -181,6 +181,19 @@ docker compose start api
 
 소스로 실행할 때는 minidog을 멈추고 `pnpm db:restore ./minidog-backup.sqlite`.
 
+### 텔레메트리까지 백업하려면
+
+대개는 필요 없다. 스팬과 로그는 기본 14일, 메트릭은 30일만 보관하므로 백업은 필요해질 때쯤 이미 오래된 것이 되고, 발신처가 ClickHouse를 다시 채운다. 보관 기간을 늘려 두었고 지금 있는 것을 지키고 싶다면, ClickHouse를 멈춘 상태로 볼륨을 복사한다. ClickHouse는 데이터 디렉터리에 계속 쓰기 때문에 실행 중에 복사한 것에는 절반만 쓰인 파트가 들어갈 수 있고, 그런 파트는 로드가 거부된다.
+
+```bash
+docker compose stop clickhouse api
+docker run --rm -v minidog_clickhouse-data:/data -v "$PWD:/backup" alpine \
+  tar czf /backup/clickhouse-$(date +%F).tgz -C /data .
+docker compose start clickhouse api
+```
+
+API를 함께 멈추는 것은 의도한 것이다. 발신처는 503 대신 연결 오류를 받아 재시도하고, 컬렉터는 그 사이 도착한 것을 버퍼에 담아 두므로, 1분 정도 멈추어도 보낸 데이터는 잃지 않는다. 되돌릴 때는 둘을 다시 멈추고 볼륨을 비운 뒤(`docker run --rm -v minidog_clickhouse-data:/data alpine sh -c 'rm -rf /data/*'`) 같은 방법으로 아카이브를 풀고 시작한다. 아카이브는 같은 ClickHouse 메이저 버전에서 만든 것이어야 한다. 예전 minidog에서 만든 아카이브는 괜찮다. API가 시작할 때 필요한 컬럼을 추가한다.
+
 `docker compose down`은 볼륨을 남기고, `docker compose down -v`는 지운다.
 
 ## 데모 가게로 둘러보기
