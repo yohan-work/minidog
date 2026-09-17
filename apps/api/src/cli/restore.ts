@@ -17,6 +17,24 @@ import { loadConfig } from '../config';
 import { acquireDataLock, DataLockedError, LOCK_STALE_MS } from '../db/data-lock';
 import { SCHEMA_VERSION } from '../db/sqlite';
 
+if (process.argv.slice(2).some((arg) => arg === '--help' || arg === '-h')) {
+  console.log(`Usage: restore <file>
+
+Replace the settings database with a minidog backup. Stop minidog first.
+The replaced database is kept with a .bak suffix. ClickHouse telemetry is
+not restored.
+
+Examples:
+  pnpm db:restore ./minidog-backup.sqlite
+  docker compose stop api
+  docker compose run --rm api node cli/restore.mjs /data/minidog-backup.sqlite
+  docker compose start api
+
+Set SQLITE_PATH to select the database to replace.
+  -h, --help  Show this help without accessing the database.`);
+  process.exit(0);
+}
+
 try {
   process.loadEnvFile();
 } catch {

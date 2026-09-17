@@ -116,6 +116,8 @@ docker compose exec api node cli/backup.mjs /data/minidog-$(date +%F).sqlite
 
 Details, and how to put it back, are in [Backing up](docs/getting-started.md#backing-up). Note that `docker compose down -v` deletes both volumes — everything, not just the telemetry.
 
+For command usage without accessing the database, run `pnpm db:backup --help`, `pnpm db:restore --help`, or `pnpm auth:reset --help` from a source checkout. With Docker, use `docker compose exec api node cli/backup.mjs --help` (also available for `restore.mjs` and `reset-password.mjs`). All three commands accept `-h` too.
+
 ## Documentation
 
 - [Getting started](docs/getting-started.md): configuration, always-on mode, running from source, the demo shop and phone alerts.

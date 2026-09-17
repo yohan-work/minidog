@@ -10,6 +10,21 @@ import { loadConfig } from '../config';
 import { openDatabase } from '../db/sqlite';
 import { AuthRepository } from '../repositories/auth-repository';
 
+if (process.argv.slice(2).some((arg) => arg === '--help' || arg === '-h')) {
+  console.log(`Usage: reset-password
+
+Clear the dashboard password and sign out every session. On the next visit,
+the dashboard asks you to set a new password. Requires access to the data directory.
+
+Examples:
+  pnpm auth:reset
+  docker compose exec api node cli/reset-password.mjs
+
+Set SQLITE_PATH to select the database.
+  -h, --help  Show this help without accessing the database.`);
+  process.exit(0);
+}
+
 try {
   process.loadEnvFile();
 } catch {
