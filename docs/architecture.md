@@ -45,7 +45,7 @@ Browser ──▶ Dashboard (Next.js) ──/api/* (proxy route)─────�
 ## The dashboard (`apps/web`)
 
 - `app/*/page.tsx` are thin; the screens live in `features/<area>/`.
-- `lib/use-api.ts` polls, and `lib/api-client.ts` adds the `x-minidog-request` header and sends a 401 to `/login`.
+- `lib/use-api.ts` polls through `lib/api-store.ts`, which keeps one request and one timer per path however many components ask for it and caches the last response of paths nobody is on. `lib/api-client.ts` adds the `x-minidog-request` header and sends a 401 to `/login`.
 - `components/observability/` holds the charts (uPlot) and state components.
 - Styling is SCSS modules on CSS variables (`styles/tokens`), with light and dark themes.
 

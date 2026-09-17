@@ -4,6 +4,12 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Changed
+
+- Telemetry is written with ClickHouse's asynchronous inserts: the rows of each OTLP export are collected in memory and written as one part per table per flush, instead of a new part every time a collector pipeline exports. The API still waits for the flush before answering, so a 200 means the data is on disk and exporters retry on anything else.
+- Opening a trace looks for its spans and logs in the days around when it happened, using the moment the link was made from (`?at=`), instead of across the whole retention. A pasted URL without it still searches everything.
+- The dashboard shares one request and one timer per API path across the components showing it, and keeps the last response of screens you leave, so coming back shows them at once while the fresh load runs.
+
 ## [0.2.0] - 2026-09-16
 
 What happens after the install: the first ten minutes with minidog, and the first few months of leaving it running.
