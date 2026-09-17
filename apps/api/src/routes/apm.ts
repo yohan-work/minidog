@@ -2,11 +2,12 @@ import { DB_QUERY_SORTS, TRACE_SORTS } from '@minidog/types';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { AppContext } from '../app';
-import { checkWindow, emptyAsUndefined, optionalText, traceIdSchema, windowFields } from './query';
+import { atField, checkWindow, emptyAsUndefined, optionalText, traceIdSchema, windowFields } from './query';
 import { rangeQuerySchema } from './schemas';
 
 const serviceParamsSchema = z.object({ service: z.string().min(1).max(255) });
 const traceParamsSchema = z.object({ traceId: traceIdSchema });
+const traceDetailQuerySchema = z.object({ at: atField });
 
 const traceQuerySchema = rangeQuerySchema
   .extend({
@@ -82,7 +83,8 @@ export function registerApmRoutes(app: FastifyInstance, ctx: AppContext): void {
 
   app.get('/api/traces/:traceId', async (request) => {
     const { traceId } = traceParamsSchema.parse(request.params);
-    return ctx.apm.trace(traceId.toLowerCase());
+    const { at } = traceDetailQuerySchema.parse(request.query);
+    return ctx.apm.trace(traceId.toLowerCase(), at);
   });
 
   app.get('/api/errors', async (request) => ctx.apm.errors(errorQuerySchema.parse(request.query)));

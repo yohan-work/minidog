@@ -1,17 +1,8 @@
-import {
-  RETENTION_MAX_DAYS,
-  type LogLevel,
-  type LogListResponse,
-  type LogTailResponse,
-  type LogVolumePoint,
-  type TimeRange,
-} from '@minidog/types';
-import { customWindow, timeWindow, type TimeWindow } from '../lib/time-window';
+import type { LogLevel, LogListResponse, LogTailResponse, LogVolumePoint, TimeRange } from '@minidog/types';
+import { customWindow, timeWindow, traceBounds, type TimeWindow } from '../lib/time-window';
 import type { LogRepository } from '../repositories/log-repository';
 import type { Scope } from '../repositories/project-repository';
 
-/** Logs of one trace are looked up across the whole retention, not the selected range. */
-const TRACE_LOOKBACK_MS = RETENTION_MAX_DAYS * 24 * 60 * 60 * 1000;
 /** Live tail catches up at most this far back, e.g. after a long pause. */
 const TAIL_MAX_LOOKBACK_MS = 15 * 60 * 1000;
 
@@ -24,6 +15,8 @@ export interface LogQuery {
   minLevel?: LogLevel;
   query?: string;
   traceId?: string;
+  /** When the trace was seen (epoch ms); narrows a trace's log lookup to the days around it. */
+  at?: number;
   limit: number;
 }
 
@@ -44,14 +37,12 @@ export class LogService {
     private readonly scope: Scope,
   ) {}
 
-  async search({ range, from, to, limit, ...filters }: LogQuery): Promise<LogListResponse> {
+  async search({ range, from, to, at, limit, ...filters }: LogQuery): Promise<LogListResponse> {
     const now = Date.now();
     const custom = from !== undefined && to !== undefined ? customWindow(from, to) : null;
     const window: Buckets = custom ?? timeWindow(range, now);
     // A trace's logs are found wherever they are, regardless of the window.
-    const bounds = filters.traceId
-      ? { fromMs: now - TRACE_LOOKBACK_MS }
-      : { fromMs: window.fromMs, toMs: custom?.toMs };
+    const bounds = filters.traceId ? traceBounds(at, now) : { fromMs: window.fromMs, toMs: custom?.toMs };
 
     const [logs, points, services] = await Promise.all([
       this.logs.search(this.scope, { ...filters, ...bounds, limit }),

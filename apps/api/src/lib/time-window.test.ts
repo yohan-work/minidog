@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { customWindow, fillSeries, queryBounds, timeWindow } from './time-window';
+import { customWindow, fillSeries, queryBounds, timeWindow, TRACE_HINT_MARGIN_MS, traceBounds } from './time-window';
 
 test('timeWindow aligns 1h to 60 one-minute buckets ending at the current bucket', () => {
   const now = Date.UTC(2026, 8, 14, 12, 30, 45);
@@ -41,4 +41,15 @@ test('customWindow keeps at most 120 buckets and aligns them', () => {
 test('queryBounds prefers an absolute window over the preset range', () => {
   assert.deepEqual(queryBounds('1h', 1_000, 2_000), { fromMs: 1_000, toMs: 2_000 });
   assert.equal(queryBounds('1h').toMs, undefined);
+});
+
+test('traceBounds looks a day either side of the hint, and across the retention without one', () => {
+  const at = Date.UTC(2026, 8, 15, 23, 59, 0);
+  assert.deepEqual(traceBounds(at), { fromMs: at - TRACE_HINT_MARGIN_MS, toMs: at + TRACE_HINT_MARGIN_MS });
+  assert.equal(TRACE_HINT_MARGIN_MS, 24 * 60 * 60 * 1000);
+
+  const now = Date.UTC(2026, 8, 16);
+  const open = traceBounds(undefined, now);
+  assert.equal(open.toMs, undefined);
+  assert.equal(open.fromMs, now - 365 * 24 * 60 * 60 * 1000);
 });

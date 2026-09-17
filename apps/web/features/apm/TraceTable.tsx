@@ -37,7 +37,10 @@ export function TraceTable({
             </Td>
             <Td hideBelow="tablet">{trace.service}</Td>
             <Td>
-              <RowLink href={traceHref(trace.traceId, range, trace.spanId)} className={styles.traceName}>
+              <RowLink
+                href={traceHref(trace.traceId, range, trace.spanId, trace.timestamp)}
+                className={styles.traceName}
+              >
                 {trace.name}
               </RowLink>
             </Td>

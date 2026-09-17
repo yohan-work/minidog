@@ -130,7 +130,10 @@ function ErrorTable({ groups, range }: { groups: readonly ErrorGroup[]; range: T
           <Tr key={`${group.type}\n${group.message}`} interactive>
             <Td>
               <span className={styles.exception}>
-                <RowLink href={traceHref(group.latestTraceId, range)} className={styles.type}>
+                <RowLink
+                  href={traceHref(group.latestTraceId, range, undefined, group.lastSeenAt)}
+                  className={styles.type}
+                >
                   {group.type || 'Exception'}
                 </RowLink>
                 <span className={styles.message} title={group.message || undefined}>

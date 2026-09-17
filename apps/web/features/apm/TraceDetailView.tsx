@@ -25,8 +25,11 @@ const REFRESH_MS = 30_000;
 export function TraceDetailView({ traceId }: { traceId: string }) {
   const range = useTimeRange();
   const { get, set } = useQueryParams();
-  const trace = useApi<TraceResponse>(`/traces/${traceId}`, REFRESH_MS);
-  const logs = useApi<LogListResponse>(`/logs?traceId=${traceId}&limit=500`, REFRESH_MS);
+  // When the trace was seen, from the row that linked here; narrows the lookup to those days.
+  const at = get('at');
+  const hint = at && /^\d+$/.test(at) ? `&at=${at}` : '';
+  const trace = useApi<TraceResponse>(`/traces/${traceId}${hint ? `?${hint.slice(1)}` : ''}`, REFRESH_MS);
+  const logs = useApi<LogListResponse>(`/logs?traceId=${traceId}&limit=500${hint}`, REFRESH_MS);
   const back = { href: tracesHref({}, range), label: 'Traces' };
 
   const model = useMemo(() => (trace.data ? buildWaterfall(trace.data.spans) : null), [trace.data]);
@@ -117,7 +120,7 @@ export function TraceDetailView({ traceId }: { traceId: string }) {
           </>
         }
         actions={
-          <ButtonLink href={logsHref({ traceId }, range)} variant="ghost" size="sm">
+          <ButtonLink href={logsHref({ traceId, at: model.startMs }, range)} variant="ghost" size="sm">
             Open in Logs
           </ButtonLink>
         }

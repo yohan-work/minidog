@@ -27,6 +27,14 @@ export const windowFields = {
   to: emptyAsUndefined(z.coerce.number().int().positive().optional()),
 };
 
+/**
+ * `?at=` (epoch ms): when a trace was seen, so its spans and logs are looked
+ * up in the days around that moment instead of across the whole retention.
+ * A trace id says nothing about time, and every screen that links to a trace
+ * knows when it happened.
+ */
+export const atField = emptyAsUndefined(z.coerce.number().int().positive().optional());
+
 export function checkWindow(value: { from?: number; to?: number }, ctx: z.RefinementCtx): void {
   const problem = windowProblem(value);
   if (problem) ctx.addIssue({ code: 'custom', path: ['to'], message: problem });

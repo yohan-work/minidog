@@ -2,7 +2,7 @@ import { LOG_LEVELS } from '@minidog/types';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { AppContext } from '../app';
-import { checkWindow, emptyAsUndefined, optionalText, traceIdSchema, windowFields } from './query';
+import { atField, checkWindow, emptyAsUndefined, optionalText, traceIdSchema, windowFields } from './query';
 import { rangeQuerySchema } from './schemas';
 
 const logQuerySchema = rangeQuerySchema
@@ -12,6 +12,7 @@ const logQuerySchema = rangeQuerySchema
     level: emptyAsUndefined(z.enum(LOG_LEVELS).optional()),
     q: optionalText(200),
     traceId: emptyAsUndefined(traceIdSchema.optional()),
+    at: atField,
     limit: z.coerce.number().int().min(1).max(1000).default(200),
   })
   .superRefine(checkWindow);
