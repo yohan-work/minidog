@@ -67,6 +67,75 @@
   display: grid;
 }
 
+.item {
+  position: relative;
+
+  // Ancestors shown only as the path to a match.
+  &[data-dim] .row {
+    color: var(--foreground-muted);
+  }
+
+  &[data-dim] .bar {
+    opacity: 0.4;
+  }
+}
+
+// Sits over the row's indent; the label leaves a slot for it at every depth.
+.toggle {
+  position: absolute;
+  top: 50%;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-4);
+  height: var(--space-4);
+  transform: translateY(-50%);
+  border-radius: var(--radius-sm);
+  color: var(--foreground-muted);
+  cursor: pointer;
+  @include transition(background-color, color);
+
+  &:hover:not(:disabled) {
+    background: var(--background-active);
+    color: var(--foreground-primary);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--focus-ring);
+  }
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.4;
+  }
+
+  &[aria-expanded='false'] .chevron {
+    transform: rotate(-90deg);
+  }
+}
+
+.chevron {
+  @include transition(transform);
+}
+
+.hiddenCount {
+  flex-shrink: 0;
+  padding-inline: var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--background-active);
+  font-size: var(--text-meta);
+  color: var(--foreground-muted);
+  @include mono-numeric;
+}
+
+.noMatch {
+  padding: var(--space-6) var(--content-padding);
+  font-size: var(--text-secondary);
+  color: var(--foreground-muted);
+}
+
 .row {
   width: 100%;
   min-height: var(--row-height);

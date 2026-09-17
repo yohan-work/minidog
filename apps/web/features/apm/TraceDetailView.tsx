@@ -2,14 +2,15 @@
 
 import type { LogListResponse, SpanDetail, TimeRange, TraceResponse } from '@minidog/types';
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Section } from '@/components/layout/Section';
 import { LogList } from '@/components/observability/LogList';
 import { EmptyState, ErrorState } from '@/components/observability/States';
 import { StatusIndicator } from '@/components/observability/StatusIndicator';
 import { buildWaterfall, TraceWaterfall } from '@/components/observability/TraceWaterfall';
-import { ButtonLink } from '@/components/ui/Button';
+import { Button, ButtonLink } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { formatDateTime, formatLatency, formatTimeMs } from '@/lib/format';
 import { logsHref, serviceHref, tracesHref } from '@/lib/links';
@@ -33,6 +34,16 @@ export function TraceDetailView({ traceId }: { traceId: string }) {
   const back = { href: tracesHref({}, range), label: 'Traces' };
 
   const model = useMemo(() => (trace.data ? buildWaterfall(trace.data.spans) : null), [trace.data]);
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
+  const [spanQuery, setSpanQuery] = useState('');
+  const toggle = (spanId: string) =>
+    setCollapsed((current) => {
+      const next = new Set(current);
+      if (!next.delete(spanId)) next.add(spanId);
+      return next;
+    });
+  const parents = model?.rows.filter((row) => row.childCount > 0) ?? [];
+  const allCollapsed = parents.length > 0 && parents.every((row) => collapsed.has(row.span.spanId));
 
   if (trace.error?.status === 404) {
     return (
@@ -97,8 +108,41 @@ export function TraceDetailView({ traceId }: { traceId: string }) {
         }
       />
 
-      <Section title="Waterfall" actions={<span className={styles.note}>Slowest span by self time</span>} flush>
-        <TraceWaterfall model={model} selectedSpanId={selected?.spanId ?? null} onSelect={(span) => set({ span })} />
+      <Section
+        title="Waterfall"
+        actions={
+          <div className={styles.waterfallTools}>
+            <label className={styles.spanSearch}>
+              <span className={styles.visuallyHidden}>Find spans</span>
+              <Input
+                type="search"
+                placeholder="Find spans…"
+                value={spanQuery}
+                onChange={(event) => setSpanQuery(event.target.value)}
+              />
+            </label>
+            {parents.length > 0 && (
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={spanQuery.trim() !== ''}
+                onClick={() => setCollapsed(allCollapsed ? new Set() : new Set(parents.map((row) => row.span.spanId)))}
+              >
+                {allCollapsed ? 'Expand all' : 'Collapse all'}
+              </Button>
+            )}
+          </div>
+        }
+        flush
+      >
+        <TraceWaterfall
+          model={model}
+          selectedSpanId={selected?.spanId ?? null}
+          onSelect={(span) => set({ span })}
+          collapsed={collapsed}
+          onToggle={toggle}
+          query={spanQuery}
+        />
       </Section>
 
       {selected && (
