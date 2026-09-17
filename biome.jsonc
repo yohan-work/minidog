@@ -7,7 +7,7 @@
   },
   "files": {
     // Biome does not parse SCSS; stylesheets keep their current hand formatting.
-    "includes": ["**", "!**/dist", "!**/.next", "!**/*.scss"]
+    "includes": ["**", "!**/dist", "!**/.next", "!**/*.scss", "!**/.claude"]
   },
   "formatter": {
     "indentStyle": "space",
