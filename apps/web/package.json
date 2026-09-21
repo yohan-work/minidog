@@ -21,7 +21,7 @@
   },
   "devDependencies": {
     "@minidog/config": "workspace:*",
-    "@types/node": "^24.0.0",
+    "@types/node": "^24.13.5",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "sass": "^1.104.1",
