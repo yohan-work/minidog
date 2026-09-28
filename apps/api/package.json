@@ -14,7 +14,7 @@
   "dependencies": {
     "@clickhouse/client": "^1.23.1",
     "@minidog/types": "workspace:*",
-    "fastify": "^5.12.4",
+    "fastify": "^5.12.5",
     "zod": "^4.6.5"
   },
   "devDependencies": {
