@@ -28,6 +28,7 @@ Alerts worth leaving switched on: the cron job that stops checking in now speaks
 
 - **A quiet night is no longer a dead service.** A `service_down` monitor counted the requests in its window and alerted when there were none, so a side project with no visitors went Critical every night — and an alert that cries wolf is an alert that gets switched off. Silence now counts as down only for a service that was talking: when a window is empty, the window before it decides whether that is news. The rule stops applying once the monitor is alerting, so a service that stays dead stays Critical instead of reporting a recovery when its quiet hours begin. The extra query runs only on an empty window. A new `service_down` monitor also waits five minutes by default rather than alerting on the first empty window, and the form now says what the monitor is for — a low-traffic app is better served by a URL check.
 - `--help` on `backup`, `restore` and `reset-password` prints the usage and exits before it reads the configuration or opens the database. `reset-password --help` used to reset the password while being asked how it works.
+
 ## [0.2.0] - 2026-09-16
 
 What happens after the install: the first ten minutes with minidog, and the first few months of leaving it running.
