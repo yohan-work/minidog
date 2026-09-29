@@ -45,7 +45,7 @@ Open **http://localhost:3000** and set a password. Every port binds to localhost
 docker compose --profile demo up -d
 ```
 
-To update, run `docker compose pull && docker compose up -d`. To pin a release, set `MINIDOG_VERSION=0.2.0`.
+To update, run `docker compose pull && docker compose up -d`. To pin a release, set `MINIDOG_VERSION=0.3.0`.
 
 ## What you get
 
