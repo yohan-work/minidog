@@ -4,22 +4,30 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-29
+
+Alerts worth leaving switched on: the cron job that stops checking in now speaks up, a monitor that trips can send mail, and a side project with no visitors at four in the morning is no longer reported dead.
+
 ### Added
 
-- **CI smoke and Playwright.** A compose smoke job brings ClickHouse and the API up and checks `/api/health`; a Playwright job seeds one OTLP trace and log, sets a password, and walks Services → Traces → Logs. Dependabot watches npm, Actions and the Dockerfiles weekly.
 - **Heartbeat monitors.** A monitor type for cron jobs, backups and anything scheduled: minidog issues a ping URL (`GET` or `POST /heartbeat/<token>`, no sign-in, any body), the job requests it when it finishes, and silence for longer than the threshold is the alert — with the same Warning/Critical levels, delays, mutes and webhooks as the other types. The Monitor page shows the URL with a crontab line to paste, the ping count and the last ping; a ping to an alerting monitor recovers it at once. Measured from SQLite alone, so it works while ClickHouse is down.
 - **Alert emails over SMTP.** Set `SMTP_HOST` and `SMTP_FROM` (and usually a user and password); each monitor can then take an email address next to its webhook. Same delays and mutes, a Send test button, and delivery status in History. No extra dependency — a small SMTP client over STARTTLS or implicit TLS.
-- **Last week on the service page.** The Requests, Error rate and P95 cards say how the range compares with the same window seven days earlier (`↑ 52% vs 7d`), with last week's value in a tooltip. A service that had no traffic then shows no comparison rather than a meaningless percentage.
 - **Logs filter by attribute.** An Attributes section above the records lists the keys the matching records carry and the commonest values of each, with counts for the current filters; clicking a value narrows the records to it, and each attribute in an expanded record is a button that does the same. Up to five at once, as `?attr=key:value` in the URL, so a view can be shared.
 - **The waterfall folds and searches.** Spans with children collapse to one row that says how many it hides, with Collapse all and Expand all above; a search box keeps the spans whose service, name, route or status message match, plus the path down to each of them.
+- **Last week on the service page.** The Requests, Error rate and P95 cards say how the range compares with the same window seven days earlier (`↑ 52% vs 7d`), with last week's value in a tooltip. A service that had no traffic then shows no comparison rather than a meaningless percentage.
+- **CI smoke and Playwright.** A compose smoke job brings ClickHouse and the API up and checks `/api/health`; a Playwright job seeds one OTLP trace and log, sets a password, and walks Services → Traces → Logs. Dependabot watches npm, Actions and the Dockerfiles weekly, and its minors and patches merge themselves once every CI job is green — majors are still read by hand.
 
 ### Changed
 
 - While a window dragged on a chart is in force, the time range control in the top bar shows that window instead of the preset it replaced. Choosing a preset clears it, as before.
-
 - Telemetry is written with ClickHouse's asynchronous inserts: the rows of each OTLP export are collected in memory and written as one part per table per flush, instead of a new part every time a collector pipeline exports. The API still waits for the flush before answering, so a 200 means the data is on disk and exporters retry on anything else.
 - Opening a trace looks for its spans and logs in the days around when it happened, using the moment the link was made from (`?at=`), instead of across the whole retention. A pasted URL without it still searches everything.
 - The dashboard shares one request and one timer per API path across the components showing it, and keeps the last response of screens you leave, so coming back shows them at once while the fresh load runs.
+
+### Fixed
+
+- **A quiet night is no longer a dead service.** A `service_down` monitor counted the requests in its window and alerted when there were none, so a side project with no visitors went Critical every night — and an alert that cries wolf is an alert that gets switched off. Silence now counts as down only for a service that was talking: when a window is empty, the window before it decides whether that is news. The rule stops applying once the monitor is alerting, so a service that stays dead stays Critical instead of reporting a recovery when its quiet hours begin. The extra query runs only on an empty window. A new `service_down` monitor also waits five minutes by default rather than alerting on the first empty window, and the form now says what the monitor is for — a low-traffic app is better served by a URL check.
+- `--help` on `backup`, `restore` and `reset-password` prints the usage and exits before it reads the configuration or opens the database. `reset-password --help` used to reset the password while being asked how it works.
 
 ## [0.2.0] - 2026-09-16
 
@@ -65,6 +73,7 @@ First public release.
 - Outbound guard: checks and webhooks never reach link-local or metadata addresses; set `BLOCK_PRIVATE_TARGETS` to also block private networks.
 - Low-memory ClickHouse profile; about 440 MB for the whole stack.
 
-[Unreleased]: https://github.com/yohan-work/minidog/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/yohan-work/minidog/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/yohan-work/minidog/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/yohan-work/minidog/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/yohan-work/minidog/releases/tag/v0.1.0
