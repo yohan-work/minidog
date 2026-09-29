@@ -15,7 +15,11 @@ permissions:
 jobs:
   images:
     name: ${{ matrix.target }} image
-    runs-on: ubuntu-latest
+    # Pinned, not `ubuntu-latest`: this workflow only runs on a tag, so a runner
+    # image change would first be seen while publishing a release. CI keeps
+    # `ubuntu-latest` on purpose, which is where a breaking migration shows up
+    # first — on a pull request. See #61 before unpinning.
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
