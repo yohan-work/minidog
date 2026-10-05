@@ -28,7 +28,7 @@
     "test:e2e:install": "playwright install chromium"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.14",
+    "@biomejs/biome": "2.5.15",
     "@playwright/test": "1.63.0"
   }
 }
