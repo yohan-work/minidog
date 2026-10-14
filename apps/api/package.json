@@ -12,7 +12,7 @@
     "test": "tsx --disable-warning=ExperimentalWarning --test \"src/**/*.test.ts\""
   },
   "dependencies": {
-    "@clickhouse/client": "^1.23.1",
+    "@clickhouse/client": "^1.24.1",
     "@minidog/types": "workspace:*",
     "fastify": "^5.12.5",
     "zod": "^4.6.5"
