@@ -24,7 +24,7 @@
     "@types/node": "^24.19.2",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "sass": "^1.105.2",
+    "sass": "^1.106.1",
     "tsx": "^4.23.15",
     "typescript": "~5.9.3"
   }
